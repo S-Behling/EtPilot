@@ -1,11 +1,12 @@
-# P/ carregar ambiente virtual (no terminal)
-# python -m venv .venv
-# ativar o ambiente virtual
-# Windows
-# .venv\Scripts\activate
-
 '''
-# Bibliotecas
+Terminal commands to set up the virtual environment and install dependencies:
+P/ carregar ambiente virtual
+python -m venv .venv
+
+ativar o ambiente virtual (Windows)
+.venv\Scripts\activate
+
+* Bibliotecas
 pip install osmnx
 pip install geopandas
 pip install networkx
@@ -16,3 +17,33 @@ pip install jupyter
 pip install shapely
 pip install pyarrow
 '''
+
+# Análise de dados
+pandas
+numpy
+
+# Geoprocessamento
+geopandas
+shapely
+pyproj
+fiona
+rtree
+
+# Redes urbanas / OSM
+osmnx
+networkx
+
+# Visualização
+matplotlib
+contextily
+
+# Jupyter
+jupyter
+ipykernel
+
+# Arquivos geográficos
+pyogrio
+
+# Utilidades
+tqdm
+scipy
