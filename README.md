@@ -142,7 +142,6 @@ The implementation is based on concepts from:
 - Netto et al.
 - Boeing (2018)
 - Network Science
-- OpenStreetMap
 - OSMnx
 
 ---
