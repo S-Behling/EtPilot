@@ -1,0 +1,51 @@
+- O/D: centroides da grade estatistica do IBGE e 'amenities' do OSM;
+- Não depender do censo d o IBGE desde o inicio -> utilizar uma base global (GHSL ou WorldPop) para representar a 
+distribuição da população;
+- Provavelmente terão que ser oferecidas duas formas de construir o modelo
+- questão: escalabilidade vs realismo
+
+=====
+
+DEFINIÇÕES (1ª FASE):
+Origens = centroides de uma grade populacional (GHSL ou WorldPop)
+Destinos = emenidades do OSM, filtradas por categorias relevantes
+Pares O-D = gerados automaticamente
+Trajetorias = calculadas na rede OSM
+
+*Após validação do metodo, implementar uma segunda versão em que as origens e destinos são substituidos por dados locais (IBGE, CNEFE e bases municipais)
+Logica segue a mesma, o que muda é a fonte de dados
+dessa forma: pipeline universal x pipeline enriquecida com dados locais
+
+=====
+DUAS FORMAS DE CONSTRUIR O MODELO
+
+OPC 1:
+Destinos = OSM
+{
+    amenity
+    shop
+    school
+    hospital
+    bank
+    restaurant
+    ...
+}
+
+- Automatizado
+- qualquer cidade do mundo (global)
+- reproduzivel
+- Depende da qualidade do OSM
+- cobertura desigual
+* P/ estudos com milhares de cidades com comparação internacional e processamento em lote
+
+OPC 2:
+Destinos = CNEFE
+
+Endereços reais não residenciais
+
+- mais completo
+- mais proximo da realidade
+- apenas Brasil
+- necessário tratar dados
+* P/ estudos detalhados, com maior precisão e para validação de indicadores
+

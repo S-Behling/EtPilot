@@ -27,26 +27,33 @@ urban-complexity/
 ├── data/
 │   ├── raw/
 │   ├── processed/
-│   └── results/
+│   ├── results/
+│   └── graph/
 │
 ├── notebooks/
 │   ├── 01_download_network.ipynb
-│   ├── 02_network_characterization.ipynb
-│   ├── 03_routing.ipynb
+│   ├── 02_explore_network.ipynb
+│   ├── 03_characterize_network.ipynb
 │   └── ...
 │
 ├── src/
 │   ├── network.py
 │   ├── classification.py
 │   ├── visualization.py
-│   ├── routing.py
+│   ├── origins.py
 │   └── metrics/
 │       ├── entropy.py
 │       └── ...
+├── config/
+│   ├── config.json
+│   ├── road_classification.json
+│   └── ...
 │
 ├── requirements.txt
 ├── README.md
+├── anotacoes.md
 └── .gitignore
+
 ```
 
 ---
@@ -101,8 +108,11 @@ The project is organized as a sequential research pipeline:
 
 1. Download street network
 2. Characterize road infrastructure
-3. Build the graph representation
-4. Generate movement trajectories
+3. Generate origins (population)
+4. Generate destinations (amenities)
+5. Build OD matrix
+6. Compute routes
+7. Build trajectories
 5. Compute urban metrics
 6. Calculate Trajectory Entropy (ET)
 7. Visualize and analyze results
