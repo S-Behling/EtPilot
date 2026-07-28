@@ -1,0 +1,50 @@
+{
+    "study_area": {
+        "network_type": "drive",
+        "crs": "EPSG:31982",
+        "place": "Porto Alegre, Rio Grande do Sul, Brasil",
+        "districts": [
+            "Bom Fim",
+            "Farroupilha",
+            "Santana",
+            "Centro Histórico"
+        ]
+    },
+
+    "paths": {
+        "data": "data",
+        "graphs": "data/graph",
+        "graph_file": "data/graph/porto_alegre.graphml",
+        "nodes": "data/nodes.gpkg",
+        "edges": "data/edges.gpkg",
+        "od_pairs": "data/od_pairs.gpkg"
+    },
+
+    "road_classification-pt": {
+        "motorway": "Via Expressa",
+        "trunk": "Via Expressa",
+        "primary": "Via Arterial",
+        "secondary": "Via Coletora",
+        "tertiary": "Via Local",
+        "residential": "Via Local",
+        "living_street": "Via Local",
+        "busway": "Corredor de Onibus",
+        "service": "Via de Serviço"
+    },
+
+    "road_classification": {
+        "motorway": "Motorway",
+        "trunk": "Trunk Road",
+        "primary": "Arterial Road",
+        "secondary": "Collector Road",
+        "tertiary": "Local Collector",
+        "residential": "Residential Street",
+        "busway": "Bus Corridor"
+    },
+
+    "analysis": {
+        "entropy_base": 2,
+        "buffer": 500,
+        "max_trip_distance": 30000
+    }
+}
