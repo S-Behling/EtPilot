@@ -3,6 +3,7 @@
 distribuição da população;
 - Provavelmente terão que ser oferecidas duas formas de construir o modelo
 - questão: escalabilidade vs realismo
+- Discutir unidade de analise: desagregar mais, interpolar e pegar os dados de população das grades estatisticas e atribuir aos trechos (a cada edificio)
 
 =====
 
