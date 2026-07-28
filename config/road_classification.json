@@ -1,0 +1,25 @@
+{
+    "pt": {
+        "motorway": "Via Expressa",
+        "trunk": "Via Expressa",
+        "primary": "Via Arterial",
+        "secondary": "Via Coletora",
+        "tertiary": "Via Local",
+        "residential": "Via Local",
+        "living_street": "Via Local",
+        "busway": "Corredor de Ônibus",
+        "service": "Via de Serviço"
+    },
+
+    "en": {
+        "motorway": "Motorway",
+        "trunk": "Trunk Road",
+        "primary": "Arterial Road",
+        "secondary": "Collector Road",
+        "tertiary": "Local Collector",
+        "residential": "Residential Street",
+        "living_street": "Living Street",
+        "busway": "Bus Corridor",
+        "service": "Service Road"
+    }
+}

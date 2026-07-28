@@ -1,28 +1,12 @@
 # METODOS 
+def classify_road_type(edge, mapping):
+    highway = edge.get("highway")
 
-def classify_road_type(edge):
+    if isinstance(highway, list):
+        highway = highway[0]
 
-    highway = edge["highway"]
+    return mapping.get(highway, "Other")
 
-    if highway == "busway":
-        return "Bus Corridor"
-
-    elif highway == "primary":
-        return "Arterial Road"
-
-    elif highway == "secondary":
-        return "Collector Road"
-
-    elif highway == "secondary_link":
-        return "Collector Link"
-
-    elif highway == "tertiary":
-        return "Local Collector"
-
-    elif highway == "residential":
-        return "Residential Street"
-
-    return "Other"
 
 def classify_road_type_pt(edge):
 
@@ -69,13 +53,10 @@ def classify_road_type2(edge):
 
     return mapping.get(highway, "Other")
 
-
-def classify_network(gdf_edges):
-
-    gdf_edges = gdf_edges.copy()
+def classify_network(gdf_edges, mapping):
 
     gdf_edges["road_type"] = gdf_edges.apply(
-        classify_road_type_pt,
+        lambda edge: classify_road_type(edge, mapping),
         axis=1
     )
 

@@ -1,0 +1,28 @@
+{
+    "study_area": {
+        "network_type": "drive",
+        "crs": "EPSG:31982",
+        "place": "Porto Alegre, Rio Grande do Sul, Brasil",
+        "districts": [
+            "Bom Fim",
+            "Farroupilha",
+            "Santana",
+            "Centro Histórico"
+        ]
+    },
+
+    "paths": {
+        "data": "data",
+        "graphs": "data/graph",
+        "graph_file": "data/graph/porto_alegre.graphml",
+        "nodes": "data/nodes.gpkg",
+        "edges": "data/edges.gpkg",
+        "od_pairs": "data/od_pairs.gpkg"
+    },
+
+    "analysis": {
+        "entropy_base": 2,
+        "buffer": 500,
+        "max_trip_distance": 30000
+    }
+}
