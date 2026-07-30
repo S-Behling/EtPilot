@@ -20,6 +20,7 @@ dessa forma: pipeline universal x pipeline enriquecida com dados locais
 =====
 DUAS FORMAS DE CONSTRUIR O MODELO
 
+P/ piloto apenas 1
 OPC 1:
 Destinos = OSM
 {
