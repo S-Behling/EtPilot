@@ -50,3 +50,34 @@ Endereços reais não residenciais
 - necessário tratar dados
 * P/ estudos detalhados, com maior precisão e para validação de indicadores
 
+=====
+INDICADORES:
+ET (Entropia de trajetorias)
+ISCF (Indice de sofisticação da cadeia fractal)
+CFo (Complexidade formal)
+CFu (Complexidade funcional)
+Ce (cComplexidade emergente)
+
+Outros indices:
+Sobreposição de trajetorias*
+Fragmentação de trajetorias
+Acessibilidade temporal (não funciona medir apenas distancia, precisa medir tempo p/ atingir a distancia)
+Betweenness centrality
+Closeness centrality
+Diversidade modal
+co-presença
+
+=====
+DUVIDAS
+Relacionar aos niveis de informação de shannon?
+Cadeia fractal esta sendo considerada, mas Netto renega em seus artigos. Por que?
+Não compreendi bem como funciona o ISCF
+Qual o envolvimento exato da O/D? 
+    Mapear os trajetos? (trajeto como conjunto de segmentos? Trabalhar por segmento ou com a composição?) 
+    Verificar quais agentes passam pelo segmento? 
+    Verificar os indices do segmento?
+Não se trata apenas de contar o numero de modais. É o conjunto das medidas. (?)
+Considero a forma urbana/morfologia não só entropia dos segmentos e trajetórias?
+Como funciona o Ce?
+
+
