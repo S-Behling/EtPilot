@@ -68,17 +68,16 @@ Closeness centrality
 Diversidade modal
 co-presença
 
+Obs: Talvez 'cadeia fractal' (ISCF) não seja necessária
+
 =====
 DUVIDAS
 Relacionar aos niveis de informação de shannon?
-Cadeia fractal esta sendo considerada, mas Netto renega em seus artigos. Por que?
-Não compreendi bem como funciona o ISCF
 Qual o envolvimento exato da O/D? 
     Mapear os trajetos? (trajeto como conjunto de segmentos? Trabalhar por segmento ou com a composição?) 
     Verificar quais agentes passam pelo segmento? 
     Verificar os indices do segmento?
 Não se trata apenas de contar o numero de modais. É o conjunto das medidas. (?)
 Considero a forma urbana/morfologia não só entropia dos segmentos e trajetórias?
-Como funciona o Ce?
 
 

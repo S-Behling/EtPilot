@@ -1,0 +1,44 @@
+- Problema: Escolher apenas o caminho minimo como trajetória (O/D) -> Existem outros fatores/parametros que afetam a escolha do caminho
+(segurança, topografia do terreno, sombreamento, etc), com isso, a pessoa pode não optar pelo caminho minimo.
+-- Possivel solução: 
+    'Choice set' evitando esses parametros
+    Inserir peso negativo para caminhos que possuam esses atributos
+    Escolher a primeira E segunda opção de caminho minimo
+
+- Problema: Vias de mão unica, retornos, etc, são ignorados em deslocamentos a pé, mas devem ser considerados para os deslocamentos de
+carro, onibus.
+
+- Problema: GHSL gera um raster, então precisa ser compatibilizado com outros vetores
+
+- Questão: Copresença significa interação?
+-- Possibilidade: Classificar modais por classe social (ex: onibus = baixa renda)
+
+OBSERVAÇÕES
+- ISCF: Mede o 'desvio' da linha de desejo/esperada -> Esse desvio pode ser medido pela distancia ou rugosidade ("Quão != do esperado")
+- A duas formas de construir o modelo (OPC 1 e OPC 2) devem ser aplicadas tanto p/ origens quanto para destinos
+- Set de amenities = destinos
+- O/D = sempre segmento
+- Fazer medidas por periodo (dia, mes, ano, ...)
+- Não confundir medidas de segmento/trecho (que é o foco) com a viagem (fractalidade)
+- Varios indicadores são analogos a centralidade (principalmente os estáticos)
+- Ex de medida de centralidade: Quantas vezes o segmento 'x' caiu/coincidiu c/ as 200 trajetórias selecionadas? -> Medida de potencial
+de lugar 'mais passavel'
+- P/ roteamento em redes multimodais -> biblioteca R5R
+
+PRIORIDADES
+- Gerar origens e destinos
+- Fazer roteamento
+- Limpar rede/grafo (Boing; Lourenço; Knet)
+
+1 ITERAÇÃO
+  Rede
++ Origem x
++ Critério do caminho minimo
++ Destino x
+
+(Renato Saboia)
+
+[Quantos?
+De que modo?
+de que tipo/classe?]
+
