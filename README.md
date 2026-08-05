@@ -126,9 +126,11 @@ Current implementation:
 - ✔ Street network download
 - ✔ Road classification
 - ✔ Network visualization
+- ✔ Build origins
+
 
 In progress:
-
+- Network Cleaning
 - Routing
 - Trajectory generation
 - Trajectory Entropy (ET)
