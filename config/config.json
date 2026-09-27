@@ -34,12 +34,39 @@
         "origins": "data/o-d/origens_porto_alegre.gpkg",
         "origins_bomfim": "data/o-d/origens_bomfim.gpkg",
         "destinations": "data/o-d/destinos_porto_alegre.gpkg",
-        "od_pairs": "data/o-d/od_pairs.gpkg"
+        "od_pairs": "data/o-d/od_pairs.gpkg",
+        "origins_income": "data/o-d/origens_porto_alegre_income.gpkg"
     },
 
     "analysis": {
         "entropy_base": 2,
         "buffer": 500,
         "max_trip_distance": 30000
+    },
+
+    
+    "income": {
+        "variable": "renda_media_responsavel",
+
+        "groups": {
+            "low": {
+                "min": null,
+                "max": 1913.0,
+                "share": 0.20997644
+            },
+
+            "middle": {
+                "min": 1913.0,
+                "max": 8245.0,
+                "share": 0.61144735
+            },
+
+            "high": {
+                "min": 8245.0,
+                "max": null,
+                "share": 0.17857621
+            }
+        
+        }
     }
 }
