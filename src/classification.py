@@ -99,7 +99,7 @@ def classify_income_2022(value):
 
     return "high"
 
-def classify_income(value):
+def classify_income(value, income_cut_low, income_cut_high):
 
     if pd.isna(value):
         return pd.NA
