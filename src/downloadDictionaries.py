@@ -1,5 +1,11 @@
+import sys
 from pathlib import Path
 import requests
+
+sys.path.append(str(Path.cwd().parent))
+
+# Importa metodos
+import src.data_utils as dwl
 
 
 # ============================================================
@@ -14,6 +20,11 @@ DICTIONARY_DIR = DATA_DIR / "censo_2022" / "dicionarios"
 DICTIONARY_DIR.mkdir(
     parents=True,
     exist_ok=True
+)
+
+DICIONARIO_FILE = (
+    DICTIONARY_DIR
+    / "dicionario_variaveis_microdados_censo2022.pdf"
 )
 
 
@@ -31,6 +42,15 @@ URL_DICIONARIO_AGREGADOS = (
     "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
     "Agregados_por_Setores_Censitarios/"
     "dicionario_de_dados_agregados_por_setores_censitarios_20260520.xlsx"
+)
+
+URL_DICIONARIO = (
+    "https://ftp.ibge.gov.br/"
+    "Censos/Censo_Demografico_2022/"
+    "Microdados_e_Areas_de_Ponderacao/"
+    "Documentacao/"
+    "Layout%20e%20dicion%C3%A1rio/"
+    "Dicion%C3%A1rio%20de%20Vari%C3%A1veis%20-%20Microdados%20CD2022.pdf"
 )
 
 
@@ -120,6 +140,8 @@ def main():
         url=URL_DICIONARIO_AGREGADOS,
         destination=agregados_path
     )
+
+    dwl.baixar_arquivo(URL_DICIONARIO, DICIONARIO_FILE)
 
     # --------------------------------------------------------
     # RESULTADO
