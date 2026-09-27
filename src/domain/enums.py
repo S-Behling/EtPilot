@@ -10,7 +10,7 @@ class TravelMode(Enum):
     WALK = "walk"
     BIKE = "bike"
     CAR = "car"
-    TRANSIT = "transit"
+    TRANSIT = "transit" #bus
 
 
 class TripPurpose(Enum):
