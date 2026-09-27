@@ -29,7 +29,8 @@ Thumbs.db
 # =========================
 # Dados brutos do IBGE
 # =========================
-data/raw/ibge/
+data/ibge/
+data/censo_2022
 
 # =========================
 # Outputs gerados
