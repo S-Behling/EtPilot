@@ -98,3 +98,16 @@ def classify_income_2022(value):
         return "middle"
 
     return "high"
+
+def classify_income(value):
+
+    if pd.isna(value):
+        return pd.NA
+
+    if value <= income_cut_low:
+        return "low"
+
+    if value <= income_cut_high:
+        return "middle"
+
+    return "high"
