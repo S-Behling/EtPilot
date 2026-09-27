@@ -4,11 +4,11 @@ from src.domain.agent import Agent
 from src.domain.enums import TripPurpose
 
 
-def assign_purposes(
+def assign_purpose(
     agents: list[Agent],
     purpose_probabilities: dict[TripPurpose, float],
     seed: int = 42,
-    ) -> list[Agent]:
+) -> list[Agent]:
     """
     Atribui um motivo de viagem a cada agente sintético.
 
