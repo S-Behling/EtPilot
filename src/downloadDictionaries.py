@@ -9,7 +9,7 @@ import requests
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 DATA_DIR = PROJECT_ROOT / "data"
-DICTIONARY_DIR = DATA_DIR / "dicionarios"
+DICTIONARY_DIR = DATA_DIR / "censo_2022" / "dicionarios"
 
 DICTIONARY_DIR.mkdir(
     parents=True,

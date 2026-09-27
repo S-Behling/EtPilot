@@ -1,3 +1,5 @@
+import pandas as pd
+
 # METODOS 
 def classify_road_type(edge, mapping):
     highway = edge.get("highway")
@@ -84,3 +86,15 @@ def classify_modal(edge):
         return "pedestrian"
 
     return "other"
+
+def classify_income_2022(value):
+    if pd.isna(value):
+        return pd.NA
+
+    if value <= 1913:
+        return "low"
+
+    if value <= 8245:
+        return "middle"
+
+    return "high"
