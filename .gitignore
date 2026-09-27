@@ -1,0 +1,64 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =========================
+# IDEs
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Sistema operacional
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Dados brutos do IBGE
+# =========================
+data/raw/ibge/
+
+# =========================
+# Outputs gerados
+# =========================
+interim/
+
+# =========================
+# Arquivos temporários
+# =========================
+*.tmp
+*.temp
+*.log
+
+# =========================
+# Arquivos compactados
+# =========================
+*.zip
+*.rar
+*.7z
+
+# =========================
+# Arquivos auxiliares de GeoPackage
+# =========================
+*.gpkg-shm
+*.gpkg-wal
+
+# =========================
+# Cache
+# =========================
+.cache/
+.pytest_cache/
+.mypy_cache/
