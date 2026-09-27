@@ -1,0 +1,12 @@
+src/enums.py — vocabulário fechado do modelo: renda, modo e motivo.
+src/agent.py — estrutura de cada agente.
+src/population.py — geração da população sintética.
+src/origin_assignment.py — associação dos agentes às origens já construidas.
+src/purpose_choice.py — escolha do motivo da viagem.
+src/destination_choice.py — escolha do destino.
+src/mode_choice.py — escolha modal segundo cenário/perfil.
+src/routing.py — transforma O–D + modo em trajetória.
+src/edge_usage.py — converte trajetórias em (u, v, key) e registra quem passou por cada trecho.
+src/edge_statistics.py — volume, composição por renda, modo e motivo.
+src/entropy.py — H_soc e H_mod.
+src/simulation.py — gerencia todo o processo e executa cenários/seeds.
