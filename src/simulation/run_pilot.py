@@ -1,5 +1,5 @@
 """
-Execute o pipeline piloto do EtPilot até a harmonização dos segmentos.
+Execute o pipeline piloto do EtPilot até as estatísticas e o H_soc por segmento.
 
 Preserve o mesmo conjunto de agentes e as mesmas origens residenciais nos
 dois cenários. Remova diferenças comportamentais por renda no baseline e
@@ -873,6 +873,14 @@ def main() -> None:
     )
     print(
         f"Roteamento: shortest path por '{routing_weight}'."
+    )
+    print(
+        "H_soc: entropia de Shannon normalizada da composição "
+        "dos agentes por grupo de renda."
+    )
+    print(
+        "Interprete H_soc junto com n_agents e sufficient_flow; "
+        "não trate ausência de fluxo como H_soc=0."
     )
     print(f"Resultados salvos em: {OUTPUT_DIR.resolve()}")
 
