@@ -14,7 +14,7 @@ from src.analysis.scenario_comparison import (
 
 class ScenarioComparisonTests(unittest.TestCase):
     def _statistics(self):
-        # Crie segmentos compartilhados e exclusivos para testar a comparação.
+        # Cria segmentos compartilhados e exclusivos para testar a comparação
         return pd.DataFrame(
             [
                 {
