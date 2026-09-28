@@ -815,7 +815,7 @@ def main() -> None:
         / config["paths"]["destinations"]
     )
 
-    print("1/11 - Carregando dados...")
+    print("1/12 - Carregando dados...")
 
     origins = gpd.read_file(origins_path)
 
@@ -824,7 +824,7 @@ def main() -> None:
         layer="destinations",
     )
 
-    print("2/11 - Carregando redes modais...")
+    print("2/12 - Carregando redes modais...")
 
     graphs = load_mode_graphs(
         config=config,
@@ -835,11 +835,82 @@ def main() -> None:
     for mode, graph in graphs.items():
         print(
             f"  {mode}: "
-            f"{len(graph.nodes):,} nós | "
-            f"{len(graph.edges):,} arestas"
+            f"{_format_int_pt(len(graph.nodes))} nós | "
+            f"{_format_int_pt(len(graph.edges))} arestas"
         )
 
-    print("3/11 - Gerando população sintética...")
+    gtfs_data_dir = (
+        PROJECT_ROOT
+        / transit_config[
+            "gtfs"
+        ][
+            "data_dir"
+        ]
+    )
+    transit_summary_path = (
+        gtfs_data_dir
+        / transit_network_config[
+            "summary_file"
+        ]
+    )
+
+    if not transit_summary_path.exists():
+        raise FileNotFoundError(
+            "Execute antes python -m src.transit.buildTransitNetwork "
+            "para gerar a rede temporal roteável"
+        )
+
+    transit_network_summary = pd.read_csv(
+        transit_summary_path
+    )
+
+    if (
+        transit_network_summary.empty
+        or "representative_service_date"
+        not in transit_network_summary.columns
+    ):
+        raise ValueError(
+            "transit_network_summary.csv não possui representative_service_date"
+        )
+
+    transit_service_date = str(
+        transit_network_summary.iloc[
+            0
+        ][
+            "representative_service_date"
+        ]
+    )
+
+    transit_router = TransitRouter.from_project(
+        project_root=PROJECT_ROOT,
+        config=config,
+        walk_graph=graphs[
+            TravelMode.WALK.value
+        ],
+    )
+
+    transit_connections = pd.read_parquet(
+        gtfs_data_dir
+        / transit_network_config[
+            "routable_connections_file"
+        ]
+    )
+
+    transit_shapes = gpd.read_file(
+        gtfs_data_dir
+        / "shapes_processed.gpkg",
+        layer="shapes_processed",
+        engine="pyogrio",
+    )
+
+    print(
+        "  transit: "
+        f"{_format_int_pt(len(transit_connections))} conexões GTFS roteáveis | "
+        f"data de serviço {transit_service_date} | "
+        f"partida fixa {transit_departure_time_s / 3600:.2f} h"
+    )
+
+    print("3/12 - Gerando população sintética...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -855,7 +926,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(base_agents)}")
 
-    print("4/11 - Atribuindo origens residenciais...")
+    print("4/12 - Atribuindo origens residenciais...")
 
     base_agents = assign_origins(
         agents=base_agents,
@@ -874,7 +945,7 @@ def main() -> None:
         ),
     )
 
-    print("5/11 - Construindo cenários experimentais...")
+    print("5/12 - Construindo cenários experimentais...")
 
     behavior_scenarios = build_behavior_scenarios(
         config_agents=config_agents,
@@ -884,7 +955,7 @@ def main() -> None:
     summaries: dict[str, pd.DataFrame] = {}
     edge_usages: dict[str, pd.DataFrame] = {}
 
-    print("6/11 - Executando cenários e roteamento...")
+    print("6/12 - Executando cenários e roteamento...")
 
     for scenario_name in SCENARIOS:
         print(f"\n--- {scenario_name} ---")
