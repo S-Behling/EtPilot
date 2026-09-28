@@ -338,11 +338,15 @@ times, walking distances, waiting time, and transfers.
 
 ## Multimodal network
 
-The first routing implementation uses three OSM networks:
+The road and active-mode portion of the main agent pipeline uses three OSM
+networks:
 
 - `car` → OSMnx `network_type="drive"`
 - `walk` → OSMnx `network_type="walk"`
 - `bike` → OSMnx `network_type="bike"`
+
+Transit now has a separate GTFS timetable router, but it is intentionally kept
+outside `run_pilot` until the real-data diagnostics are validated.
 
 Origins and destinations are spatial entities independent of a single graph.
 Each point stores a mode-specific nearest node:
@@ -351,9 +355,10 @@ Each point stores a mode-specific nearest node:
 - `node_walk`
 - `node_bike`
 
-After the agent chooses a travel mode, select the corresponding origin and
-destination nodes for routing. Exclude transit from this first routing stage
-and plan it as a GTFS-based network.
+For the three OSM modes, select the corresponding origin and destination nodes
+after mode choice. The standalone transit router instead uses `node_walk`
+for access and egress and the processed GTFS connection table for the bus
+portion of the trip.
 
 Build the common analysis network from the complete walk, bike and car
 graphs, not from the sampled trajectories. Use walk as the initial reference,
