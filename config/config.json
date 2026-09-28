@@ -160,9 +160,21 @@
             "pilot_departure_time_s": 28800
         },
         "spatial_mapping": {
-            "tolerance_m": 20,
-            "min_segment_coverage": 0.5,
-            "max_angle_difference_deg": 45,
+            "primary": {
+                "candidate_scope": "car_supported",
+                "tolerance_m": 20,
+                "min_coverage": 0.5,
+                "max_angle_difference_deg": 45
+            },
+            "fallback": {
+                "enabled": true,
+                "candidate_scope": "full_analysis_network",
+                "tolerance_m": 30,
+                "min_coverage": 0.35,
+                "max_angle_difference_deg": 60
+            },
+            "coverage_rule": "segment_or_shape",
+            "unmatched_policy": "error",
             "calibration_status": "provisional_pilot",
             "connection_mapping_file": "transit_connection_to_analysis_segment.csv",
             "match_report_file": "transit_spatial_match_report.csv"
