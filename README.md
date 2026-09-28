@@ -113,8 +113,9 @@ The project is organized as a sequential research pipeline:
 5. Assign origins, purposes, destinations and travel modes
 6. Select the routing network according to the chosen mode
 7. Compute routes and edge usage
-8. Compute segment statistics and Trajectory Entropy (ET)
-9. Compare experimental scenarios and visualize results
+8. Harmonize the complete modal networks into common physical analysis segments
+9. Compute segment statistics and Trajectory Entropy (ET)
+10. Compare experimental scenarios and visualize results
 
 ---
 
@@ -133,9 +134,16 @@ Each point stores a mode-specific nearest node:
 - `node_walk`
 - `node_bike`
 
-After the agent chooses a travel mode, the corresponding origin and
-destination nodes are selected for routing. Transit is deliberately excluded
-from this first routing stage and is planned as a GTFS-based network.
+After the agent chooses a travel mode, select the corresponding origin and
+destination nodes for routing. Exclude transit from this first routing stage
+and plan it as a GTFS-based network.
+
+Build the common analysis network from the complete walk, bike and car
+graphs, not from the sampled trajectories. Use walk as the initial reference,
+map bike and car edges first by exact OSM equivalence and then by geometric
+overlap, and preserve unmatched edges as exclusive segments. Keep this layer
+independent of agent count, seed and scenario so that `analysis_segment_id`
+remains stable across simulations.
 
 To prepare the multimodal data:
 
@@ -156,11 +164,12 @@ Current implementation:
 - ✔ Experimental baseline/differentiated scenarios
 - ✔ Purpose, destination and mode choice
 - ✔ Mode-specific origin/destination node resolution
+- ✔ Multimodal shortest-path routing
+- ✔ Agent × edge usage tables
+- ✔ Common physical analysis segments from complete modal networks
 
 In progress:
 
-- Routing
-- Edge usage
 - Segment statistics
 - Trajectory Entropy (ET)
 
