@@ -1393,6 +1393,11 @@ def build_transit_network() -> dict:
                 spatial_routable_connections
             )
         ),
+        "n_spatial_routable_trips": int(
+            spatial_routable_connections[
+                "trip_id"
+            ].nunique()
+        ),
         "n_transit_physical_edges": int(
             len(
                 transit_physical_edges
@@ -1649,6 +1654,10 @@ def main() -> None:
         "  Conexões aptas ao roteamento temporal e espacial: "
         f"{_format_int_pt(summary['n_spatial_routable_connections'])} conexões "
         f"({_format_percentage_pt(summary['n_spatial_routable_connections'], summary['n_routable_connections'])})"
+    )
+    print(
+        "  Viagens com pelo menos uma conexão temporal e espacial válida: "
+        f"{_format_int_pt(summary['n_spatial_routable_trips'])} viagens"
     )
     print(
         "  Pares direcionais de paradas distintos: "
