@@ -472,7 +472,10 @@ pipeline creates a new exclusive transit `analysis_segment_id` instead of
 removing agents.
 
 This keeps the physical layer independent of the N=100 sample and preserves
-bus-only corridors that are absent from the OSM drive graph.
+GTFS-only analytical geometry when no safe OSM correspondence is available.
+An exclusive transit segment does not by itself prove that the real street is
+a bus-only corridor: it may represent dedicated infrastructure, an OSM
+coverage difference, or a geometric disagreement between GTFS and OSM.
 
 For transit trips, preserve three leg types in the usage table:
 
@@ -761,7 +764,7 @@ Current implementation:
 - ✔ Transit included in the main agent mode choice and routing pipeline
 - ✔ Transit access and egress represented on the walk network
 - ✔ Full GTFS physical network integrated into the common analysis layer
-- ✔ Unmatched valid GTFS edges preserved as exclusive transit segments
+- ✔ Unmatched valid GTFS edges preserved as GTFS-only analytical segments
 - ✔ Transit included in segment-level modal counts and H_soc trajectory usage
 - ✔ Pilot metadata export in XLSX and HTML
 
