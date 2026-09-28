@@ -1278,12 +1278,48 @@ def main() -> None:
         shapes=transit_shapes,
     )
 
+    car_supported_segment_ids = set(
+        segment_mapping.loc[
+            segment_mapping[
+                "mode"
+            ]
+            == TravelMode.CAR.value,
+            "analysis_segment_id",
+        ].astype(
+            str
+        )
+    )
+
+    transit_candidate_segments = (
+        analysis_segments.loc[
+            analysis_segments[
+                "analysis_segment_id"
+            ]
+            .astype(
+                str
+            )
+            .isin(
+                car_supported_segment_ids
+            )
+        ]
+        .copy()
+        .reset_index(
+            drop=True
+        )
+    )
+
+    if transit_candidate_segments.empty:
+        raise RuntimeError(
+            "A camada física não possui segmentos associados à rede car "
+            "para mapear as conexões GTFS"
+        )
+
     (
         transit_mapping,
         transit_match_diagnostics,
     ) = map_transit_connections_to_analysis_segments(
         transit_connection_geometries,
-        analysis_segments=analysis_segments,
+        analysis_segments=transit_candidate_segments,
         tolerance_m=transit_tolerance_m,
         min_segment_coverage=(
             transit_min_segment_coverage
@@ -1344,6 +1380,10 @@ def main() -> None:
 
     print(
         "\nMapeamento espacial do transporte coletivo"
+    )
+    print(
+        "  Segmentos físicos candidatos com suporte da rede car: "
+        f"{_format_int_pt(len(transit_candidate_segments))} segmentos"
     )
     print(
         "  Conexões GTFS usadas: "
