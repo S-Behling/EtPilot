@@ -1521,17 +1521,6 @@ def _collect_config_parameters(
             "Política aplicada quando um trecho físico GTFS válido não encontra correspondência segura nas redes OSM e precisa ser incorporado à camada comum",
         ),
         (
-            "transit.spatial_mapping.paired_exclusion",
-            transit.get(
-                "spatial_mapping",
-                {},
-            ).get(
-                "paired_exclusion"
-            ),
-            "booleano",
-            "Parâmetro legado mantido como falso após a substituição da exclusão de agentes pela criação de segmentos exclusivos transit",
-        ),
-        (
             "transit.routing.diagnostics.sample_size",
             transit.get(
                 "routing",
