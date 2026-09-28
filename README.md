@@ -859,6 +859,22 @@ The full article pipeline has a single entry point:
 python -m src.analysis.article_v01
 ```
 
+Independent simulation runs are executed with two workers by default. If the
+machine becomes memory-constrained, use `--workers 1`. To obtain the central
+article results first, without waiting for the local parameter-sensitivity
+reruns, use:
+
+```bash
+python -m src.analysis.article_v01 --core-only --workers 2
+```
+
+The core-only mode still uses all five nominal seeds and produces the three
+analytical bases, the hierarchical-bootstrap result, spatial consensus,
+income-group entropy contributions, behavioral diagnostics, tables and the
+main maps/figures. The extra counterfactual and ±25% parameter perturbations
+can be completed later by running the full command; `--resume` preserves all
+already completed simulations.
+
 The command first executes/reuses the fixed-N sensitivity battery and then
 creates the complete article package under:
 
