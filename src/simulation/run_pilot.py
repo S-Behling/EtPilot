@@ -25,6 +25,7 @@ A execução ocorre com:
 
 from __future__ import annotations
 
+import argparse
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -86,7 +87,86 @@ OUTPUT_DIR = PROJECT_ROOT / "outputs" / "pilot"
 
 N_AGENTS = 100
 SEED = 42
+SKIP_MAPS = False
+SKIP_METADATA = False
 SCENARIOS = ("baseline", "differentiated")
+
+
+def _parse_cli_args():
+    """Lê parâmetros opcionais da execução do piloto"""
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Executa o piloto EtPilot com população, semente e diretório "
+            "de saída configuráveis"
+        )
+    )
+    parser.add_argument(
+        "--n-agents",
+        type=int,
+        default=N_AGENTS,
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=SEED,
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--skip-maps",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--skip-metadata",
+        action="store_true",
+    )
+
+    return parser.parse_args()
+
+
+def _apply_cli_args(args) -> None:
+    """Aplica parâmetros de execução sem alterar a configuração permanente"""
+
+    global N_AGENTS
+    global SEED
+    global OUTPUT_DIR
+    global SKIP_MAPS
+    global SKIP_METADATA
+
+    if args.n_agents <= 0:
+        raise ValueError(
+            "--n-agents precisa ser maior que zero"
+        )
+
+    N_AGENTS = int(
+        args.n_agents
+    )
+    SEED = int(
+        args.seed
+    )
+    SKIP_MAPS = bool(
+        args.skip_maps
+    )
+    SKIP_METADATA = bool(
+        args.skip_metadata
+    )
+
+    if args.output_dir:
+        output_path = Path(
+            args.output_dir
+        )
+
+        if not output_path.is_absolute():
+            output_path = (
+                PROJECT_ROOT
+                / output_path
+            )
+
+        OUTPUT_DIR = output_path
 
 
 def load_json(path: Path) -> dict:
@@ -1001,11 +1081,14 @@ def main() -> None:
         "maps",
         {},
     )
-    maps_enabled = bool(
-        maps_config.get(
-            "enabled",
-            True,
+    maps_enabled = (
+        bool(
+            maps_config.get(
+                "enabled",
+                True,
+            )
         )
+        and not SKIP_MAPS
     )
     maps_dpi = int(
         maps_config.get(
@@ -2029,29 +2112,71 @@ def main() -> None:
         "\n12/12 - Atualizando documentação metodológica..."
     )
 
-    from src.reporting.exportPilotMetadata import (
-        export_pilot_metadata,
-    )
+    runtime_manifest = {
+        "n_agents": int(
+            N_AGENTS
+        ),
+        "seed": int(
+            SEED
+        ),
+        "output_dir": str(
+            OUTPUT_DIR.resolve()
+        ),
+        "maps_generated": bool(
+            maps_enabled
+        ),
+        "metadata_updated": bool(
+            not SKIP_METADATA
+        ),
+    }
 
-    metadata_paths = export_pilot_metadata(
-        project_root=PROJECT_ROOT
-    )
+    with (
+        OUTPUT_DIR
+        / "run_manifest.json"
+    ).open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            runtime_manifest,
+            file,
+            ensure_ascii=False,
+            indent=2,
+        )
 
-    print(
-        "Metadados do piloto salvos em:"
-    )
-    print(
-        "  XLSX: "
-        f"{metadata_paths['xlsx']}"
-    )
-    print(
-        "  HTML: "
-        f"{metadata_paths['html']}"
-    )
+    if SKIP_METADATA:
+        print(
+            "Atualização dos metadados globais desativada para esta execução"
+        )
+    else:
+        from src.reporting.exportPilotMetadata import (
+            export_pilot_metadata,
+        )
+
+        metadata_paths = export_pilot_metadata(
+            project_root=PROJECT_ROOT
+        )
+
+        print(
+            "Metadados do piloto salvos em:"
+        )
+        print(
+            "  XLSX: "
+            f"{metadata_paths['xlsx']}"
+        )
+        print(
+            "  HTML: "
+            f"{metadata_paths['html']}"
+        )
+
     print(
         f"Resultados salvos em: {OUTPUT_DIR.resolve()}"
     )
 
 
 if __name__ == "__main__":
+    cli_args = _parse_cli_args()
+    _apply_cli_args(
+        cli_args
+    )
     main()
