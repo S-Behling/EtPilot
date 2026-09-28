@@ -23,6 +23,9 @@ from src.network.multimodal import (
 from src.transit.validateGTFSTemporalQuality import (
     build_trip_temporal_quality,
 )
+from src.transit.physicalNetwork import (
+    build_transit_physical_network,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -1144,8 +1147,32 @@ def build_transit_network() -> dict:
         )
     )
 
+    if shapes is None:
+        raise FileNotFoundError(
+            "shapes_processed.gpkg é necessário para construir a rede física transit"
+        )
+
+    (
+        spatial_routable_connections,
+        transit_physical_edges,
+        connection_physical_map,
+        transit_physical_diagnostics,
+    ) = build_transit_physical_network(
+        routable_connections,
+        shapes=shapes,
+        stops=stops,
+    )
+
+    spatial_routable_trip_ids = set(
+        spatial_routable_connections[
+            "trip_id"
+        ].astype(
+            str
+        )
+    )
+
     topology = _build_topology(
-        routable_connections
+        spatial_routable_connections
     )
 
     routable_trips = trips.loc[
@@ -1156,7 +1183,7 @@ def build_transit_network() -> dict:
             str
         )
         .isin(
-            routable_trip_ids
+            spatial_routable_trip_ids
         )
     ].copy()
 
@@ -1204,6 +1231,30 @@ def build_transit_network() -> dict:
             "trip_quality_file"
         ]
     )
+    spatial_routable_connections_path = (
+        data_dir
+        / network_config[
+            "spatial_routable_connections_file"
+        ]
+    )
+    transit_physical_edges_path = (
+        data_dir
+        / network_config[
+            "transit_physical_edges_file"
+        ]
+    )
+    transit_physical_diagnostics_path = (
+        data_dir
+        / network_config[
+            "transit_physical_edge_diagnostics_file"
+        ]
+    )
+    connection_physical_map_path = (
+        data_dir
+        / network_config[
+            "connection_physical_edge_map_file"
+        ]
+    )
     topology_path = (
         data_dir
         / network_config[
@@ -1238,6 +1289,24 @@ def build_transit_network() -> dict:
     )
     routable_connections.to_parquet(
         routable_connections_path,
+        index=False,
+    )
+    spatial_routable_connections.to_parquet(
+        spatial_routable_connections_path,
+        index=False,
+    )
+    _replace_gpkg(
+        transit_physical_edges,
+        transit_physical_edges_path,
+        layer="transit_physical_edges_processed",
+    )
+    transit_physical_diagnostics.to_csv(
+        transit_physical_diagnostics_path,
+        index=False,
+        encoding="utf-8",
+    )
+    connection_physical_map.to_parquet(
+        connection_physical_map_path,
         index=False,
     )
     trip_quality.to_csv(
@@ -1317,6 +1386,37 @@ def build_transit_network() -> dict:
         "n_routable_connections": int(
             len(
                 routable_connections
+            )
+        ),
+        "n_spatial_routable_connections": int(
+            len(
+                spatial_routable_connections
+            )
+        ),
+        "n_transit_physical_edges": int(
+            len(
+                transit_physical_edges
+            )
+        ),
+        "n_transit_physical_edges_invalid": int(
+            (
+                ~transit_physical_diagnostics[
+                    "geometry_status"
+                ]
+                .astype(
+                    str
+                )
+                .str.startswith(
+                    "ok"
+                )
+            ).sum()
+        ),
+        "n_connections_removed_by_spatial_geometry": int(
+            len(
+                routable_connections
+            )
+            - len(
+                spatial_routable_connections
             )
         ),
         "n_total_trips_quality": int(
@@ -1406,13 +1506,21 @@ def build_transit_network() -> dict:
                 == 0
             ).sum()
         ),
+        "spatial_routable_zero_duration_connections": int(
+            (
+                spatial_routable_connections[
+                    "in_vehicle_time_s"
+                ]
+                == 0
+            ).sum()
+        ),
         "connection_time_median_s": float(
-            routable_connections[
+            spatial_routable_connections[
                 "in_vehicle_time_s"
             ].median()
         ),
         "connection_time_p95_s": float(
-            routable_connections[
+            spatial_routable_connections[
                 "in_vehicle_time_s"
             ].quantile(
                 0.95
@@ -1533,9 +1641,14 @@ def main() -> None:
         f"{_format_int_pt(summary['n_scheduled_connections'])} conexões"
     )
     print(
-        "  Conexões aptas ao roteamento: "
+        "  Conexões aptas ao roteamento temporal: "
         f"{_format_int_pt(summary['n_routable_connections'])} conexões "
         f"({_format_percentage_pt(summary['n_routable_connections'], summary['n_scheduled_connections'])})"
+    )
+    print(
+        "  Conexões aptas ao roteamento temporal e espacial: "
+        f"{_format_int_pt(summary['n_spatial_routable_connections'])} conexões "
+        f"({_format_percentage_pt(summary['n_spatial_routable_connections'], summary['n_routable_connections'])})"
     )
     print(
         "  Pares direcionais de paradas distintos: "
@@ -1568,6 +1681,22 @@ def main() -> None:
     print(
         "  Duração entre paradas — percentil 95: "
         f"{_format_float_pt(summary['connection_time_p95_s'])} s"
+    )
+
+    print(
+        "\nRede física completa do transporte coletivo"
+    )
+    print(
+        "  Trechos físicos GTFS válidos: "
+        f"{_format_int_pt(summary['n_transit_physical_edges'])} trechos"
+    )
+    print(
+        "  Trechos físicos GTFS sem geometria válida: "
+        f"{_format_int_pt(summary['n_transit_physical_edges_invalid'])} trechos"
+    )
+    print(
+        "  Conexões retiradas somente por geometria espacial inválida: "
+        f"{_format_int_pt(summary['n_connections_removed_by_spatial_geometry'])} conexões"
     )
 
     print(
