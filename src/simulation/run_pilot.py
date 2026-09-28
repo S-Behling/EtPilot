@@ -1665,8 +1665,10 @@ def main() -> None:
         )
         print(
             "  H_soc — todos os segmentos usados: "
-            f"média={statistics['H_soc'].mean():.3f} | "
-            f"mediana={statistics['H_soc'].median():.3f}"
+            "média="
+            f"{_format_float_pt(statistics['H_soc'].mean(), decimals=3)} | "
+            "mediana="
+            f"{_format_float_pt(statistics['H_soc'].median(), decimals=3)}"
         )
         print(
             "  Segmentos com fluxo suficiente "
@@ -1677,8 +1679,10 @@ def main() -> None:
         if not supported.empty:
             print(
                 "  H_soc — fluxo suficiente: "
-                f"média={supported['H_soc'].mean():.3f} | "
-                f"mediana={supported['H_soc'].median():.3f}"
+                "média="
+                f"{_format_float_pt(supported['H_soc'].mean(), decimals=3)} | "
+                "mediana="
+                f"{_format_float_pt(supported['H_soc'].median(), decimals=3)}"
             )
 
         threshold_counts = {
@@ -1753,8 +1757,10 @@ def main() -> None:
     )
     print(
         "  Delta H_soc pareado — todos os segmentos usados nos dois: "
-        f"média={paired_summary['paired_delta_H_soc_mean']:.3f} | "
-        f"mediana={paired_summary['paired_delta_H_soc_median']:.3f}"
+        "média="
+        f"{_format_float_pt(paired_summary['paired_delta_H_soc_mean'], decimals=3)} | "
+        "mediana="
+        f"{_format_float_pt(paired_summary['paired_delta_H_soc_median'], decimals=3)}"
     )
     print(
         "  Segmentos com fluxo suficiente nos dois cenários "
@@ -1767,8 +1773,10 @@ def main() -> None:
     ] > 0:
         print(
             "  Delta H_soc pareado — fluxo suficiente nos dois: "
-            f"média={paired_summary['sufficient_delta_H_soc_mean']:.3f} | "
-            f"mediana={paired_summary['sufficient_delta_H_soc_median']:.3f}"
+            "média="
+            f"{_format_float_pt(paired_summary['sufficient_delta_H_soc_mean'], decimals=3)} | "
+            "mediana="
+            f"{_format_float_pt(paired_summary['sufficient_delta_H_soc_median'], decimals=3)}"
         )
 
     print(
