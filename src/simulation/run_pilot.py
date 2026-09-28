@@ -51,8 +51,8 @@ from src.network.analysis_segments import (
 from src.network.multimodal import load_mode_graphs
 from src.routing.multimodal_router import (
     SUCCESS_STATUSES,
-    route_agents,
 )
+from src.routing.pilot_router import route_pilot_agents
 from src.simulation.destination_choice import (
     assign_destinations,
     destination_choice_summary,
@@ -63,6 +63,13 @@ from src.simulation.population import generate_population
 from src.simulation.purpose_choice import assign_purpose
 from src.simulation.scenarios import build_behavior_scenarios
 from src.trajectory.edge_usage import build_edge_usage
+from src.trajectory.transit_usage import (
+    build_transit_edge_usage,
+    build_used_transit_connection_geometries,
+    map_transit_connections_to_analysis_segments,
+    summarize_transit_spatial_matching,
+)
+from src.transit.routeTransit import TransitRouter
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -87,13 +94,15 @@ def _assign_modes(
     mode_config: dict,
     distance_config: dict | None,
     seed: int,
-    implemented_modes: list[str] | tuple[str, ...],
+    available_mode_names: list[str] | tuple[str, ...],
 ) -> None:
     rng = np.random.default_rng(seed)
 
     available_modes = {
-        TravelMode(mode)
-        for mode in implemented_modes
+        TravelMode(
+            mode
+        )
+        for mode in available_mode_names
     }
 
     for agent in agents:
