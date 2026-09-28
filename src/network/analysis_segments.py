@@ -1,13 +1,13 @@
-"""Harmonize as redes modais completas em segmentos físicos comuns.
+"""Harmoniza as redes modais completas em segmentos físicos comuns
 
-Use a rede de caminhada como referência inicial. Mapeie bicicleta e carro
+Usa a rede de caminhada como referência inicial. Mapeia bicicleta e carro
 primeiro por equivalência OSM exata e, em seguida, por sobreposição
-geométrica compatível. Preserve como exclusivos apenas os segmentos que não
-puderem ser reconciliados com segurança.
+geométrica compatível. Preserva como exclusivos apenas os segmentos que não
+puderem ser reconciliados com segurança
 
-Construa esta camada a partir das redes completas, e não das trajetórias
-observadas. Preserve assim o mesmo `analysis_segment_id` quando altere o
-número de agentes, a seed ou o cenário experimental.
+Constrói esta camada a partir das redes completas, e não das trajetórias
+observadas. Preserva assim o mesmo `analysis_segment_id` quando altere o
+número de agentes, a seed ou o cenário experimental
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ DEFAULT_MODE_ORDER = ("walk", "bike", "car")
 
 
 def _normalize_osmid(value) -> str:
-    """Normalize o osmid para uma assinatura textual estável."""
+    """Normaliza o osmid para uma assinatura textual estável"""
 
     if value is None:
         return ""
@@ -41,7 +41,7 @@ def _normalize_osmid(value) -> str:
 
 
 def _osmid_set(value) -> frozenset[str]:
-    """Converta o osmid para um conjunto imutável de identificadores."""
+    """Converte o osmid para um conjunto imutável de identificadores"""
 
     if value is None:
         return frozenset()
@@ -60,7 +60,7 @@ def _osmid_set(value) -> frozenset[str]:
 
 
 def _normalize_text(value) -> str:
-    """Normalize um atributo textual para comparação."""
+    """Normaliza um atributo textual para comparação"""
 
     if value is None:
         return ""
@@ -80,7 +80,7 @@ def _canonical_endpoints(
     u: int,
     v: int,
 ) -> tuple[int, int]:
-    """Ignore a direção e retorne o par canônico de nós."""
+    """Ignora a direção e retorna o par canônico de nós"""
 
     u = int(u)
     v = int(v)
@@ -98,7 +98,7 @@ def _edge_geometry(
     key: int,
     attributes: Mapping | None = None,
 ):
-    """Recupere a geometria e crie uma linha quando a aresta não a possuir."""
+    """Recupera a geometria e cria uma linha quando a aresta não a possuir"""
 
     if attributes is None:
         attributes = graph.get_edge_data(
@@ -150,7 +150,7 @@ def _edge_record(
     key: int,
     attributes: Mapping,
 ) -> dict:
-    """Converta uma aresta modal em um registro padronizado."""
+    """Converte uma aresta modal em um registro padronizado"""
 
     u = int(u)
     v = int(v)
@@ -218,7 +218,7 @@ def extract_all_modal_edges(
     *,
     modes: Iterable[str] | None = None,
 ) -> gpd.GeoDataFrame:
-    """Extraia todas as arestas das redes modais carregadas."""
+    """Extrai todas as arestas das redes modais carregadas"""
 
     if modes is None:
         modes = graphs.keys()
@@ -290,7 +290,7 @@ def extract_used_modal_edges(
     edge_usage: pd.DataFrame,
     graphs: Mapping[str, object],
 ) -> gpd.GeoDataFrame:
-    """Extraia apenas as arestas efetivamente usadas pelas trajetórias."""
+    """Extrai apenas as arestas efetivamente usadas pelas trajetórias"""
 
     required_columns = {
         "mode",
@@ -412,7 +412,7 @@ def extract_used_modal_edges(
 def _new_segment_id(
     index: int,
 ) -> str:
-    """Crie um identificador sequencial estável para o segmento."""
+    """Cria um identificador sequencial estável para o segmento"""
 
     return f"S_{index:07d}"
 
@@ -421,7 +421,7 @@ def _candidate_is_compatible(
     edge: pd.Series,
     segment: pd.Series,
 ) -> bool:
-    """Exija compatibilidade OSM ou textual antes de aceitar o encaixe."""
+    """Exige compatibilidade OSM ou textual antes de aceitar o encaixe"""
 
     edge_osmids = edge[
         "osmid_set"
@@ -469,7 +469,7 @@ def _coverage_ratio(
     edge_geometry,
     tolerance_m: float,
 ) -> float:
-    """Meça quanto do segmento candidato fica coberto pela aresta modal."""
+    """Mede quanto do segmento candidato fica coberto pela aresta modal"""
 
     if candidate_geometry.length <= 0:
         return 0.0
@@ -498,7 +498,7 @@ def _find_geometry_matches(
     tolerance_m: float,
     min_coverage: float,
 ) -> list[tuple[str, float]]:
-    """Selecione os segmentos compatíveis cobertos pela aresta modal."""
+    """Seleciona os segmentos compatíveis cobertos pela aresta modal"""
 
     if segments.empty:
         return []
@@ -566,7 +566,7 @@ def _segments_frame(
     rows: list[dict],
     crs,
 ) -> gpd.GeoDataFrame:
-    """Converta os registros acumulados em um GeoDataFrame."""
+    """Converte os registros acumulados em um GeoDataFrame"""
 
     return gpd.GeoDataFrame(
         rows,
@@ -583,7 +583,7 @@ def build_analysis_segments(
     tolerance_m: float = 5.0,
     min_coverage: float = 0.80,
 ) -> tuple[gpd.GeoDataFrame, pd.DataFrame]:
-    """Construa a rede física comum e mapeie todas as arestas modais."""
+    """Constrói a rede física comum e mapeia todas as arestas modais"""
 
     if modal_edges.empty:
         raise ValueError(
@@ -645,7 +645,7 @@ def build_analysis_segments(
         edge: pd.Series,
         source_mode: str,
     ) -> str:
-        """Adicione um segmento físico e devolva seu identificador."""
+        """Adiciona um segmento físico e devolva seu identificador"""
 
         nonlocal next_segment_index
 
@@ -741,13 +741,13 @@ def build_analysis_segments(
         if mode == reference_mode:
             continue
 
-        # Congele a camada já harmonizada antes de processar o próximo modo.
+        # Congela a camada já harmonizada antes de processar o próximo modo
         segments_snapshot = _segments_frame(
             segments_rows,
             modal_edges.crs,
         )
 
-        # Indexe as chaves exatas uma única vez para evitar buscas repetidas.
+        # Indexa as chaves exatas uma única vez para evitar buscas repetidas
         strict_lookup = (
             segments_snapshot.groupby(
                 "strict_key"
@@ -778,7 +778,7 @@ def build_analysis_segments(
             )
         )
 
-        # Agrupe direções e duplicatas físicas antes de procurar equivalências.
+        # Agrupa direções e duplicatas físicas antes de procurar equivalências
         for (
             strict_key,
             group,
@@ -846,7 +846,7 @@ def build_analysis_segments(
                         )
                     ]
 
-            # Aplique o mesmo mapeamento a todas as direções da aresta física.
+            # Aplica o mesmo mapeamento a todas as direções da aresta física
             for modal_edge_id in modal_edge_ids:
                 for (
                     segment_id,
@@ -895,7 +895,7 @@ def apply_analysis_segment_mapping(
     edge_usage: pd.DataFrame,
     mapping: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Aplique o mapeamento 1:N às passagens registradas no edge_usage."""
+    """Aplica o mapeamento 1:N às passagens registradas no edge_usage"""
 
     result = edge_usage.merge(
         mapping,
@@ -934,7 +934,7 @@ def segment_match_report(
     *,
     modal_edge_ids: Iterable[str] | None = None,
 ) -> pd.DataFrame:
-    """Resuma os métodos usados para harmonizar as arestas modais."""
+    """Resume os métodos usados para harmonizar as arestas modais"""
 
     selected = mapping
 
