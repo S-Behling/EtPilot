@@ -1,4 +1,4 @@
-"""Exporta a documentação estruturada do piloto em XML
+"""Exporta a documentação estruturada do piloto em XLSX e HTML
 
 Registra variáveis principais, métodos de análise, estatísticas, métodos de
 limpeza, parâmetros de configuração e arquivos gerados pelo pipeline
@@ -8,9 +8,11 @@ Mantém todas as descrições em português
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from html import escape
 import json
 from pathlib import Path
-import xml.etree.ElementTree as ET
+
+import pandas as pd
 
 
 VARIABLES = [
@@ -745,7 +747,8 @@ FILES = [
     ("outputs/pilot/maps/delta_h_soc_all.png", "Mapa da diferença pareada de H_soc para todos os segmentos comparáveis", "mapas", False),
     ("outputs/pilot/maps/delta_h_soc_supported.png", "Mapa da diferença pareada de H_soc restrito aos segmentos com fluxo suficiente nos dois cenários", "mapas", False),
     ("outputs/pilot/maps/map_manifest.csv", "Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português", "mapas", False),
-    ("outputs/metadados_piloto.xml", "Documento XML consolidado com variáveis, métodos, estatísticas, limpeza, parâmetros e arquivos do piloto", "documentação", False),
+    ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
+    ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
 
 
@@ -766,103 +769,53 @@ def _load_json(
         )
 
 
-def _add_text(
-    parent: ET.Element,
-    tag: str,
-    value,
-) -> ET.Element:
-    """Adiciona um elemento XML textual"""
 
-    element = ET.SubElement(
-        parent,
-        tag,
-    )
-
-    if value is None:
-        element.text = ""
-    elif isinstance(
-        value,
-        bool,
-    ):
-        element.text = (
-            "true"
-            if value
-            else "false"
-        )
-    else:
-        element.text = str(
-            value
-        )
-
-    return element
-
-
-def _add_parameter(
-    parent: ET.Element,
+def _parameter_row(
     *,
     nome: str,
     valor,
     unidade: str,
     descricao: str,
     origem: str,
-) -> None:
-    """Adiciona um parâmetro configurado ao XML"""
+) -> dict:
+    """Cria uma linha padronizada da tabela de parâmetros"""
 
-    item = ET.SubElement(
-        parent,
-        "parametro",
-    )
-    _add_text(
-        item,
-        "nome",
-        nome,
-    )
-    _add_text(
-        item,
-        "valor",
-        valor,
-    )
-    _add_text(
-        item,
-        "unidade",
-        unidade,
-    )
-    _add_text(
-        item,
-        "descricao",
-        descricao,
-    )
-    _add_text(
-        item,
-        "origem",
-        origem,
-    )
+    return {
+        "nome": nome,
+        "valor": (
+            ""
+            if valor is None
+            else valor
+        ),
+        "unidade": unidade,
+        "descricao": descricao,
+        "origem": origem,
+    }
 
 
-def _append_config_parameters(
-    parent: ET.Element,
+def _collect_config_parameters(
     *,
     config: dict,
     config_agents: dict,
-) -> None:
-    """Registra os principais parâmetros atuais do experimento"""
+) -> list[dict]:
+    """Reúne os principais parâmetros atuais do experimento"""
 
-    _add_parameter(
-        parent,
-        nome="N_AGENTS",
-        valor=100,
-        unidade="agentes",
-        descricao="Tamanho atual da população sintética usada na execução técnica do piloto",
-        origem="src/simulation/run_pilot.py",
-    )
-    _add_parameter(
-        parent,
-        nome="SEED",
-        valor=42,
-        unidade="inteiro",
-        descricao="Semente pseudoaleatória usada para garantir reprodutibilidade da população e das escolhas",
-        origem="src/simulation/run_pilot.py",
-    )
+    rows = [
+        _parameter_row(
+            nome="N_AGENTS",
+            valor=100,
+            unidade="agentes",
+            descricao="Tamanho atual da população sintética usada na execução técnica do piloto",
+            origem="src/simulation/run_pilot.py",
+        ),
+        _parameter_row(
+            nome="SEED",
+            valor=42,
+            unidade="inteiro",
+            descricao="Semente pseudoaleatória usada para garantir reprodutibilidade da população e das escolhas",
+            origem="src/simulation/run_pilot.py",
+        ),
+    ]
 
     study_area = config.get(
         "study_area",
@@ -933,7 +886,7 @@ def _append_config_parameters(
         ),
         (
             "analysis.segment_statistics.flow_thresholds",
-            "|".join(
+            " | ".join(
                 str(
                     value
                 )
@@ -950,7 +903,7 @@ def _append_config_parameters(
         ),
         (
             "routing.implemented_modes",
-            "|".join(
+            " | ".join(
                 routing.get(
                     "implemented_modes",
                     []
@@ -983,59 +936,65 @@ def _append_config_parameters(
         ),
     ]
 
-    for (
-        nome,
-        valor,
-        unidade,
-        descricao,
-    ) in configured:
-        _add_parameter(
-            parent,
+    rows.extend(
+        _parameter_row(
             nome=nome,
             valor=valor,
             unidade=unidade,
             descricao=descricao,
             origem="config/config.json",
         )
+        for (
+            nome,
+            valor,
+            unidade,
+            descricao,
+        )
+        in configured
+    )
 
-    income_groups = config.get(
-        "income",
-        {},
-    ).get(
-        "groups",
-        {},
+    income_groups = (
+        config.get(
+            "income",
+            {},
+        )
+        .get(
+            "groups",
+            {},
+        )
     )
 
     for group_name, group_data in income_groups.items():
-        _add_parameter(
-            parent,
-            nome=f"income.groups.{group_name}.share",
-            valor=group_data.get(
-                "share"
-            ),
-            unidade="proporção de 0 a 1",
-            descricao=f"Participação populacional configurada para o grupo de renda {group_name}",
-            origem="config/config.json",
-        )
-        _add_parameter(
-            parent,
-            nome=f"income.groups.{group_name}.min",
-            valor=group_data.get(
-                "min"
-            ),
-            unidade="moeda da variável de renda de origem",
-            descricao=f"Limite inferior configurado para classificar o grupo de renda {group_name}",
-            origem="config/config.json",
-        )
-        _add_parameter(
-            parent,
-            nome=f"income.groups.{group_name}.max",
-            valor=group_data.get(
-                "max"
-            ),
-            unidade="moeda da variável de renda de origem",
-            descricao=f"Limite superior configurado para classificar o grupo de renda {group_name}",
-            origem="config/config.json",
+        rows.extend(
+            [
+                _parameter_row(
+                    nome=f"income.groups.{group_name}.share",
+                    valor=group_data.get(
+                        "share"
+                    ),
+                    unidade="proporção de 0 a 1",
+                    descricao=f"Participação populacional configurada para o grupo de renda {group_name}",
+                    origem="config/config.json",
+                ),
+                _parameter_row(
+                    nome=f"income.groups.{group_name}.min",
+                    valor=group_data.get(
+                        "min"
+                    ),
+                    unidade="moeda da variável de renda de origem",
+                    descricao=f"Limite inferior configurado para classificar o grupo de renda {group_name}",
+                    origem="config/config.json",
+                ),
+                _parameter_row(
+                    nome=f"income.groups.{group_name}.max",
+                    valor=group_data.get(
+                        "max"
+                    ),
+                    unidade="moeda da variável de renda de origem",
+                    descricao=f"Limite superior configurado para classificar o grupo de renda {group_name}",
+                    origem="config/config.json",
+                ),
+            ]
         )
 
     distance_adjustment = (
@@ -1045,7 +1004,7 @@ def _append_config_parameters(
         )
         .get(
             "distance_adjustment",
-            {}
+            {},
         )
     )
 
@@ -1053,26 +1012,28 @@ def _append_config_parameters(
         "decay_per_km",
         {},
     ).items():
-        _add_parameter(
-            parent,
-            nome=f"mode_choice.distance_adjustment.decay_per_km.{mode_name}",
-            valor=beta,
-            unidade="1/km",
-            descricao=f"Coeficiente provisório de penalização da distância na escolha do modo {mode_name}",
-            origem="config/config_agents.json",
+        rows.append(
+            _parameter_row(
+                nome=f"mode_choice.distance_adjustment.decay_per_km.{mode_name}",
+                valor=beta,
+                unidade="1/km",
+                descricao=f"Coeficiente provisório de penalização da distância na escolha do modo {mode_name}",
+                origem="config/config_agents.json",
+            )
         )
 
     for mode_name, limit in distance_adjustment.get(
         "max_distance_km",
         {},
     ).items():
-        _add_parameter(
-            parent,
-            nome=f"mode_choice.distance_adjustment.max_distance_km.{mode_name}",
-            valor=limit,
-            unidade="km",
-            descricao=f"Distância OD máxima provisória permitida para o modo {mode_name} quando configurada",
-            origem="config/config_agents.json",
+        rows.append(
+            _parameter_row(
+                nome=f"mode_choice.distance_adjustment.max_distance_km.{mode_name}",
+                valor=limit,
+                unidade="km",
+                descricao=f"Distância OD máxima provisória permitida para o modo {mode_name} quando configurada",
+                origem="config/config_agents.json",
+            )
         )
 
     destination_decay = (
@@ -1082,79 +1043,131 @@ def _append_config_parameters(
         )
         .get(
             "distance_decay_per_km",
-            {}
+            {},
         )
     )
 
     for purpose, values in destination_decay.items():
         for group_name, beta in values.items():
-            _add_parameter(
-                parent,
-                nome=f"destination_choice.distance_decay_per_km.{purpose}.{group_name}",
-                valor=beta,
-                unidade="1/km",
-                descricao=f"Coeficiente de decaimento da distância para destino de {purpose} no grupo {group_name}",
-                origem="config/config_agents.json",
+            rows.append(
+                _parameter_row(
+                    nome=f"destination_choice.distance_decay_per_km.{purpose}.{group_name}",
+                    valor=beta,
+                    unidade="1/km",
+                    descricao=f"Coeficiente de decaimento da distância para destino de {purpose} no grupo {group_name}",
+                    origem="config/config_agents.json",
+                )
             )
 
     purpose_choice = config_agents.get(
         "purpose_choice",
-        {}
+        {},
     )
 
     for group_name, values in purpose_choice.items():
         for purpose, probability in values.items():
-            _add_parameter(
-                parent,
-                nome=f"purpose_choice.{group_name}.{purpose}",
-                valor=probability,
-                unidade="probabilidade de 0 a 1",
-                descricao=f"Probabilidade configurada do propósito {purpose} para o grupo de renda {group_name}",
-                origem="config/config_agents.json",
+            rows.append(
+                _parameter_row(
+                    nome=f"purpose_choice.{group_name}.{purpose}",
+                    valor=probability,
+                    unidade="probabilidade de 0 a 1",
+                    descricao=f"Probabilidade configurada do propósito {purpose} para o grupo de renda {group_name}",
+                    origem="config/config_agents.json",
+                )
             )
 
     mode_choice = (
         config_agents.get(
             "mode_choice",
-            {}
+            {},
         )
         .get(
             "differentiated",
-            {}
+            {},
         )
     )
 
     for group_name, values in mode_choice.items():
         for mode_name, probability in values.items():
-            _add_parameter(
-                parent,
-                nome=f"mode_choice.differentiated.{group_name}.{mode_name}",
-                valor=probability,
-                unidade="probabilidade de 0 a 1",
-                descricao=f"Probabilidade modal base de {mode_name} no cenário differentiated para o grupo {group_name}",
-                origem="config/config_agents.json",
+            rows.append(
+                _parameter_row(
+                    nome=f"mode_choice.differentiated.{group_name}.{mode_name}",
+                    valor=probability,
+                    unidade="probabilidade de 0 a 1",
+                    descricao=f"Probabilidade modal base de {mode_name} no cenário differentiated para o grupo {group_name}",
+                    origem="config/config_agents.json",
+                )
             )
 
+    return rows
 
-def export_pilot_metadata(
+
+def _collect_file_rows(
     *,
     project_root: Path,
-) -> Path:
-    """Exporta o arquivo outputs/metadados_piloto.xml"""
+    generated_paths: set[Path],
+) -> list[dict]:
+    """Reúne o inventário dos arquivos gerados ao longo do piloto"""
 
-    project_root = Path(
-        project_root
-    )
+    rows: list[
+        dict
+    ] = []
 
-    output_path = (
-        project_root
-        / "outputs"
-        / "metadados_piloto.xml"
-    )
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    for (
+        relative_path,
+        description,
+        stage,
+        optional,
+    ) in FILES:
+        absolute_path = (
+            project_root
+            / relative_path
+        )
+        exists_now = (
+            absolute_path.exists()
+            or absolute_path.resolve()
+            in generated_paths
+        )
+
+        rows.append(
+            {
+                "nome": Path(
+                    relative_path
+                ).name,
+                "caminho": relative_path,
+                "etapa": stage,
+                "descricao": description,
+                "opcional": (
+                    "sim"
+                    if optional
+                    else "não"
+                ),
+                "existe_no_momento": (
+                    "sim"
+                    if exists_now
+                    else "não"
+                ),
+                "tamanho_bytes": (
+                    absolute_path.stat().st_size
+                    if absolute_path.exists()
+                    else ""
+                ),
+            }
+        )
+
+    return rows
+
+
+def _build_metadata_frames(
+    *,
+    project_root: Path,
+    xlsx_path: Path,
+    html_path: Path,
+) -> tuple[
+    dict[str, pd.DataFrame],
+    str,
+]:
+    """Constrói as tabelas usadas nas duas formas de documentação"""
 
     config = _load_json(
         project_root
@@ -1167,234 +1180,696 @@ def export_pilot_metadata(
         / "config_agents.json"
     )
 
-    root = ET.Element(
-        "metadados_piloto"
-    )
-
-    identification = ET.SubElement(
-        root,
-        "identificacao"
-    )
-    _add_text(
-        identification,
-        "projeto",
-        "EtPilot",
-    )
-    _add_text(
-        identification,
-        "descricao",
-        "Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias",
-    )
-    _add_text(
-        identification,
-        "gerado_em_utc",
+    generated_at = (
         datetime.now(
             timezone.utc
-        ).isoformat(),
-    )
-    _add_text(
-        identification,
-        "idioma_das_descricoes",
-        "português",
+        )
+        .isoformat()
     )
 
-    variables_section = ET.SubElement(
-        root,
-        "variaveis_principais"
+    generated_paths = {
+        xlsx_path.resolve(),
+        html_path.resolve(),
+    }
+
+    summary = pd.DataFrame(
+        [
+            {
+                "campo": "Projeto",
+                "valor": "EtPilot",
+            },
+            {
+                "campo": "Descrição",
+                "valor": "Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias",
+            },
+            {
+                "campo": "Gerado em UTC",
+                "valor": generated_at,
+            },
+            {
+                "campo": "Idioma das descrições",
+                "valor": "português",
+            },
+            {
+                "campo": "Quantidade de variáveis documentadas",
+                "valor": len(
+                    VARIABLES
+                ),
+            },
+            {
+                "campo": "Quantidade de métodos de análise",
+                "valor": len(
+                    ANALYSIS_METHODS
+                ),
+            },
+            {
+                "campo": "Quantidade de estatísticas documentadas",
+                "valor": len(
+                    STATISTICS
+                ),
+            },
+            {
+                "campo": "Quantidade de métodos de limpeza",
+                "valor": len(
+                    CLEANING_METHODS
+                ),
+            },
+            {
+                "campo": "Quantidade de arquivos catalogados",
+                "valor": len(
+                    FILES
+                ),
+            },
+        ]
     )
 
-    for variable in VARIABLES:
-        item = ET.SubElement(
-            variables_section,
-            "variavel"
+    frames = {
+        "Resumo": summary,
+        "Variáveis": pd.DataFrame(
+            VARIABLES
+        ),
+        "Parâmetros": pd.DataFrame(
+            _collect_config_parameters(
+                config=config,
+                config_agents=config_agents,
+            )
+        ),
+        "Métodos de análise": pd.DataFrame(
+            ANALYSIS_METHODS
+        ),
+        "Estatísticas": pd.DataFrame(
+            STATISTICS
+        ),
+        "Métodos de limpeza": pd.DataFrame(
+            CLEANING_METHODS
+        ),
+        "Arquivos gerados": pd.DataFrame(
+            _collect_file_rows(
+                project_root=project_root,
+                generated_paths=generated_paths,
+            )
+        ),
+    }
+
+    return (
+        frames,
+        generated_at,
+    )
+
+
+def _excel_column_widths(
+    sheet_name: str,
+) -> dict[str, int]:
+    """Define larguras legíveis para cada planilha"""
+
+    defaults = {
+        "Resumo": {
+            "campo": 38,
+            "valor": 95,
+        },
+        "Variáveis": {
+            "nome": 30,
+            "grupo": 26,
+            "unidade": 30,
+            "descricao": 90,
+        },
+        "Parâmetros": {
+            "nome": 58,
+            "valor": 24,
+            "unidade": 30,
+            "descricao": 90,
+            "origem": 34,
+        },
+        "Métodos de análise": {
+            "nome": 52,
+            "funcao_codigo": 42,
+            "descricao": 95,
+        },
+        "Estatísticas": {
+            "nome": 40,
+            "descricao": 100,
+        },
+        "Métodos de limpeza": {
+            "nome": 48,
+            "descricao": 100,
+        },
+        "Arquivos gerados": {
+            "nome": 48,
+            "caminho": 72,
+            "etapa": 28,
+            "descricao": 100,
+            "opcional": 14,
+            "existe_no_momento": 20,
+            "tamanho_bytes": 20,
+        },
+    }
+
+    return defaults.get(
+        sheet_name,
+        {},
+    )
+
+
+def _write_xlsx(
+    *,
+    path: Path,
+    frames: dict[str, pd.DataFrame],
+) -> None:
+    """Gera a planilha de metadados com uma aba por categoria"""
+
+    with pd.ExcelWriter(
+        path,
+        engine="xlsxwriter",
+    ) as writer:
+        workbook = writer.book
+
+        title_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_size": 15,
+                "font_color": "#FFFFFF",
+                "bg_color": "#1F4E78",
+                "align": "left",
+                "valign": "vcenter",
+            }
+        )
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#FFFFFF",
+                "bg_color": "#4472C4",
+                "border": 1,
+                "align": "center",
+                "valign": "vcenter",
+                "text_wrap": True,
+            }
+        )
+        body_format = workbook.add_format(
+            {
+                "valign": "top",
+                "text_wrap": True,
+                "border": 1,
+                "border_color": "#D9E2F3",
+            }
+        )
+        alternate_format = workbook.add_format(
+            {
+                "valign": "top",
+                "text_wrap": True,
+                "border": 1,
+                "border_color": "#D9E2F3",
+                "bg_color": "#F5F9FD",
+            }
         )
 
-        for key in (
-            "nome",
-            "grupo",
-            "unidade",
-            "descricao",
-        ):
-            _add_text(
-                item,
-                key,
-                variable[
-                    key
-                ],
+        for sheet_name, frame in frames.items():
+            frame.to_excel(
+                writer,
+                sheet_name=sheet_name,
+                startrow=2,
+                index=False,
             )
 
-    parameters_section = ET.SubElement(
-        root,
-        "parametros_configuracao"
+            worksheet = writer.sheets[
+                sheet_name
+            ]
+
+            worksheet.merge_range(
+                0,
+                0,
+                0,
+                max(
+                    len(
+                        frame.columns
+                    )
+                    - 1,
+                    0,
+                ),
+                f"Metadados do piloto — {sheet_name}",
+                title_format,
+            )
+            worksheet.set_row(
+                0,
+                24,
+            )
+            worksheet.freeze_panes(
+                3,
+                0,
+            )
+            worksheet.autofilter(
+                2,
+                0,
+                max(
+                    len(
+                        frame
+                    )
+                    + 2,
+                    2,
+                ),
+                max(
+                    len(
+                        frame.columns
+                    )
+                    - 1,
+                    0,
+                ),
+            )
+
+            for column_index, column_name in enumerate(
+                frame.columns
+            ):
+                worksheet.write(
+                    2,
+                    column_index,
+                    column_name,
+                    header_format,
+                )
+
+                width = (
+                    _excel_column_widths(
+                        sheet_name
+                    )
+                    .get(
+                        str(
+                            column_name
+                        ),
+                        24,
+                    )
+                )
+
+                worksheet.set_column(
+                    column_index,
+                    column_index,
+                    width,
+                )
+
+            for row_index in range(
+                len(
+                    frame
+                )
+            ):
+                worksheet.set_row(
+                    row_index
+                    + 3,
+                    34,
+                )
+
+                format_to_use = (
+                    alternate_format
+                    if row_index
+                    % 2
+                    else body_format
+                )
+
+                for column_index, value in enumerate(
+                    frame.iloc[
+                        row_index
+                    ]
+                ):
+                    worksheet.write(
+                        row_index
+                        + 3,
+                        column_index,
+                        (
+                            ""
+                            if pd.isna(
+                                value
+                            )
+                            else value
+                        ),
+                        format_to_use,
+                    )
+
+
+def _html_table(
+    *,
+    title: str,
+    section_id: str,
+    frame: pd.DataFrame,
+    description: str,
+) -> str:
+    """Gera uma seção HTML tabular"""
+
+    table = frame.to_html(
+        index=False,
+        escape=True,
+        classes=[
+            "metadata-table",
+        ],
+        border=0,
+        na_rep="",
     )
-    _append_config_parameters(
-        parameters_section,
-        config=config,
-        config_agents=config_agents,
+
+    return (
+        f'<section id="{escape(section_id)}">'
+        f"<h2>{escape(title)}</h2>"
+        f"<p>{escape(description)}</p>"
+        f"{table}"
+        "</section>"
     )
 
-    methods_section = ET.SubElement(
-        root,
-        "metodos_analise"
+
+def _write_html(
+    *,
+    path: Path,
+    frames: dict[str, pd.DataFrame],
+    generated_at: str,
+) -> None:
+    """Gera um relatório HTML navegável dos metadados"""
+
+    sections = [
+        (
+            "Variáveis principais",
+            "variaveis",
+            frames[
+                "Variáveis"
+            ],
+            "Variáveis centrais usadas na simulação, no roteamento, na harmonização, nas métricas e no processamento do GTFS",
+        ),
+        (
+            "Parâmetros de configuração",
+            "parametros",
+            frames[
+                "Parâmetros"
+            ],
+            "Parâmetros que controlam a população sintética, as escolhas comportamentais, a análise espacial e a preparação do transporte coletivo",
+        ),
+        (
+            "Métodos de análise",
+            "metodos",
+            frames[
+                "Métodos de análise"
+            ],
+            "Métodos computacionais e analíticos empregados ao longo do piloto",
+        ),
+        (
+            "Estatísticas",
+            "estatisticas",
+            frames[
+                "Estatísticas"
+            ],
+            "Estatísticas e medidas resumidas usadas nos diagnósticos e comparações",
+        ),
+        (
+            "Métodos de limpeza e validação",
+            "limpeza",
+            frames[
+                "Métodos de limpeza"
+            ],
+            "Operações de limpeza, validação, padronização e controle de consistência aplicadas às bases",
+        ),
+        (
+            "Arquivos gerados",
+            "arquivos",
+            frames[
+                "Arquivos gerados"
+            ],
+            "Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto",
+        ),
+    ]
+
+    navigation = "".join(
+        (
+            f'<a href="#{escape(section_id)}">'
+            f"{escape(title)}"
+            "</a>"
+        )
+        for title, section_id, _, _
+        in sections
     )
 
-    for method in ANALYSIS_METHODS:
-        item = ET.SubElement(
-            methods_section,
-            "metodo"
-        )
-        _add_text(
-            item,
-            "nome",
-            method[
-                "nome"
-            ],
-        )
-        _add_text(
-            item,
-            "funcao_codigo",
-            method[
-                "funcao_codigo"
-            ],
-        )
-        _add_text(
-            item,
-            "descricao",
-            method[
-                "descricao"
-            ],
-        )
-
-    statistics_section = ET.SubElement(
-        root,
-        "estatisticas"
+    cards = "".join(
+        [
+            (
+                '<div class="card">'
+                '<span class="card-number">'
+                f"{len(VARIABLES)}"
+                "</span>"
+                '<span class="card-label">variáveis</span>'
+                "</div>"
+            ),
+            (
+                '<div class="card">'
+                '<span class="card-number">'
+                f"{len(ANALYSIS_METHODS)}"
+                "</span>"
+                '<span class="card-label">métodos</span>'
+                "</div>"
+            ),
+            (
+                '<div class="card">'
+                '<span class="card-number">'
+                f"{len(STATISTICS)}"
+                "</span>"
+                '<span class="card-label">estatísticas</span>'
+                "</div>"
+            ),
+            (
+                '<div class="card">'
+                '<span class="card-number">'
+                f"{len(CLEANING_METHODS)}"
+                "</span>"
+                '<span class="card-label">métodos de limpeza</span>'
+                "</div>"
+            ),
+            (
+                '<div class="card">'
+                '<span class="card-number">'
+                f"{len(FILES)}"
+                "</span>"
+                '<span class="card-label">arquivos catalogados</span>'
+                "</div>"
+            ),
+        ]
     )
 
-    for statistic in STATISTICS:
-        item = ET.SubElement(
-            statistics_section,
-            "estatistica"
+    content = "".join(
+        _html_table(
+            title=title,
+            section_id=section_id,
+            frame=frame,
+            description=description,
         )
-        _add_text(
-            item,
-            "nome",
-            statistic[
-                "nome"
-            ],
-        )
-        _add_text(
-            item,
-            "descricao",
-            statistic[
-                "descricao"
-            ],
-        )
-
-    cleaning_section = ET.SubElement(
-        root,
-        "metodos_limpeza"
-    )
-
-    for cleaning in CLEANING_METHODS:
-        item = ET.SubElement(
-            cleaning_section,
-            "metodo_limpeza"
-        )
-        _add_text(
-            item,
-            "nome",
-            cleaning[
-                "nome"
-            ],
-        )
-        _add_text(
-            item,
-            "descricao",
-            cleaning[
-                "descricao"
-            ],
-        )
-
-    files_section = ET.SubElement(
-        root,
-        "arquivos_gerados"
-    )
-
-    for (
-        relative_path,
-        description,
-        stage,
-        optional,
-    ) in FILES:
-        absolute_path = (
-            project_root
-            / relative_path
-        )
-
-        item = ET.SubElement(
-            files_section,
-            "arquivo"
-        )
-        _add_text(
-            item,
-            "nome",
-            Path(
-                relative_path
-            ).name,
-        )
-        _add_text(
-            item,
-            "caminho",
-            relative_path,
-        )
-        _add_text(
-            item,
-            "etapa",
-            stage,
-        )
-        _add_text(
-            item,
-            "descricao",
+        for (
+            title,
+            section_id,
+            frame,
             description,
         )
-        _add_text(
-            item,
-            "opcional",
-            optional,
-        )
-        exists_now = (
-            absolute_path.exists()
-            or absolute_path
-            == output_path
-        )
-
-        _add_text(
-            item,
-            "existe_no_momento",
-            exists_now,
-        )
-
-        if absolute_path.exists():
-            _add_text(
-                item,
-                "tamanho_bytes",
-                absolute_path.stat().st_size,
-            )
-
-    tree = ET.ElementTree(
-        root
+        in sections
     )
-    ET.indent(
-        tree,
-        space="  ",
-    )
-    tree.write(
-        output_path,
+
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metadados do piloto EtPilot</title>
+<style>
+:root {{
+    --azul-escuro: #17365d;
+    --azul: #4472c4;
+    --azul-claro: #eef4fb;
+    --cinza: #5b6573;
+    --borda: #d9e2f3;
+    --fundo: #f6f8fb;
+}}
+* {{ box-sizing: border-box; }}
+body {{
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2937;
+    background: var(--fundo);
+    line-height: 1.45;
+}}
+header {{
+    background: var(--azul-escuro);
+    color: white;
+    padding: 34px max(24px, calc((100vw - 1400px) / 2));
+}}
+header h1 {{
+    margin: 0 0 8px;
+    font-size: 30px;
+}}
+header p {{
+    margin: 4px 0;
+    max-width: 1000px;
+}}
+nav {{
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px max(24px, calc((100vw - 1400px) / 2));
+    background: white;
+    border-bottom: 1px solid var(--borda);
+}}
+nav a {{
+    color: var(--azul-escuro);
+    text-decoration: none;
+    font-weight: 700;
+    padding: 7px 10px;
+    border-radius: 6px;
+}}
+nav a:hover {{
+    background: var(--azul-claro);
+}}
+main {{
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+}}
+.cards {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}}
+.card {{
+    background: white;
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    padding: 18px;
+}}
+.card-number {{
+    display: block;
+    color: var(--azul-escuro);
+    font-size: 28px;
+    font-weight: 700;
+}}
+.card-label {{
+    color: var(--cinza);
+}}
+section {{
+    scroll-margin-top: 80px;
+    background: white;
+    margin: 20px 0;
+    padding: 22px;
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    overflow-x: auto;
+}}
+section h2 {{
+    color: var(--azul-escuro);
+    margin-top: 0;
+}}
+.metadata-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}}
+.metadata-table th {{
+    position: sticky;
+    top: 52px;
+    background: var(--azul);
+    color: white;
+    text-align: left;
+    padding: 9px;
+    border: 1px solid #365f91;
+}}
+.metadata-table td {{
+    vertical-align: top;
+    padding: 8px;
+    border: 1px solid var(--borda);
+}}
+.metadata-table tbody tr:nth-child(even) {{
+    background: #f8fbff;
+}}
+footer {{
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 36px;
+    color: var(--cinza);
+    font-size: 12px;
+}}
+code {{
+    background: var(--azul-claro);
+    padding: 2px 5px;
+    border-radius: 4px;
+}}
+</style>
+</head>
+<body>
+<header>
+    <h1>Metadados do piloto EtPilot</h1>
+    <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
+    <p>Documento gerado em UTC: {escape(generated_at)}</p>
+</header>
+<nav>{navigation}</nav>
+<main>
+    <div class="cards">{cards}</div>
+    {content}
+</main>
+<footer>
+    Todas as descrições deste relatório são apresentadas em português
+</footer>
+</body>
+</html>
+"""
+
+    path.write_text(
+        html,
         encoding="utf-8",
-        xml_declaration=True,
     )
 
-    return output_path
+
+def export_pilot_metadata(
+    *,
+    project_root: Path,
+) -> dict[str, Path]:
+    """Exporta os metadados do piloto em XLSX e HTML"""
+
+    project_root = Path(
+        project_root
+    )
+
+    output_dir = (
+        project_root
+        / "outputs"
+    )
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    xlsx_path = (
+        output_dir
+        / "metadados_piloto.xlsx"
+    )
+    html_path = (
+        output_dir
+        / "metadados_piloto.html"
+    )
+    legacy_xml_path = (
+        output_dir
+        / "metadados_piloto.xml"
+    )
+
+    frames, generated_at = _build_metadata_frames(
+        project_root=project_root,
+        xlsx_path=xlsx_path,
+        html_path=html_path,
+    )
+
+    _write_xlsx(
+        path=xlsx_path,
+        frames=frames,
+    )
+    _write_html(
+        path=html_path,
+        frames=frames,
+        generated_at=generated_at,
+    )
+
+    if legacy_xml_path.exists():
+        legacy_xml_path.unlink()
+
+    return {
+        "xlsx": xlsx_path,
+        "html": html_path,
+    }
 
 
 def main() -> None:
@@ -1406,13 +1881,20 @@ def main() -> None:
         2
     ]
 
-    path = export_pilot_metadata(
+    paths = export_pilot_metadata(
         project_root=project_root
     )
 
     print(
-        "Metadados do piloto exportados em "
-        f"{path}"
+        "Metadados do piloto exportados em:"
+    )
+    print(
+        "  XLSX: "
+        f"{paths['xlsx']}"
+    )
+    print(
+        "  HTML: "
+        f"{paths['html']}"
     )
 
 
