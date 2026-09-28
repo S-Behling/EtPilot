@@ -610,6 +610,17 @@ def main() -> None:
     implemented_modes = list(
         config["routing"]["implemented_modes"]
     )
+    choice_modes = list(
+        config[
+            "routing"
+        ].get(
+            "choice_modes",
+            [
+                *implemented_modes,
+                TravelMode.TRANSIT.value,
+            ],
+        )
+    )
     node_prefix = config["routing"].get(
         "node_column_prefix",
         "node_",
@@ -623,6 +634,40 @@ def main() -> None:
             "strict",
             False,
         )
+    )
+
+    transit_config = config[
+        "transit"
+    ]
+    transit_network_config = transit_config[
+        "network"
+    ]
+    transit_routing_config = transit_config[
+        "routing"
+    ]
+    transit_spatial_config = transit_config[
+        "spatial_mapping"
+    ]
+
+    transit_departure_time_s = int(
+        transit_routing_config[
+            "pilot_departure_time_s"
+        ]
+    )
+    transit_tolerance_m = float(
+        transit_spatial_config[
+            "tolerance_m"
+        ]
+    )
+    transit_min_segment_coverage = float(
+        transit_spatial_config[
+            "min_segment_coverage"
+        ]
+    )
+    transit_max_angle_difference_deg = float(
+        transit_spatial_config[
+            "max_angle_difference_deg"
+        ]
     )
 
     segment_config = config[
