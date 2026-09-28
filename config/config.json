@@ -111,7 +111,14 @@
             "data_dir": "data/gtfs",
             "zip_file": "porto_alegre_gtfs.zip",
             "mode_scope": "bus",
-            "processed_suffix": "_processed"
+            "processed_suffix": "_processed",
+            "temporal_reconstruction": {
+                "enabled": true,
+                "minimum_interval_s": 1,
+                "preserve_raw_timepoints": true,
+                "strategy": "shape_geometry_then_stop_sequence",
+                "status": "technical_reconstruction"
+            }
         },
         "network": {
             "walk_speed_m_s": 1.4,
@@ -122,7 +129,9 @@
             "connections_file": "transit_connections_processed.parquet",
             "topology_file": "transit_topology_processed.parquet",
             "service_day_profile_file": "transit_service_day_profile_processed.csv",
-            "summary_file": "transit_network_summary.csv"
+            "summary_file": "transit_network_summary.csv",
+            "routable_connections_file": "transit_connections_routable_processed.parquet",
+            "trip_quality_file": "transit_trip_quality_processed.csv"
         },
         "routing": {
             "max_access_walk_m": 1500,
@@ -134,6 +143,13 @@
                 "sample_size": 10,
                 "departure_time_s": 28800,
                 "seed": 42
+            },
+            "quality_filter": {
+                "exclude_missing_temporal_summary": true,
+                "exclude_nonpositive_duration": true,
+                "exclude_infeasible_regularization": true,
+                "max_implied_shape_speed_kmh": 80,
+                "status": "provisional_quality_control"
             }
         }
     }
