@@ -25,19 +25,37 @@ PROJECT_ROOT = Path(
     2
 ]
 
-DEFAULT_SIZES = (
-    100,
-    250,
-    500,
-    1000,
+CONFIG_PATH = (
+    PROJECT_ROOT
+    / "config"
+    / "config.json"
 )
-DEFAULT_SEED = 42
-DEFAULT_STABILITY_TOLERANCE = 0.05
-DEFAULT_MIN_PAIRED_GE_10 = 1
+
+
+def _load_defaults() -> dict:
+    """Lê os parâmetros padrão da sensibilidade no arquivo de configuração"""
+
+    with CONFIG_PATH.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        config = json.load(
+            file
+        )
+
+    return config.get(
+        "analysis",
+        {}
+    ).get(
+        "population_sensitivity",
+        {},
+    )
 
 
 def _parse_args():
     """Lê parâmetros da análise de sensibilidade populacional"""
+
+    defaults = _load_defaults()
 
     parser = argparse.ArgumentParser(
         description=(
@@ -49,14 +67,25 @@ def _parse_args():
         "--sizes",
         nargs="+",
         type=int,
-        default=list(
-            DEFAULT_SIZES
+        default=defaults.get(
+            "sizes",
+            [
+                100,
+                250,
+                500,
+                1000,
+            ],
         ),
     )
     parser.add_argument(
         "--seed",
         type=int,
-        default=DEFAULT_SEED,
+        default=int(
+            defaults.get(
+                "seed",
+                42,
+            )
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -68,12 +97,22 @@ def _parse_args():
     parser.add_argument(
         "--stability-tolerance",
         type=float,
-        default=DEFAULT_STABILITY_TOLERANCE,
+        default=float(
+            defaults.get(
+                "stability_tolerance",
+                0.05,
+            )
+        ),
     )
     parser.add_argument(
         "--min-paired-ge10",
         type=int,
-        default=DEFAULT_MIN_PAIRED_GE_10,
+        default=int(
+            defaults.get(
+                "minimum_paired_segments_ge_10",
+                1,
+            )
+        ),
     )
     parser.add_argument(
         "--resume",
