@@ -140,7 +140,12 @@
             "output_dir": "outputs/pilot/final_sensitivity",
             "reuse_legacy_seed42": true,
             "status": "pending_execution_for_final_freeze",
-            "interpretation": "Resultados finais devem ser avaliados entre múltiplas seeds. O limiar principal de interpretação é n_agents >= 5; >=2, >=3 e >=10 são sensibilidades de suporte."
+            "interpretation": "Resultados finais devem ser avaliados entre múltiplas seeds. O limiar principal de interpretação é n_agents >= 5; >=2, >=3 e >=10 são sensibilidades de suporte.",
+            "max_parallel_workers": 2,
+            "mode_homogenized_seeds": [
+                42
+            ],
+            "execution_note": "Execucoes independentes podem rodar em paralelo. O contrafactual mode_homogenized usa apenas a seed de referencia; mecanismos adicionais sao quantificados nas cinco realizacoes nominais."
         },
         "article_v01": {
             "output_dir": "outputs/v01 artigo",
