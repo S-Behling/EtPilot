@@ -1,4 +1,4 @@
-"""Agregue o uso das trajetórias por segmento físico comum
+"""Agrega o uso das trajetórias por segmento físico comum
 
 Conta passagens e agentes separadamente. Usa agentes distintos para calcular
 as composições socioeconômica, modal e funcional, evitando que uma
