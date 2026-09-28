@@ -14,7 +14,7 @@ Siga o fluxo:
 6. calcula a rota na rede correspondente ao modo;
 7. harmonize as arestas modais em segmentos físicos comuns;
 8. calcula volume, composição social e H_soc por segmento;
-9. compare baseline e differentiated de forma pareada por segmento;
+9. compara baseline e differentiated de forma pareada por segmento;
 10. valide, resume e salve os resultados
 
 Execute com:
