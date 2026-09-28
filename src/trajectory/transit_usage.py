@@ -647,11 +647,23 @@ def build_used_transit_connection_geometries(
             }
         )
 
-    geometry_frame = gpd.GeoDataFrame(
-        geometry_rows,
-        geometry="geometry",
-        crs=shapes.crs,
-    )
+    if geometry_rows:
+        geometry_frame = gpd.GeoDataFrame(
+            geometry_rows,
+            geometry="geometry",
+            crs=shapes.crs,
+        )
+    else:
+        geometry_frame = gpd.GeoDataFrame(
+            columns=[
+                "modal_edge_id",
+                "connection_id",
+                "shape_id",
+                "geometry",
+            ],
+            geometry="geometry",
+            crs=shapes.crs,
+        )
 
     return (
         geometry_frame,
@@ -963,23 +975,42 @@ def map_transit_connections_to_analysis_segments(
             }
         )
 
-    mapping = (
-        pd.DataFrame(
-            mapping_rows
+    if mapping_rows:
+        mapping = (
+            pd.DataFrame(
+                mapping_rows
+            )
+            .drop_duplicates(
+                subset=[
+                    "modal_edge_id",
+                    "analysis_segment_id",
+                ]
+            )
+            .reset_index(
+                drop=True
+            )
         )
-        .drop_duplicates(
-            subset=[
+    else:
+        mapping = pd.DataFrame(
+            columns=[
                 "modal_edge_id",
+                "mode",
                 "analysis_segment_id",
+                "match_method",
+                "match_quality",
+                "mapping_scope",
             ]
         )
-        .reset_index(
-            drop=True
-        )
-    )
 
     diagnostics = pd.DataFrame(
-        diagnostic_rows
+        diagnostic_rows,
+        columns=[
+            "connection_id",
+            "shape_id",
+            "geometry_length_m",
+            "matched_segments",
+            "shape_coverage_pct",
+        ],
     )
 
     return (
