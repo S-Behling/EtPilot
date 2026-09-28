@@ -855,22 +855,25 @@ equal between income groups.
 
 Complete the pilot in this order:
 
-1. rebuild the transit network products and run the integrated N=100 pilot to
-   validate the full GTFS physical network, exclusive transit segments, and
-   transit routing success;
-2. run sensitivity checks for the provisional transit spatial-matching
-   tolerance, minimum coverage, and angular compatibility;
-3. validate the provisional distance-sensitive mode rule against routed
-   distances and replace its parameters with empirical calibration when an
-   appropriate observed mobility source is selected;
-4. increase the synthetic population progressively and inspect convergence of
-   segment coverage, flow support, and `H_soc`;
-5. repeat paired baseline × differentiated runs across multiple seeds and
-   summarize the stability of `delta_H_soc`;
-6. run sensitivity checks for the flow thresholds and for the geometric
-   harmonization parameters;
-7. consolidate final pilot tables, maps, diagnostics, limitations, and
-   reproducibility instructions.
+1. run the unit-test suite after pulling this branch;
+2. execute the final fixed-N sensitivity battery with
+   `python -m src.analysis.final_pilot_sensitivity --resume`;
+3. inspect the five-seed stability table and the local parameter perturbations,
+   using `n_agents >= 5` as the primary support threshold and the other
+   thresholds only as sensitivity diagnostics;
+4. freeze the nominal behavioral configuration if the central pattern is not
+   driven by a single seed or by the local 0.75x/1.25x perturbations;
+5. regenerate the final pilot maps and metadata with the frozen nominal
+   configuration and document the remaining limitations.
+
+Increasing N above 100 is not part of the closing battery. The previous N=250
+run remains useful as a diagnostic showing that N=100 must be described as an
+operational compromise rather than as a converged population size.
+
+Sensitivity of GTFS-to-OSM geometric matching, alternate departure times and
+other routing-architecture choices are deferred unless a concrete diagnostic
+shows that they materially affect the final behavioral result. They should not
+be mixed with the final behavioral-parameter freeze by default.
 
 The current GTFS integration covers the EPTC bus feed. Add other public
 transport systems as separate feeds or network layers when required by the
