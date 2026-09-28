@@ -1,12 +1,12 @@
-"""Compare baseline e differentiated no mesmo segmento físico.
+"""Compara baseline e differentiated no mesmo segmento físico
 
-Faça a comparação de forma pareada por `analysis_segment_id`. Preserve os
-segmentos usados em apenas um cenário e calcule diferenças de H_soc somente
-quando ambos os cenários possuírem observações válidas no mesmo segmento.
+Faz a comparação de forma pareada por `analysis_segment_id`. Preserva os
+segmentos usados em apenas um cenário e calcula diferenças de H_soc somente
+quando ambos os cenários possuírem observações válidas no mesmo segmento
 
-Não interprete o sinal de `delta_H_soc` como melhora ou piora. Use-o apenas
+Não interpreta o sinal de `delta_H_soc` como melhora ou piora. Usa-o apenas
 para descrever aumento ou redução da diversidade socioeconômica observada das
-trajetórias naquele segmento.
+trajetórias naquele segmento
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def _require_columns(
     frame: pd.DataFrame,
     columns: Iterable[str],
 ) -> None:
-    """Exija as colunas necessárias antes de comparar os cenários."""
+    """Exige as colunas necessárias antes de comparar os cenários"""
 
     missing = (
         set(columns)
@@ -49,7 +49,7 @@ def _prepare_scenario(
     scenario_name: str,
     suffix: str,
 ) -> pd.DataFrame:
-    """Selecione um cenário e aplique sufixos às métricas comparadas."""
+    """Seleciona um cenário e aplica sufixos às métricas comparadas"""
 
     scenario = statistics.loc[
         statistics[
@@ -96,16 +96,16 @@ def build_scenario_comparison(
     flow_thresholds: Iterable[int] = DEFAULT_FLOW_THRESHOLDS,
 ) -> pd.DataFrame:
     """
-    Compare os cenários de forma pareada nos mesmos segmentos físicos.
+    Compara os cenários de forma pareada nos mesmos segmentos físicos
 
-    Preserve a união dos segmentos usados nos dois cenários. Marque o estado
-    de uso como `used_both`, `baseline_only` ou `differentiated_only`.
-    Calcule `delta_H_soc = H_soc_differentiated - H_soc_baseline` somente
-    quando ambos os valores existirem no mesmo segmento.
+    Preserva a união dos segmentos usados nos dois cenários. Marca o estado
+    de uso como `used_both`, `baseline_only` ou `differentiated_only`
+    Calcula `delta_H_soc = H_soc_differentiated - H_soc_baseline` somente
+    quando ambos os valores existirem no mesmo segmento
 
-    Marque `sufficient_flow_both` quando o mesmo segmento atingir o fluxo
-    mínimo nos dois cenários. Crie também flags de sensibilidade pareadas para
-    todos os limiares solicitados.
+    Marca `sufficient_flow_both` quando o mesmo segmento atingir o fluxo
+    mínimo nos dois cenários. Cria também flags de sensibilidade pareadas para
+    todos os limiares solicitados
     """
 
     _require_columns(
@@ -429,11 +429,11 @@ def attach_comparison_to_segments(
     comparison: pd.DataFrame,
 ) -> gpd.GeoDataFrame:
     """
-    Anexe a comparação à rede física completa.
+    Anexe a comparação à rede física completa
 
-    Preserve segmentos não usados em nenhum cenário. Preencha apenas flags e
-    volumes com valores neutros; mantenha H_soc e deltas como NaN quando não
-    houver uma comparação observável.
+    Preserva segmentos não usados em nenhum cenário. Preenche apenas flags e
+    volumes com valores neutros; mantém H_soc e deltas como NaN quando não
+    houver uma comparação observável
     """
 
     _require_columns(
@@ -554,7 +554,7 @@ def comparison_summary(
     min_agents_for_interpretation: int = 5,
     flow_thresholds: Iterable[int] = DEFAULT_FLOW_THRESHOLDS,
 ) -> dict:
-    """Resuma a comparabilidade espacial dos dois cenários."""
+    """Resume a comparabilidade espacial dos dois cenários"""
 
     _require_columns(
         comparison,

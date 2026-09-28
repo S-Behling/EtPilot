@@ -13,7 +13,7 @@ from src.analysis.edge_statistics import (
 
 class EdgeStatisticsTests(unittest.TestCase):
     def test_count_unique_agents_for_social_composition(self):
-        # Repita uma passagem do mesmo agente para testar a deduplicação social.
+        # Repete uma passagem do mesmo agente para testar a deduplicação social
         edge_usage = pd.DataFrame(
             [
                 {
@@ -92,7 +92,7 @@ class EdgeStatisticsTests(unittest.TestCase):
         )
 
     def test_single_income_group_returns_zero_entropy(self):
-        # Verifique que homogeneidade observada produza H_soc igual a zero.
+        # Verifica que homogeneidade observada produza H_soc igual a zero
         edge_usage = pd.DataFrame(
             [
                 {
@@ -124,7 +124,7 @@ class EdgeStatisticsTests(unittest.TestCase):
         )
 
     def test_preserve_unused_segments_with_nan_entropy(self):
-        # Preserve a rede completa e marque os trechos sem agentes como não usados.
+        # Preserva a rede completa e marca os trechos sem agentes como não usados
         segments = gpd.GeoDataFrame(
             [
                 {

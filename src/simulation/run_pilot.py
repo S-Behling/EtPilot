@@ -1,21 +1,21 @@
 """
-Execute o pipeline piloto do EtPilot até a comparação pareada entre cenários.
+Execute o pipeline piloto do EtPilot até a comparação pareada entre cenários
 
-Preserve o mesmo conjunto de agentes e as mesmas origens residenciais nos
-dois cenários. Remova diferenças comportamentais por renda no baseline e
-preserve diferenças de propósito, destino e modo no differentiated.
+Preserva o mesmo conjunto de agentes e as mesmas origens residenciais nos
+dois cenários. Remove diferenças comportamentais por renda no baseline e
+preserva diferenças de propósito, destino e modo no differentiated
 
 Siga o fluxo:
 1. carregue configurações e dados;
 2. carregue as redes de carro, caminhada e bicicleta;
 3. gere a população sintética e atribua origens;
-4. construa os cenários comportamentais;
+4. constrói os cenários comportamentais;
 5. atribua propósito, destino e modo;
-6. calcule a rota na rede correspondente ao modo;
+6. calcula a rota na rede correspondente ao modo;
 7. harmonize as arestas modais em segmentos físicos comuns;
-8. calcule volume, composição social e H_soc por segmento;
-9. compare baseline e differentiated de forma pareada por segmento;
-10. valide, resuma e salve os resultados.
+8. calcula volume, composição social e H_soc por segmento;
+9. compara baseline e differentiated de forma pareada por segmento;
+10. valide, resume e salve os resultados
 
 Execute com:
     python -m src.simulation.run_pilot
@@ -152,7 +152,7 @@ def _build_summary(
         for agent in agents
     ]
 
-    # Persista as arestas da rota para inspecionar e reconstruir o uso da rede.
+    # Persista as arestas da rota para inspecionar e reconstruir o uso da rede
     summary["route_edges"] = [
         json.dumps(agent.route_edges)
         for agent in agents
@@ -235,10 +235,10 @@ def _validate_fixed_population(
     summaries: dict[str, pd.DataFrame],
 ) -> None:
     """
-    Garanta que população e residência sejam idênticas entre cenários.
+    Garante que população e residência sejam idênticas entre cenários
 
-    Permita variar propósito, destino, modo e rota.
-    Preserve identidade, renda e origem residencial.
+    Permite variar propósito, destino, modo e rota
+    Preserva identidade, renda e origem residencial
     """
 
     fixed_columns = [
@@ -439,7 +439,7 @@ def _save_outputs(
             engine="pyogrio",
         )
 
-    # Remova estruturas Python que o GeoPackage não consegue serializar.
+    # Remove estruturas Python que o GeoPackage não consegue serializar
     segments_to_save = analysis_segments.drop(
         columns=[
             "osmid_set",
@@ -710,7 +710,7 @@ def main() -> None:
         ignore_index=True,
     )
 
-    # Construa a camada física com as redes completas, e não com a amostra.
+    # Constrói a camada física com as redes completas, e não com a amostra
     modal_edges = extract_all_modal_edges(
         graphs=graphs,
         modes=segment_mode_order,

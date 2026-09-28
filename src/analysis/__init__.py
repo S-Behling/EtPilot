@@ -1,4 +1,4 @@
-"""Calcule métricas sobre os segmentos físicos de análise do EtPilot."""
+"""Calcula métricas sobre os segmentos físicos de análise do EtPilot"""
 
 from .edge_statistics import (
     attach_statistics_to_segments,

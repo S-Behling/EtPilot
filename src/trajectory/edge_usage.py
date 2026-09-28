@@ -1,11 +1,11 @@
-"""Converte trajetórias dos agentes em observações de uso das arestas.
+"""Converte trajetórias dos agentes em observações de uso das arestas
 
-Cada linha representa a passagem de um agente por uma aresta da rede modal.
+Cada linha representa a passagem de um agente por uma aresta da rede modal
 Como carro, bicicleta e caminhada usam grafos diferentes, a identidade da
-aresta inclui obrigatoriamente o modo.
+aresta inclui obrigatoriamente o modo
 
 Esta tabela ainda NÃO representa a unidade espacial comum de análise entre
-modos. Essa harmonização será realizada em uma etapa posterior.
+modos. Essa harmonização será realizada em uma etapa posterior
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def _edge_attributes(
     v: int,
     key: int,
 ) -> Mapping:
-    """Retorna os atributos da aresta exata usada na rota."""
+    """Retorna os atributos da aresta exata usada na rota"""
 
     attributes = graph.get_edge_data(
         u,
@@ -55,7 +55,7 @@ def _safe_float(value) -> float | None:
 
 
 def _stringify_osm_value(value) -> str | None:
-    """Converte atributos OSM heterogêneos em texto estável para CSV."""
+    """Converte atributos OSM heterogêneos em texto estável para CSV"""
 
     if value is None:
         return None
@@ -76,21 +76,21 @@ def build_edge_usage(
     scenario_name: str,
 ) -> pd.DataFrame:
     """
-    Explode as trajetórias em uma linha por agente × aresta.
+    Explode as trajetórias em uma linha por agente × aresta
 
     Parameters
     ----------
     agents
-        Agentes já roteados.
+        Agentes já roteados
     graphs
-        Dicionário modo -> MultiDiGraph.
+        Dicionário modo -> MultiDiGraph
     scenario_name
-        Nome do cenário experimental.
+        Nome do cenário experimental
 
     Returns
     -------
     pandas.DataFrame
-        Tabela pronta para agregações por renda, modo, propósito e aresta.
+        Tabela pronta para agregações por renda, modo, propósito e aresta
     """
 
     rows: list[dict] = []
