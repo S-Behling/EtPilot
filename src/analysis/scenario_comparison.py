@@ -1,4 +1,4 @@
-"""Compare baseline e differentiated no mesmo segmento físico
+"""Compara baseline e differentiated no mesmo segmento físico
 
 Faz a comparação de forma pareada por `analysis_segment_id`. Preserva os
 segmentos usados em apenas um cenário e calcula diferenças de H_soc somente
@@ -96,7 +96,7 @@ def build_scenario_comparison(
     flow_thresholds: Iterable[int] = DEFAULT_FLOW_THRESHOLDS,
 ) -> pd.DataFrame:
     """
-    Compare os cenários de forma pareada nos mesmos segmentos físicos
+    Compara os cenários de forma pareada nos mesmos segmentos físicos
 
     Preserva a união dos segmentos usados nos dois cenários. Marca o estado
     de uso como `used_both`, `baseline_only` ou `differentiated_only`
