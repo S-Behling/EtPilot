@@ -530,6 +530,29 @@ and an explicit exclusion reason. The audit files are:
 outputs/pilot/outlier_exclusions.csv
 outputs/pilot/outlier_filter_summary.csv
 ```
+## Unmapped transit trajectory control
+
+When a transit connection used by an agent cannot be matched to the common
+physical analysis network after the primary and fallback spatial procedures,
+the pilot does not keep a partial trajectory in H_soc.
+
+The current policy is `exclude_agent_paired`: the directly affected agent is
+removed from trajectory analysis and the same `agent_id` is removed from the
+other scenario to preserve the paired analytical population. The routed agent
+record remains in the scenario tables and receives explicit spatial exclusion
+flags and reasons.
+
+The audit outputs are:
+
+```text
+outputs/pilot/transit_spatial_exclusions.csv
+outputs/pilot/transit_spatial_exclusion_summary.csv
+```
+
+This treatment is separate from the statistical transit outlier filter. A
+trajectory may be excluded because it is geometrically unmappable even when
+its routed distance and circuity are not outliers.
+
 ## Segment statistics and H_soc
 
 Aggregate the harmonized edge usage by `analysis_segment_id`. Keep passage
