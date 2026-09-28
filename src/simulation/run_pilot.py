@@ -1367,11 +1367,106 @@ def main() -> None:
         - mapped_transit_modal_edges
     )
 
+    OUTPUT_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    transit_mapping.to_csv(
+        OUTPUT_DIR
+        / "transit_connection_to_analysis_segment.csv",
+        index=False,
+        encoding="utf-8",
+    )
+    transit_geometry_diagnostics.to_csv(
+        OUTPUT_DIR
+        / "transit_connection_geometry_diagnostics.csv",
+        index=False,
+        encoding="utf-8",
+    )
+    transit_match_diagnostics.to_csv(
+        OUTPUT_DIR
+        / "transit_connection_match_diagnostics.csv",
+        index=False,
+        encoding="utf-8",
+    )
+    pd.DataFrame(
+        [
+            transit_spatial_summary,
+        ]
+    ).to_csv(
+        OUTPUT_DIR
+        / "transit_spatial_match_report.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
     if missing_transit_mapping:
+        missing_connection_ids = {
+            modal_edge_id.split(
+                "transit:",
+                1,
+            )[
+                -1
+            ]
+            for modal_edge_id in missing_transit_mapping
+        }
+
+        invalid_geometry = (
+            transit_geometry_diagnostics.loc[
+                transit_geometry_diagnostics[
+                    "connection_id"
+                ]
+                .astype(
+                    str
+                )
+                .isin(
+                    missing_connection_ids
+                )
+                & (
+                    transit_geometry_diagnostics[
+                        "geometry_status"
+                    ]
+                    != "ok"
+                )
+            ]
+        )
+
+        valid_but_unmatched = (
+            transit_match_diagnostics.loc[
+                transit_match_diagnostics[
+                    "connection_id"
+                ]
+                .astype(
+                    str
+                )
+                .isin(
+                    missing_connection_ids
+                )
+                & (
+                    transit_match_diagnostics[
+                        "matched_segments"
+                    ]
+                    == 0
+                )
+            ]
+        )
+
+        sample_ids = sorted(
+            missing_connection_ids
+        )[
+            :10
+        ]
+
         raise RuntimeError(
             "Existem conexões GTFS usadas pelos agentes sem correspondência "
             "na camada física comum: "
-            f"{len(missing_transit_mapping)} conexões"
+            f"{_format_int_pt(len(missing_transit_mapping))} conexões | "
+            f"{_format_int_pt(len(invalid_geometry))} com geometria inválida | "
+            f"{_format_int_pt(len(valid_but_unmatched))} com geometria válida "
+            "mas sem segmento compatível | "
+            f"amostra={sample_ids}. "
+            "Os diagnósticos espaciais foram salvos em outputs/pilot"
         )
 
     segment_mapping = pd.concat(
