@@ -772,67 +772,84 @@ In progress:
 
 - Local validation of the full GTFS physical network integration in the N=100 pilot
 - Sensitivity analysis of the provisional GTFS-to-OSM matching parameters
-- Population-size sensitivity for N=100, 250, 500 and 1000
-- Repeated paired runs with multiple seeds
-- Empirical calibration of provisional modal-distance parameters
+- Final N=100 sensitivity battery with repeated paired runs across multiple seeds
+- Local sensitivity of destination-distance and modal-distance parameters
+- Decomposition of destination/purpose effects from differentiated modal probabilities
 
-## Population-size sensitivity
+## Final pilot sensitivity with fixed N=100
 
-After the N=100 architecture is validated, evaluate the population size with:
+The pilot now fixes **N=100 agents per realization** as an operational choice
+because larger populations have a high computational cost. This must not be
+reported as evidence that N=100 is a converged population size.
 
-```bash
-python -m src.analysis.population_sensitivity
-```
-
-The default experiment is defined in `config/config.json` and currently uses:
-
-```text
-N = 100, 250, 500, 1000
-seed = 42
-```
-
-Each population size runs in an isolated directory under:
+The final sensitivity battery is defined in `config/config.json` under
+`analysis.final_pilot_sensitivity` and currently uses:
 
 ```text
-outputs/pilot/population_sensitivity/
+N = 100 agents per realization
+nominal seeds = 11, 23, 42, 73, 101
+reference seed for local perturbations = 42
+primary flow-support threshold = n_agents >= 5
+reported support thresholds = 2, 3, 5, 10
 ```
 
-The sensitivity runner disables maps and global metadata regeneration during
-the repeated runs, preserves the full analytical outputs for every N, and
-creates:
+Run the complete battery with:
+
+```bash
+python -m src.analysis.final_pilot_sensitivity --resume
+```
+
+The runner evaluates five nominal independent realizations and one-at-a-time
+local perturbations of the behavioral parameters:
 
 ```text
-population_sensitivity_summary.csv
-population_sensitivity_stability.csv
-population_sensitivity_selection.csv
-population_sensitivity_report.md
+destination distance decay: 0.75 x, 1.00 x, 1.25 x
+modal distance decay:       0.75 x, 1.00 x, 1.25 x
+decomposition: differentiated purpose/destination with homogenized mode shares
 ```
 
-The summary records analytical agents, outliers, used segments, flow-support
-thresholds, H_soc, paired delta_H_soc and processing time. The stability table
-compares each N with the next larger population using the supported H_soc of
-both scenarios, the supported paired delta_H_soc and the paired delta_H_soc
-over all commonly used segments.
+The nominal 1.00 x, seed=42 run is reused as the reference. When available,
+the validated historical `outputs/pilot/population_sensitivity/n_0100_seed_42`
+run is reused instead of rerouting it.
 
-The provisional selection rule chooses the smallest N whose maximum absolute
-change in these key metrics is within the configured tolerance and that has at
-least the configured number of paired segments with n_agents >= 10. If no
-tested N reaches that plateau, the largest tested population remains the
-technical reference. This selection is provisional and must later be checked
-with multiple seeds.
+Repeated runs are written under:
 
-Use `--resume` to reuse complete runs that already exist:
+```text
+outputs/pilot/final_sensitivity/
+```
+
+The main products are:
+
+```text
+final_sensitivity_plan.csv
+final_sensitivity_runs.csv
+final_sensitivity_seed_stability.csv
+final_sensitivity_parameter_comparison.csv
+final_sensitivity_report.md
+```
+
+`final_sensitivity_seed_stability.csv` summarizes the nominal realizations
+using mean, median, quartiles, IQR and range. For delta-H_soc metrics it also
+reports the share of seeds preserving the sign of the median effect.
+`final_sensitivity_parameter_comparison.csv` compares each local perturbation
+with the nominal seed=42 reference.
+
+The main pilot accepts the same sensitivity overrides directly:
 
 ```bash
-python -m src.analysis.population_sensitivity --resume
+python -m src.simulation.run_pilot \
+  --n-agents 100 \
+  --seed 42 \
+  --destination-decay-multiplier 0.75 \
+  --mode-decay-multiplier 1.0 \
+  --output-dir outputs/pilot/example_sensitivity \
+  --skip-maps \
+  --skip-metadata
 ```
 
-The main pilot also accepts isolated runtime arguments without changing the
-permanent configuration:
-
-```bash
-python -m src.simulation.run_pilot --n-agents 500 --seed 42 --output-dir outputs/pilot/example_n500 --skip-maps --skip-metadata
-```
+Use `--homogenize-differentiated-mode` to isolate the contribution of
+differentiated purpose/destination rules while keeping modal probabilities
+equal between income groups.
 
 ## Remaining work to close the pilot
 
