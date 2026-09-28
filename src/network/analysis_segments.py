@@ -897,11 +897,26 @@ def apply_analysis_segment_mapping(
 ) -> pd.DataFrame:
     """Aplica o mapeamento 1:N às passagens registradas no edge_usage"""
 
-    result = edge_usage.merge(
-        mapping,
+    usage = edge_usage.copy()
+
+    if "mapping_mode" not in usage.columns:
+        usage[
+            "mapping_mode"
+        ] = usage[
+            "mode"
+        ]
+
+    mapping_for_merge = mapping.rename(
+        columns={
+            "mode": "mapping_mode",
+        }
+    )
+
+    result = usage.merge(
+        mapping_for_merge,
         on=[
             "modal_edge_id",
-            "mode",
+            "mapping_mode",
         ],
         how="left",
         validate="many_to_many",
