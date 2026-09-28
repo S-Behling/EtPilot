@@ -776,20 +776,48 @@ class TransitRouter:
             + self.max_total_travel_time_s
         )
 
-        for connection_index, row in enumerate(
-            active_connections.itertuples(
+        departure_values = (
+            active_connections[
+                "departure_seconds"
+            ]
+            .astype(
+                "int64"
+            )
+        )
+
+        start_index = int(
+            departure_values.searchsorted(
+                int(
+                    departure_time_s
+                ),
+                side="left",
+            )
+        )
+        end_index = int(
+            departure_values.searchsorted(
+                int(
+                    horizon
+                ),
+                side="right",
+            )
+        )
+
+        connection_window = active_connections.iloc[
+            start_index:end_index
+        ]
+
+        for local_index, row in enumerate(
+            connection_window.itertuples(
                 index=False
             )
         ):
+            connection_index = (
+                start_index
+                + local_index
+            )
             connection_departure = int(
                 row.departure_seconds
             )
-
-            if connection_departure < departure_time_s:
-                continue
-
-            if connection_departure > horizon:
-                break
 
             from_stop_id = str(
                 row.from_stop_id
