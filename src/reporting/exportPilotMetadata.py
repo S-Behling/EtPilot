@@ -479,6 +479,18 @@ VARIABLES = [
         "descricao": "Tempo médio dentro do veículo por conexão GTFS usada na rota, empregado como diagnóstico de qualidade temporal",
     },
     {
+        "nome": "missing_stop_time_summary",
+        "grupo": "qualidade temporal do GTFS",
+        "unidade": "booleano",
+        "descricao": "Indica viagem sem resumo temporal derivado de stop_times após a associação por trip_id",
+    },
+    {
+        "nome": "missing_connection_summary",
+        "grupo": "qualidade temporal do GTFS",
+        "unidade": "booleano",
+        "descricao": "Indica viagem sem conexões temporais processadas após a associação por trip_id",
+    },
+    {
         "nome": "egress_walk_distance_m",
         "grupo": "roteamento de transporte coletivo",
         "unidade": "m",
@@ -799,6 +811,10 @@ CLEANING_METHODS = [
     {
         "nome": "Validação de continuidade entre conexões GTFS",
         "descricao": "Confere se cada conexão do itinerário começa na parada onde a conexão anterior terminou antes de aceitar o resultado do roteamento",
+    },
+    {
+        "nome": "Preservação explícita de valores ausentes em diagnósticos temporais",
+        "descricao": "Mantém viagens sem duração ou sem conexões como valores ausentes e evita classificá-las como duração não positiva ou como baixa quantidade de pontos temporais",
     },
 ]
 
