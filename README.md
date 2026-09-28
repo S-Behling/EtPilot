@@ -460,11 +460,23 @@ leg uses `mapping_mode=transit`: each used GTFS connection is cut from its
 shape between the two stop positions and matched geometrically to the common
 physical segments.
 
-The transit-to-segment match currently uses provisional geometric controls
-defined in `config/config.json`: spatial tolerance, minimum segment
-coverage, and maximum orientation difference. The pilot stops instead of
-silently discarding a used transit connection when no physical segment match
-is found.
+The transit-to-segment match uses a two-stage provisional procedure defined in
+`config/config.json`. The primary stage searches physical segments supported
+by the car network. Connections still unmatched are evaluated against the full
+physical analysis network with a slightly wider tolerance and relaxed
+coverage/orientation thresholds. A candidate is accepted when either the
+physical segment or the GTFS shape portion reaches the configured coverage
+threshold, which prevents short stop-to-stop connections from being rejected
+only because they fall inside a longer street segment.
+
+When processed shape positions are missing or fail to progress along the
+shape, the geometry extractor attempts a forward projection of the two stops
+onto the shape while preserving stop order. The fallback is explicitly
+recorded in the geometry diagnostics rather than replacing the original
+processed positions silently.
+
+The pilot still stops instead of silently discarding a used transit connection
+when no physical segment match is found after both stages.
 
 
 The integrated pilot writes the transit harmonization audit files:
@@ -476,10 +488,11 @@ outputs/pilot/transit_connection_match_diagnostics.csv
 outputs/pilot/transit_spatial_match_report.csv
 ```
 
-The bus leg is matched only against physical analysis segments that have
-support from the car network. Orientation compatibility is evaluated locally
-along the GTFS shape near each candidate segment rather than from the global
-orientation of a curved connection.
+The primary bus-leg match uses physical analysis segments with support from
+the car network. The fallback may use the complete physical network when a bus
+corridor is not represented in the car graph. Orientation compatibility is
+evaluated locally along the GTFS shape near each candidate segment rather than
+from the global orientation of a curved connection.
 
 To prepare the multimodal data:
 
