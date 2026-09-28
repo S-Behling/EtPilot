@@ -5,7 +5,7 @@ A bateria executa:
 1. cinco realizações nominais independentes;
 2. sensibilidade do decaimento da escolha de destino (0,75 e 1,25);
 3. sensibilidade da resposta modal à distância (0,75 e 1,25);
-4. decomposição com probabilidades modais homogenizadas no cenário differentiated para todas as seeds.
+4. decomposição com probabilidades modais homogenizadas no cenário differentiated na seed de referência.
 
 O objetivo é avaliar robustez sem tratar N=100 como tamanho populacional convergido.
 """
@@ -13,6 +13,7 @@ O objetivo é avaliar robustez sem tratar N=100 como tamanho populacional conver
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 from pathlib import Path
 import subprocess
@@ -110,6 +111,35 @@ def _parse_args():
             "como referência nominal."
         ),
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=int(
+            defaults.get(
+                "max_parallel_workers",
+                2,
+            )
+        ),
+        help=(
+            "Número máximo de execuções independentes em paralelo. "
+            "Use 1 se a máquina tiver pouca memória."
+        ),
+    )
+    parser.add_argument(
+        "--experiments",
+        nargs="+",
+        choices=[
+            "nominal_seed",
+            "destination_decay",
+            "mode_decay",
+            "mode_homogenized",
+        ],
+        default=None,
+        help=(
+            "Executa apenas os tipos informados. Útil para produzir "
+            "primeiro os resultados centrais do artigo."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -198,17 +228,18 @@ def _build_sensitivity_plan(
         )
 
     if include_mode_homogenized:
-        for seed in seeds:
-            rows.append(
-                {
-                    "run_id": f"mode_homogenized_seed_{seed}",
-                    "experiment": "mode_homogenized",
-                    "seed": int(seed),
-                    "destination_decay_multiplier": 1.0,
-                    "mode_decay_multiplier": 1.0,
-                    "homogenize_differentiated_mode": True,
-                }
-            )
+        rows.append(
+            {
+                "run_id": (
+                    f"mode_homogenized_seed_{reference_seed}"
+                ),
+                "experiment": "mode_homogenized",
+                "seed": int(reference_seed),
+                "destination_decay_multiplier": 1.0,
+                "mode_decay_multiplier": 1.0,
+                "homogenize_differentiated_mode": True,
+            }
+        )
 
     return pd.DataFrame(rows)
 
@@ -365,6 +396,239 @@ def _run_pilot(
         )
 
     return runtime_s
+
+
+def _execute_plan_row(
+    plan_row: dict,
+    *,
+    n_agents: int,
+    root: Path,
+    commit: str,
+    resume: bool,
+    no_legacy_reuse: bool,
+    reuse_legacy_seed42: bool,
+) -> dict:
+    """Executa ou reutiliza uma realização independente e extrai suas métricas."""
+
+    run_id = str(
+        plan_row["run_id"]
+    )
+    seed = int(
+        plan_row["seed"]
+    )
+    run_dir = (
+        root
+        / "runs"
+        / run_id
+    )
+
+    use_legacy = (
+        not no_legacy_reuse
+        and reuse_legacy_seed42
+        and plan_row[
+            "experiment"
+        ]
+        == "nominal_seed"
+        and seed == 42
+        and int(n_agents) == 100
+        and _is_complete_run(
+            LEGACY_N100_SEED42,
+            n_agents=100,
+            seed=42,
+        )
+    )
+
+    if use_legacy:
+        source_dir = LEGACY_N100_SEED42
+        runtime_s = _runtime_from_run(
+            source_dir
+        )
+        source_status = (
+            "legacy_n100_seed42_reused"
+        )
+        source_commit = (
+            "legacy_population_sensitivity"
+        )
+    elif (
+        resume
+        and _is_complete_run(
+            run_dir,
+            n_agents=n_agents,
+            seed=seed,
+        )
+    ):
+        source_dir = run_dir
+        runtime_s = _runtime_from_run(
+            source_dir
+        )
+        source_status = (
+            "existing_run_reused"
+        )
+        source_commit = commit
+    else:
+        runtime_s = _run_pilot(
+            n_agents=n_agents,
+            row=pd.Series(
+                plan_row
+            ),
+            run_dir=run_dir,
+        )
+        source_dir = run_dir
+        source_status = (
+            "executed"
+        )
+        source_commit = commit
+
+    metrics = _extract_run_metrics(
+        source_dir,
+        n_agents=n_agents,
+        seed=seed,
+        runtime_s=runtime_s,
+        commit=source_commit,
+    )
+
+    metrics.update(
+        {
+            "run_id": run_id,
+            "experiment": plan_row[
+                "experiment"
+            ],
+            "destination_decay_multiplier": float(
+                plan_row[
+                    "destination_decay_multiplier"
+                ]
+            ),
+            "mode_decay_multiplier": float(
+                plan_row[
+                    "mode_decay_multiplier"
+                ]
+            ),
+            "homogenize_differentiated_mode": bool(
+                plan_row[
+                    "homogenize_differentiated_mode"
+                ]
+            ),
+            "source_status": source_status,
+            "source_dir": str(
+                source_dir
+            ),
+        }
+    )
+
+    return metrics
+
+
+def _ordered_runs(
+    rows: list[dict],
+    *,
+    plan: pd.DataFrame,
+) -> pd.DataFrame:
+    """Ordena o checkpoint conforme o plano, mesmo com execução paralela."""
+
+    if not rows:
+        return pd.DataFrame()
+
+    runs = pd.DataFrame(
+        rows
+    )
+    order = {
+        run_id: index
+        for index, run_id
+        in enumerate(
+            plan["run_id"].astype(str)
+        )
+    }
+    runs["_plan_order"] = (
+        runs["run_id"]
+        .astype(str)
+        .map(order)
+    )
+    runs = (
+        runs.sort_values(
+            "_plan_order"
+        )
+        .drop(
+            columns="_plan_order"
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+    ordered_front = [
+        "run_id",
+        "experiment",
+        "seed",
+        "n_agents_requested",
+        "destination_decay_multiplier",
+        "mode_decay_multiplier",
+        "homogenize_differentiated_mode",
+        "source_status",
+        "source_dir",
+    ]
+
+    return runs[
+        ordered_front
+        + [
+            column
+            for column in runs.columns
+            if column
+            not in ordered_front
+        ]
+    ]
+
+
+def _write_checkpoint(
+    root: Path,
+    *,
+    rows: list[dict],
+    plan: pd.DataFrame,
+) -> None:
+    """Salva resultados disponíveis imediatamente após cada realização."""
+
+    runs = _ordered_runs(
+        rows,
+        plan=plan,
+    )
+    if runs.empty:
+        return
+
+    runs.to_csv(
+        root
+        / "final_sensitivity_runs_partial.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    progress = {
+        "completed": int(
+            len(runs)
+        ),
+        "planned": int(
+            len(plan)
+        ),
+        "remaining": int(
+            len(plan)
+            - len(runs)
+        ),
+        "completed_run_ids": runs[
+            "run_id"
+        ].astype(str).tolist(),
+    }
+
+    with (
+        root
+        / "progress.json"
+    ).open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            progress,
+            file,
+            ensure_ascii=False,
+            indent=2,
+        )
 
 
 def _nominal_seed_stability(
@@ -719,6 +983,28 @@ def main() -> None:
         include_mode_homogenized=include_mode_homogenized,
     )
 
+    if args.experiments:
+        plan = (
+            plan.loc[
+                plan["experiment"].isin(
+                    args.experiments
+                )
+            ]
+            .reset_index(
+                drop=True
+            )
+        )
+
+    if plan.empty:
+        raise ValueError(
+            "O filtro de experimentos não deixou nenhuma execução no plano."
+        )
+
+    if args.workers < 1:
+        raise ValueError(
+            "--workers precisa ser maior ou igual a 1."
+        )
+
     root = Path(
         args.output_dir
     )
@@ -752,167 +1038,93 @@ def main() -> None:
     commit = _git_commit()
     rows: list[dict] = []
 
-    for _, plan_row in plan.iterrows():
-        run_dir = (
-            runs_root
-            / str(
-                plan_row["run_id"]
-            )
-        )
-
-        use_legacy = (
-            not args.no_legacy_reuse
-            and bool(
-                defaults.get(
-                    "reuse_legacy_seed42",
-                    True,
-                )
-            )
-            and plan_row[
-                "experiment"
-            ]
-            == "nominal_seed"
-            and int(
-                plan_row["seed"]
-            )
-            == 42
-            and int(
-                args.n_agents
-            )
-            == 100
-            and _is_complete_run(
-                LEGACY_N100_SEED42,
-                n_agents=100,
-                seed=42,
-            )
-        )
-
-        if use_legacy:
-            source_dir = (
-                LEGACY_N100_SEED42
-            )
-            runtime_s = _runtime_from_run(
-                source_dir
-            )
-            source_status = (
-                "legacy_n100_seed42_reused"
-            )
-            source_commit = (
-                "legacy_population_sensitivity"
-            )
-        elif (
-            args.resume
-            and _is_complete_run(
-                run_dir,
-                n_agents=args.n_agents,
-                seed=int(
-                    plan_row["seed"]
-                ),
-            )
-        ):
-            source_dir = run_dir
-            runtime_s = _runtime_from_run(
-                source_dir
-            )
-            source_status = (
-                "existing_run_reused"
-            )
-            source_commit = commit
-        else:
-            runtime_s = _run_pilot(
-                n_agents=args.n_agents,
-                row=plan_row,
-                run_dir=run_dir,
-            )
-            source_dir = run_dir
-            source_status = (
-                "executed"
-            )
-            source_commit = commit
-
-        metrics = _extract_run_metrics(
-            source_dir,
-            n_agents=args.n_agents,
-            seed=int(
-                plan_row["seed"]
-            ),
-            runtime_s=runtime_s,
-            commit=source_commit,
-        )
-
-        metrics.update(
-            {
-                "run_id": plan_row[
-                    "run_id"
-                ],
-                "experiment": plan_row[
-                    "experiment"
-                ],
-                "destination_decay_multiplier": float(
-                    plan_row[
-                        "destination_decay_multiplier"
-                    ]
-                ),
-                "mode_decay_multiplier": float(
-                    plan_row[
-                        "mode_decay_multiplier"
-                    ]
-                ),
-                "homogenize_differentiated_mode": bool(
-                    plan_row[
-                        "homogenize_differentiated_mode"
-                    ]
-                ),
-                "source_status": source_status,
-                "source_dir": str(
-                    source_dir
-                ),
-            }
-        )
-
-        rows.append(
-            metrics
-        )
-
-        print(
-            f"{plan_row['run_id']}: "
-            f"flow>=5 pareado={int(metrics['flow_ge_5_both'])} | "
-            "delta H_soc suportado="
-            f"{metrics['sufficient_delta_H_soc_mean']}"
-        )
-
-    runs = pd.DataFrame(
-        rows
+    print(
+        f"Execuções planejadas: {len(plan)} | "
+        f"workers={args.workers}"
     )
 
-    ordered_front = [
-        "run_id",
-        "experiment",
-        "seed",
-        "n_agents_requested",
-        "destination_decay_multiplier",
-        "mode_decay_multiplier",
-        "homogenize_differentiated_mode",
-        "source_status",
-        "source_dir",
+    plan_rows = [
+        row._asdict()
+        for row in plan.itertuples(
+            index=False
+        )
     ]
-    runs = runs[
-        ordered_front
-        + [
-            column
-            for column in runs.columns
-            if column
-            not in ordered_front
-        ]
-    ]
+
+    with ThreadPoolExecutor(
+        max_workers=args.workers
+    ) as executor:
+        futures = {
+            executor.submit(
+                _execute_plan_row,
+                plan_row,
+                n_agents=args.n_agents,
+                root=root,
+                commit=commit,
+                resume=args.resume,
+                no_legacy_reuse=args.no_legacy_reuse,
+                reuse_legacy_seed42=bool(
+                    defaults.get(
+                        "reuse_legacy_seed42",
+                        True,
+                    )
+                ),
+            ): plan_row
+            for plan_row in plan_rows
+        }
+
+        for future in as_completed(
+            futures
+        ):
+            plan_row = futures[
+                future
+            ]
+            metrics = future.result()
+            rows.append(
+                metrics
+            )
+
+            _write_checkpoint(
+                root,
+                rows=rows,
+                plan=plan,
+            )
+
+            print(
+                f"[{len(rows)}/{len(plan)}] "
+                f"{plan_row['run_id']}: "
+                f"flow>=5 pareado="
+                f"{int(metrics['flow_ge_5_both'])} | "
+                "delta H_soc suportado="
+                f"{metrics['sufficient_delta_H_soc_mean']}"
+            )
+
+    runs = _ordered_runs(
+        rows,
+        plan=plan,
+    )
 
     seed_stability = _nominal_seed_stability(
         runs
     )
-    parameter_comparison = _parameter_comparison(
-        runs,
-        reference_seed=args.reference_seed,
-    )
+
+    has_reference_nominal = (
+        (
+            runs["experiment"]
+            == "nominal_seed"
+        )
+        & (
+            runs["seed"]
+            == args.reference_seed
+        )
+    ).any()
+
+    if has_reference_nominal:
+        parameter_comparison = _parameter_comparison(
+            runs,
+            reference_seed=args.reference_seed,
+        )
+    else:
+        parameter_comparison = pd.DataFrame()
 
     runs.to_csv(
         root
