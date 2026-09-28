@@ -1088,22 +1088,29 @@ def main() -> None:
         transit_router.connections
     )
 
-    transit_shapes = gpd.read_file(
+    transit_physical_edges_path = (
         gtfs_data_dir
-        / "shapes_processed.gpkg",
-        layer="shapes_processed",
-        engine="pyogrio",
+        / transit_network_config[
+            "transit_physical_edges_file"
+        ]
     )
-    transit_stops = gpd.read_file(
-        gtfs_data_dir
-        / "stops_processed.gpkg",
-        layer="stops_processed",
+
+    if not transit_physical_edges_path.exists():
+        raise FileNotFoundError(
+            "Execute novamente python -m src.transit.buildTransitNetwork "
+            "para gerar a rede física completa de transit"
+        )
+
+    transit_physical_edges = gpd.read_file(
+        transit_physical_edges_path,
+        layer="transit_physical_edges_processed",
         engine="pyogrio",
     )
 
     print(
         "  transit: "
         f"{_format_int_pt(len(transit_connections))} conexões GTFS roteáveis | "
+        f"{_format_int_pt(len(transit_physical_edges))} trechos físicos | "
         f"data de serviço {transit_service_date} | "
         "partida fixa "
         f"{_format_float_pt(transit_departure_time_s / 3600, decimals=2)} h"
