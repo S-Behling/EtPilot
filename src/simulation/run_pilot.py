@@ -12,12 +12,12 @@ Desenho do experimento
     preserva diferenças por renda em propósito, escolha de destino e modo.
 
 Fluxo:
-1. carrega configurações e dados;
-2. carrega as redes de carro, caminhada e bicicleta;
-3. gera a população sintética e atribui origens;
-4. constrói os cenários comportamentais;
-5. atribui propósito, destino e modo;
-6. calcula a rota na rede correspondente ao modo;
+1. carregue configurações e dados;
+2. carregue as redes de carro, caminhada e bicicleta;
+3. gere a população sintética e atribua origens;
+4. construa os cenários comportamentais;
+5. atribua propósito, destino e modo;
+6. calcule a rota na rede correspondente ao modo;
 7. harmonize as arestas modais em segmentos físicos comuns;
 8. valide, resuma e salve os resultados.
 
@@ -230,10 +230,10 @@ def _validate_fixed_population(
     summaries: dict[str, pd.DataFrame],
 ) -> None:
     """
-    Garante que população e residência sejam idênticas entre cenários.
+    Garanta que população e residência sejam idênticas entre cenários.
 
-    Propósito, destino, modo e rota podem variar.
-    Identidade, renda e origem residencial não.
+    Permita variar propósito, destino, modo e rota.
+    Preserve identidade, renda e origem residencial.
     """
 
     fixed_columns = [
