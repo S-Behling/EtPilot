@@ -184,6 +184,12 @@ Use `K=3` for the current low/middle/high income classification. Interpret
 equal representation of all three groups. Preserve `H_soc=NaN` for unused
 segments; do not convert absence of observed flow into social homogeneity.
 
+Because the normalized expression divides by the maximum entropy computed
+with the same logarithm base, the normalized `H_soc` is invariant to the
+choice of logarithm base. Keep the legacy `analysis.entropy_base` setting
+for compatibility with older exploratory code, but do not use it to alter
+the normalized `H_soc` produced by this pipeline.
+
 Interpret `H_soc` together with `n_agents`, `n_passages`, and the flow
 threshold flags. Treat the current 100-agent run as a pipeline validation
 exercise rather than an empirical estimate of urban segregation.
