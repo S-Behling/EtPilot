@@ -36,6 +36,9 @@ import pandas as pd
 from src.analysis.trip_outliers import (
     apply_paired_transit_outlier_filter,
 )
+from src.analysis.transit_spatial_exclusions import (
+    apply_paired_transit_spatial_exclusions,
+)
 from src.analysis.edge_statistics import (
     attach_statistics_to_segments,
     build_segment_statistics,
