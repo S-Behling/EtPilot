@@ -157,6 +157,107 @@ class FinalPilotSensitivityTests(unittest.TestCase):
             1.0,
         )
 
+    def test_mode_homogenized_uses_same_seed_nominal_reference(self):
+        runs = pd.DataFrame(
+            {
+                "run_id": [
+                    "nominal_seed_42",
+                    "nominal_seed_73",
+                    "mode_homogenized_seed_73",
+                ],
+                "experiment": [
+                    "nominal_seed",
+                    "nominal_seed",
+                    "mode_homogenized",
+                ],
+                "seed": [
+                    42,
+                    73,
+                    73,
+                ],
+                "destination_decay_multiplier": [
+                    1.0,
+                    1.0,
+                    1.0,
+                ],
+                "mode_decay_multiplier": [
+                    1.0,
+                    1.0,
+                    1.0,
+                ],
+                "homogenize_differentiated_mode": [
+                    False,
+                    False,
+                    True,
+                ],
+                "analysis_retention_pct": [
+                    97.0,
+                    98.0,
+                    98.0,
+                ],
+                "used_both_share_pct": [
+                    53.0,
+                    55.0,
+                    54.0,
+                ],
+                "flow_ge_5_both": [
+                    42,
+                    48,
+                    46,
+                ],
+                "flow_ge_10_both": [
+                    0,
+                    1,
+                    1,
+                ],
+                "H_soc_mean_supported_baseline": [
+                    0.71,
+                    0.74,
+                    0.74,
+                ],
+                "H_soc_mean_supported_differentiated": [
+                    0.66,
+                    0.68,
+                    0.70,
+                ],
+                "sufficient_delta_H_soc_mean": [
+                    -0.12,
+                    -0.06,
+                    -0.04,
+                ],
+                "paired_delta_H_soc_mean": [
+                    -0.03,
+                    -0.02,
+                    -0.01,
+                ],
+            }
+        )
+
+        comparison = _parameter_comparison(
+            runs,
+            reference_seed=42,
+        )
+
+        mechanism = comparison.loc[
+            comparison["experiment"]
+            == "mode_homogenized"
+        ].iloc[0]
+
+        self.assertEqual(
+            mechanism["reference_seed"],
+            73,
+        )
+        self.assertEqual(
+            mechanism["reference_kind"],
+            "same_seed_nominal",
+        )
+        self.assertAlmostEqual(
+            mechanism[
+                "change_sufficient_delta_H_soc_mean"
+            ],
+            0.02,
+        )
+
     def test_parameter_comparison_uses_reference_seed(self):
         runs = pd.DataFrame(
             {
