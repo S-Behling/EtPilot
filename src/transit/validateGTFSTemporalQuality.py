@@ -418,6 +418,76 @@ def _shape_summary(
     )
 
 
+def _safe_speed_kmh(
+    *,
+    distance_m: pd.Series,
+    duration_s: pd.Series,
+) -> np.ndarray:
+    """Calcula velocidade em km/h preservando valores ausentes como NaN"""
+
+    distance_values = (
+        pd.to_numeric(
+            distance_m,
+            errors="coerce",
+        )
+        .astype(
+            "Float64"
+        )
+        .to_numpy(
+            dtype=float,
+            na_value=np.nan,
+        )
+    )
+    duration_values = (
+        pd.to_numeric(
+            duration_s,
+            errors="coerce",
+        )
+        .astype(
+            "Float64"
+        )
+        .to_numpy(
+            dtype=float,
+            na_value=np.nan,
+        )
+    )
+
+    valid = (
+        np.isfinite(
+            distance_values
+        )
+        & np.isfinite(
+            duration_values
+        )
+        & (
+            duration_values
+            > 0
+        )
+    )
+
+    speeds = np.full(
+        len(
+            distance_values
+        ),
+        np.nan,
+        dtype=float,
+    )
+
+    speeds[
+        valid
+    ] = (
+        distance_values[
+            valid
+        ]
+        / duration_values[
+            valid
+        ]
+        * 3.6
+    )
+
+    return speeds
+
+
 def build_trip_temporal_quality(
     *,
     trips: pd.DataFrame,
@@ -467,56 +537,24 @@ def build_trip_temporal_quality(
 
     quality[
         "implied_shape_speed_kmh"
-    ] = np.where(
-        (
-            quality[
-                "shape_length_m"
-            ]
-            .notna()
-        )
-        & (
-            quality[
-                "scheduled_duration_s"
-            ]
-            > 0
-        ),
-        (
-            quality[
-                "shape_length_m"
-            ]
-            / quality[
-                "scheduled_duration_s"
-            ]
-            * 3.6
-        ),
-        np.nan,
+    ] = _safe_speed_kmh(
+        distance_m=quality[
+            "shape_length_m"
+        ],
+        duration_s=quality[
+            "scheduled_duration_s"
+        ],
     )
 
     quality[
         "in_vehicle_shape_speed_kmh"
-    ] = np.where(
-        (
-            quality[
-                "shape_length_m"
-            ]
-            .notna()
-        )
-        & (
-            quality[
-                "total_in_vehicle_time_s"
-            ]
-            > 0
-        ),
-        (
-            quality[
-                "shape_length_m"
-            ]
-            / quality[
-                "total_in_vehicle_time_s"
-            ]
-            * 3.6
-        ),
-        np.nan,
+    ] = _safe_speed_kmh(
+        distance_m=quality[
+            "shape_length_m"
+        ],
+        duration_s=quality[
+            "total_in_vehicle_time_s"
+        ],
     )
 
     quality[
