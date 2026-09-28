@@ -12,7 +12,7 @@ O fluxo:
 4. atribui origens residenciais
 5. constrói os cenários comportamentais
 6. atribui propósito, destino e modo e roteia walk, bike, car e transit
-7. harmoniza redes OSM e trechos GTFS usados em segmentos físicos comuns
+7. integra as redes OSM e a rede física GTFS completa em segmentos físicos comuns
 8. calcula volume, composição social e H_soc por segmento
 9. compara baseline e differentiated de forma pareada por segmento
 10. gera mapas comparáveis de H_soc e delta_H_soc
@@ -1625,7 +1625,7 @@ def main() -> None:
         f"{_format_int_pt(segment_mapping['modal_edge_id'].nunique())} arestas"
     )
 
-    print("\nMétodos de harmonização — redes completas e conexões GTFS usadas")
+    print("\nMétodos de harmonização — redes físicas completas")
     print(
         match_report[
             [
@@ -1936,6 +1936,11 @@ def main() -> None:
         "Roteamento transit: GTFS temporal com acesso e egresso pela rede "
         f"walk na data {transit_service_date} e partida fixa em "
         f"{_format_float_pt(transit_departure_time_s / 3600, decimals=2)} h"
+    )
+    print(
+        "Rede física transit: construída a partir de todo o GTFS espacialmente "
+        "roteável antes da amostra de agentes; trechos sem correspondência OSM "
+        "recebem analysis_segment_id exclusivo"
     )
     print(
         "H_soc: entropia de Shannon normalizada da composição "
