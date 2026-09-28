@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metadados do piloto EtPilot</title>
+<style>
+:root {
+    --azul-escuro: #17365d;
+    --azul: #4472c4;
+    --azul-claro: #eef4fb;
+    --cinza: #5b6573;
+    --borda: #d9e2f3;
+    --fundo: #f6f8fb;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2937;
+    background: var(--fundo);
+    line-height: 1.45;
+}
+header {
+    background: var(--azul-escuro);
+    color: white;
+    padding: 34px max(24px, calc((100vw - 1400px) / 2));
+}
+header h1 {
+    margin: 0 0 8px;
+    font-size: 30px;
+}
+header p {
+    margin: 4px 0;
+    max-width: 1000px;
+}
+nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px max(24px, calc((100vw - 1400px) / 2));
+    background: white;
+    border-bottom: 1px solid var(--borda);
+}
+nav a {
+    color: var(--azul-escuro);
+    text-decoration: none;
+    font-weight: 700;
+    padding: 7px 10px;
+    border-radius: 6px;
+}
+nav a:hover {
+    background: var(--azul-claro);
+}
+main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+}
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+.card {
+    background: white;
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    padding: 18px;
+}
+.card-number {
+    display: block;
+    color: var(--azul-escuro);
+    font-size: 28px;
+    font-weight: 700;
+}
+.card-label {
+    color: var(--cinza);
+}
+section {
+    scroll-margin-top: 80px;
+    background: white;
+    margin: 20px 0;
+    padding: 22px;
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    overflow-x: auto;
+}
+section h2 {
+    color: var(--azul-escuro);
+    margin-top: 0;
+}
+.metadata-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.metadata-table th {
+    position: sticky;
+    top: 52px;
+    background: var(--azul);
+    color: white;
+    text-align: left;
+    padding: 9px;
+    border: 1px solid #365f91;
+}
+.metadata-table td {
+    vertical-align: top;
+    padding: 8px;
+    border: 1px solid var(--borda);
+}
+.metadata-table tbody tr:nth-child(even) {
+    background: #f8fbff;
+}
+footer {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 36px;
+    color: var(--cinza);
+    font-size: 12px;
+}
+code {
+    background: var(--azul-claro);
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+</style>
+</head>
+<body>
+<header>
+    <h1>Metadados do piloto EtPilot</h1>
+    <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
+    <p>Documento gerado em UTC: 2026-09-28T07:19:24.330882+00:00</p>
+</header>
+<nav><a href="#variaveis">Variáveis principais</a><a href="#parametros">Parâmetros de configuração</a><a href="#metodos">Métodos de análise</a><a href="#estatisticas">Estatísticas</a><a href="#limpeza">Métodos de limpeza e validação</a><a href="#arquivos">Arquivos gerados</a></nav>
+<main>
+    <div class="cards"><div class="card"><span class="card-number">69</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">23</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">15</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">18</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">60</span><span class="card-label">arquivos catalogados</span></div></div>
+    <section id="variaveis"><h2>Variáveis principais</h2><p>Variáveis centrais usadas na simulação, no roteamento, na harmonização, nas métricas e no processamento do GTFS</p><table class="dataframe metadata-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>nome</th>
+      <th>grupo</th>
+      <th>unidade</th>
+      <th>descricao</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>agent_id</td>
+      <td>agente</td>
+      <td>identificador</td>
+      <td>Identificador único do agente sintético</td>
+    </tr>
+    <tr>
+      <td>income_group</td>
+      <td>agente</td>
+      <td>categoria</td>
+      <td>Grupo de renda do agente com categorias low, middle e high</td>
+    </tr>
+    <tr>
+      <td>origin_id</td>
+      <td>agente</td>
+      <td>identificador espacial</td>
+      <td>Identificador da origem residencial atribuída ao agente</td>
+    </tr>
+    <tr>
+      <td>purpose</td>
+      <td>agente</td>
+      <td>categoria</td>
+      <td>Propósito da viagem entre trabalho, educação, saúde, compras e lazer</td>
+    </tr>
+    <tr>
+      <td>destination_id</td>
+      <td>agente</td>
+      <td>identificador espacial</td>
+      <td>Identificador do destino selecionado para a viagem</td>
+    </tr>
+    <tr>
+      <td>destination_weight</td>
+      <td>escolha de destino</td>
+      <td>peso adimensional</td>
+      <td>Peso de atratividade associado ao destino candidato</td>
+    </tr>
+    <tr>
+      <td>od_distance_m</td>
+      <td>viagem</td>
+      <td>m</td>
+      <td>Distância euclidiana entre origem e destino usada antes do roteamento</td>
+    </tr>
+    <tr>
+      <td>mode</td>
+      <td>viagem</td>
+      <td>categoria</td>
+      <td>Modo de viagem selecionado entre caminhada, bicicleta, carro e transporte coletivo</td>
+    </tr>
+    <tr>
+      <td>origin_node</td>
+      <td>roteamento</td>
+      <td>identificador de nó</td>
+      <td>Nó efetivamente usado como origem na rede correspondente ao modo</td>
+    </tr>
+    <tr>
+      <td>destination_node</td>
+      <td>roteamento</td>
+      <td>identificador de nó</td>
+      <td>Nó efetivamente usado como destino na rede correspondente ao modo</td>
+    </tr>
+    <tr>
+      <td>route_status</td>
+      <td>roteamento</td>
+      <td>categoria</td>
+      <td>Estado final do roteamento do agente</td>
+    </tr>
+    <tr>
+      <td>route_edges</td>
+      <td>roteamento</td>
+      <td>sequência de arestas</td>
+      <td>Sequência ordenada de arestas percorridas pelo agente</td>
+    </tr>
+    <tr>
+      <td>n_route_edges</td>
+      <td>roteamento</td>
+      <td>arestas</td>
+      <td>Quantidade de arestas presentes na rota calculada</td>
+    </tr>
+    <tr>
+      <td>travel_distance_m</td>
+      <td>roteamento</td>
+      <td>m</td>
+      <td>Distância total da rota calculada sobre a rede modal</td>
+    </tr>
+    <tr>
+      <td>travel_time</td>
+      <td>roteamento</td>
+      <td>s</td>
+      <td>Tempo total de viagem reservado para os roteamentos que utilizam impedância temporal</td>
+    </tr>
+    <tr>
+      <td>u</td>
+      <td>rede</td>
+      <td>identificador de nó</td>
+      <td>Nó inicial de uma aresta modal</td>
+    </tr>
+    <tr>
+      <td>v</td>
+      <td>rede</td>
+      <td>identificador de nó</td>
+      <td>Nó final de uma aresta modal</td>
+    </tr>
+    <tr>
+      <td>key</td>
+      <td>rede</td>
+      <td>identificador de aresta paralela</td>
+      <td>Chave da aresta em um MultiDiGraph</td>
+    </tr>
+    <tr>
+      <td>modal_edge_id</td>
+      <td>rede</td>
+      <td>identificador</td>
+      <td>Identificador estável de uma aresta dentro de uma rede modal</td>
+    </tr>
+    <tr>
+      <td>edge_length_m</td>
+      <td>rede</td>
+      <td>m</td>
+      <td>Comprimento da aresta modal</td>
+    </tr>
+    <tr>
+      <td>osmid</td>
+      <td>rede</td>
+      <td>identificador OSM</td>
+      <td>Identificador de origem da feição viária no OpenStreetMap</td>
+    </tr>
+    <tr>
+      <td>highway</td>
+      <td>rede</td>
+      <td>categoria OSM</td>
+      <td>Classificação viária fornecida pelo OpenStreetMap</td>
+    </tr>
+    <tr>
+      <td>analysis_segment_id</td>
+      <td>harmonização</td>
+      <td>identificador</td>
+      <td>Identificador comum do segmento físico usado para comparar modos e cenários</td>
+    </tr>
+    <tr>
+      <td>match_method</td>
+      <td>harmonização</td>
+      <td>categoria</td>
+      <td>Método usado para associar uma aresta modal a um segmento físico entre referência, equivalência OSM, sobreposição geométrica e segmento exclusivo</td>
+    </tr>
+    <tr>
+      <td>match_quality</td>
+      <td>harmonização</td>
+      <td>proporção de 0 a 1</td>
+      <td>Qualidade da correspondência geométrica entre a aresta modal e o segmento físico</td>
+    </tr>
+    <tr>
+      <td>n_passages</td>
+      <td>estatística por segmento</td>
+      <td>passagens agente × segmento</td>
+      <td>Quantidade total de registros de passagem pelo segmento físico</td>
+    </tr>
+    <tr>
+      <td>n_agents</td>
+      <td>estatística por segmento</td>
+      <td>agentes distintos</td>
+      <td>Quantidade de agentes distintos observados no segmento físico</td>
+    </tr>
+    <tr>
+      <td>n_low</td>
+      <td>estatística por segmento</td>
+      <td>agentes distintos</td>
+      <td>Quantidade de agentes do grupo de baixa renda observados no segmento</td>
+    </tr>
+    <tr>
+      <td>n_middle</td>
+      <td>estatística por segmento</td>
+      <td>agentes distintos</td>
+      <td>Quantidade de agentes do grupo de renda intermediária observados no segmento</td>
+    </tr>
+    <tr>
+      <td>n_high</td>
+      <td>estatística por segmento</td>
+      <td>agentes distintos</td>
+      <td>Quantidade de agentes do grupo de alta renda observados no segmento</td>
+    </tr>
+    <tr>
+      <td>p_low</td>
+      <td>estatística por segmento</td>
+      <td>proporção de 0 a 1</td>
+      <td>Proporção de agentes de baixa renda entre os agentes distintos do segmento</td>
+    </tr>
+    <tr>
+      <td>p_middle</td>
+      <td>estatística por segmento</td>
+      <td>proporção de 0 a 1</td>
+      <td>Proporção de agentes de renda intermediária entre os agentes distintos do segmento</td>
+    </tr>
+    <tr>
+      <td>p_high</td>
+      <td>estatística por segmento</td>
+      <td>proporção de 0 a 1</td>
+      <td>Proporção de agentes de alta renda entre os agentes distintos do segmento</td>
+    </tr>
+    <tr>
+      <td>income_groups_present</td>
+      <td>estatística por segmento</td>
+      <td>grupos</td>
+      <td>Quantidade de grupos de renda presentes no segmento</td>
+    </tr>
+    <tr>
+      <td>H_soc</td>
+      <td>entropia</td>
+      <td>índice normalizado de 0 a 1</td>
+      <td>Entropia de Shannon normalizada da composição socioeconômica dos agentes que usam o segmento</td>
+    </tr>
+    <tr>
+      <td>sufficient_flow</td>
+      <td>entropia</td>
+      <td>booleano</td>
+      <td>Indica se o segmento atinge o número mínimo de agentes definido para interpretação</td>
+    </tr>
+    <tr>
+      <td>flow_ge_2</td>
+      <td>sensibilidade</td>
+      <td>booleano</td>
+      <td>Indica se o segmento possui pelo menos 2 agentes distintos</td>
+    </tr>
+    <tr>
+      <td>flow_ge_3</td>
+      <td>sensibilidade</td>
+      <td>booleano</td>
+      <td>Indica se o segmento possui pelo menos 3 agentes distintos</td>
+    </tr>
+    <tr>
+      <td>flow_ge_5</td>
+      <td>sensibilidade</td>
+      <td>booleano</td>
+      <td>Indica se o segmento possui pelo menos 5 agentes distintos</td>
+    </tr>
+    <tr>
+      <td>flow_ge_10</td>
+      <td>sensibilidade</td>
+      <td>booleano</td>
+      <td>Indica se o segmento possui pelo menos 10 agentes distintos</td>
+    </tr>
+    <tr>
+      <td>usage_status</td>
+      <td>comparação de cenários</td>
+      <td>categoria</td>
+      <td>Classifica o segmento como usado nos dois cenários, apenas no baseline, apenas no differentiated ou não usado</td>
+    </tr>
+    <tr>
+      <td>comparable_H_soc</td>
+      <td>comparação de cenários</td>
+      <td>booleano</td>
+      <td>Indica se H_soc está observado nos dois cenários para o mesmo segmento</td>
+    </tr>
+    <tr>
+      <td>delta_H_soc</td>
+      <td>comparação de cenários</td>
+      <td>diferença de índice</td>
+      <td>Diferença H_soc do cenário differentiated menos H_soc do cenário baseline no mesmo segmento físico</td>
+    </tr>
+    <tr>
+      <td>delta_n_agents</td>
+      <td>comparação de cenários</td>
+      <td>agentes distintos</td>
+      <td>Diferença no número de agentes distintos entre differentiated e baseline</td>
+    </tr>
+    <tr>
+      <td>delta_n_passages</td>
+      <td>comparação de cenários</td>
+      <td>passagens</td>
+      <td>Diferença no número de passagens entre differentiated e baseline</td>
+    </tr>
+    <tr>
+      <td>sufficient_flow_both</td>
+      <td>comparação de cenários</td>
+      <td>booleano</td>
+      <td>Indica se o fluxo mínimo para interpretação é atingido nos dois cenários</td>
+    </tr>
+    <tr>
+      <td>stop_id</td>
+      <td>GTFS</td>
+      <td>identificador</td>
+      <td>Identificador da parada de transporte coletivo</td>
+    </tr>
+    <tr>
+      <td>route_id</td>
+      <td>GTFS</td>
+      <td>identificador</td>
+      <td>Identificador da rota ou linha no GTFS</td>
+    </tr>
+    <tr>
+      <td>route_type</td>
+      <td>GTFS</td>
+      <td>código GTFS</td>
+      <td>Código do tipo de transporte da rota, sendo 3 correspondente a ônibus no feed atual</td>
+    </tr>
+    <tr>
+      <td>trip_id</td>
+      <td>GTFS</td>
+      <td>identificador</td>
+      <td>Identificador da viagem programada no GTFS</td>
+    </tr>
+    <tr>
+      <td>service_id</td>
+      <td>GTFS</td>
+      <td>identificador</td>
+      <td>Identificador do calendário de serviço associado à viagem</td>
+    </tr>
+    <tr>
+      <td>service_date</td>
+      <td>GTFS</td>
+      <td>data</td>
+      <td>Data em que um service_id está ativo após combinar calendário semanal e exceções</td>
+    </tr>
+    <tr>
+      <td>shape_id</td>
+      <td>GTFS</td>
+      <td>identificador</td>
+      <td>Identificador da geometria programada da viagem</td>
+    </tr>
+    <tr>
+      <td>stop_sequence</td>
+      <td>GTFS</td>
+      <td>posição ordinal</td>
+      <td>Posição da parada dentro da sequência de uma viagem</td>
+    </tr>
+    <tr>
+      <td>arrival_seconds</td>
+      <td>GTFS</td>
+      <td>s desde o início do dia de serviço</td>
+      <td>Horário de chegada convertido para segundos e preservando valores GTFS acima de 24 horas</td>
+    </tr>
+    <tr>
+      <td>departure_seconds</td>
+      <td>GTFS</td>
+      <td>s desde o início do dia de serviço</td>
+      <td>Horário de partida convertido para segundos e preservando valores GTFS acima de 24 horas</td>
+    </tr>
+    <tr>
+      <td>arrival_missing_raw</td>
+      <td>GTFS</td>
+      <td>booleano</td>
+      <td>Indica que o horário de chegada estava ausente no GTFS original</td>
+    </tr>
+    <tr>
+      <td>departure_missing_raw</td>
+      <td>GTFS</td>
+      <td>booleano</td>
+      <td>Indica que o horário de partida estava ausente no GTFS original</td>
+    </tr>
+    <tr>
+      <td>time_interpolated</td>
+      <td>GTFS</td>
+      <td>booleano</td>
+      <td>Indica que o horário da parada foi estimado durante o processamento</td>
+    </tr>
+    <tr>
+      <td>time_interpolation_method</td>
+      <td>GTFS</td>
+      <td>categoria</td>
+      <td>Método usado para estimar o horário entre shape_dist_traveled, geometria do shape ou stop_sequence</td>
+    </tr>
+    <tr>
+      <td>shape_position_m</td>
+      <td>GTFS</td>
+      <td>m ao longo do shape</td>
+      <td>Posição projetada da parada ao longo da geometria do shape</td>
+    </tr>
+    <tr>
+      <td>node_walk</td>
+      <td>transporte coletivo</td>
+      <td>identificador de nó</td>
+      <td>Nó da rede de caminhada associado à parada GTFS</td>
+    </tr>
+    <tr>
+      <td>walk_connector_distance_m</td>
+      <td>transporte coletivo</td>
+      <td>m</td>
+      <td>Distância entre a parada GTFS e o nó mais próximo da rede de caminhada</td>
+    </tr>
+    <tr>
+      <td>walk_connector_time_s</td>
+      <td>transporte coletivo</td>
+      <td>s</td>
+      <td>Tempo estimado para percorrer o conector entre a parada e a rede de caminhada</td>
+    </tr>
+    <tr>
+      <td>connection_id</td>
+      <td>transporte coletivo</td>
+      <td>identificador</td>
+      <td>Identificador de uma conexão temporal entre duas paradas consecutivas de uma viagem</td>
+    </tr>
+    <tr>
+      <td>from_stop_id</td>
+      <td>transporte coletivo</td>
+      <td>identificador</td>
+      <td>Parada de origem da conexão temporal</td>
+    </tr>
+    <tr>
+      <td>to_stop_id</td>
+      <td>transporte coletivo</td>
+      <td>identificador</td>
+      <td>Parada de destino da conexão temporal</td>
+    </tr>
+    <tr>
+      <td>in_vehicle_time_s</td>
+      <td>transporte coletivo</td>
+      <td>s</td>
+      <td>Tempo programado dentro do veículo entre duas paradas consecutivas</td>
+    </tr>
+    <tr>
+      <td>shape_segment_distance_m</td>
+      <td>transporte coletivo</td>
+      <td>m</td>
+      <td>Distância ao longo do shape entre duas paradas consecutivas quando a projeção geométrica é válida</td>
+    </tr>
+  </tbody>
+</table></section><section id="parametros"><h2>Parâmetros de configuração</h2><p>Parâmetros que controlam a população sintética, as escolhas comportamentais, a análise espacial e a preparação do transporte coletivo</p><table class="dataframe metadata-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>nome</th>
+      <th>valor</th>
+      <th>unidade</th>
+      <th>descricao</th>
+      <th>origem</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>N_AGENTS</td>
+      <td>100</td>
+      <td>agentes</td>
+      <td>Tamanho atual da população sintética usada na execução técnica do piloto</td>
+      <td>src/simulation/run_pilot.py</td>
+    </tr>
+    <tr>
+      <td>SEED</td>
+      <td>42</td>
+      <td>inteiro</td>
+      <td>Semente pseudoaleatória usada para garantir reprodutibilidade da população e das escolhas</td>
+      <td>src/simulation/run_pilot.py</td>
+    </tr>
+    <tr>
+      <td>study_area.crs</td>
+      <td>EPSG:31982</td>
+      <td>CRS</td>
+      <td>Sistema de referência projetado usado nas análises espaciais</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.max_trip_distance</td>
+      <td>30000</td>
+      <td>m</td>
+      <td>Distância euclidiana máxima permitida na seleção de destinos candidatos</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.analysis_segments.geometry_tolerance_m</td>
+      <td>5</td>
+      <td>m</td>
+      <td>Tolerância geométrica usada na harmonização das redes modais</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.analysis_segments.min_geometry_coverage</td>
+      <td>0.8</td>
+      <td>proporção de 0 a 1</td>
+      <td>Cobertura geométrica mínima para aceitar correspondência entre arestas modais e segmentos físicos</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.segment_statistics.min_agents_for_interpretation</td>
+      <td>5</td>
+      <td>agentes</td>
+      <td>Número mínimo de agentes distintos adotado como suporte principal para interpretação de H_soc</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.segment_statistics.flow_thresholds</td>
+      <td>2 | 3 | 5 | 10</td>
+      <td>agentes</td>
+      <td>Limiares preservados para análise de sensibilidade do suporte amostral por segmento</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>routing.implemented_modes</td>
+      <td>walk | bike | car</td>
+      <td>categorias</td>
+      <td>Modos com roteamento viário atualmente integrado ao run_pilot</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.network.walk_speed_m_s</td>
+      <td>1.4</td>
+      <td>m/s</td>
+      <td>Velocidade provisória usada para converter o conector parada-rede de caminhada em tempo</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.network.service_date_strategy</td>
+      <td>max_scheduled_trips</td>
+      <td>categoria</td>
+      <td>Regra usada para selecionar uma data de serviço representativa do feed</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.low.share</td>
+      <td>0.209976</td>
+      <td>proporção de 0 a 1</td>
+      <td>Participação populacional configurada para o grupo de renda low</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.low.min</td>
+      <td></td>
+      <td>moeda da variável de renda de origem</td>
+      <td>Limite inferior configurado para classificar o grupo de renda low</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.low.max</td>
+      <td>1913</td>
+      <td>moeda da variável de renda de origem</td>
+      <td>Limite superior configurado para classificar o grupo de renda low</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.middle.share</td>
+      <td>0.611447</td>
+      <td>proporção de 0 a 1</td>
+      <td>Participação populacional configurada para o grupo de renda middle</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.middle.min</td>
+      <td>1913</td>
+      <td>moeda da variável de renda de origem</td>
+      <td>Limite inferior configurado para classificar o grupo de renda middle</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.middle.max</td>
+      <td>8245</td>
+      <td>moeda da variável de renda de origem</td>
+      <td>Limite superior configurado para classificar o grupo de renda middle</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.high.share</td>
+      <td>0.178576</td>
+      <td>proporção de 0 a 1</td>
+      <td>Participação populacional configurada para o grupo de renda high</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.high.min</td>
+      <td>8245</td>
+      <td>moeda da variável de renda de origem</td>
+      <td>Limite inferior configurado para classificar o grupo de renda high</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>income.groups.high.max</td>
+      <td></td>
+      <td>moeda da variável de renda de origem</td>
+      <td>Limite superior configurado para classificar o grupo de renda high</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.decay_per_km.walk</td>
+      <td>0.55</td>
+      <td>1/km</td>
+      <td>Coeficiente provisório de penalização da distância na escolha do modo walk</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.decay_per_km.bike</td>
+      <td>0.12</td>
+      <td>1/km</td>
+      <td>Coeficiente provisório de penalização da distância na escolha do modo bike</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.decay_per_km.transit</td>
+      <td>0.03</td>
+      <td>1/km</td>
+      <td>Coeficiente provisório de penalização da distância na escolha do modo transit</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.decay_per_km.car</td>
+      <td>0</td>
+      <td>1/km</td>
+      <td>Coeficiente provisório de penalização da distância na escolha do modo car</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.max_distance_km.walk</td>
+      <td>6</td>
+      <td>km</td>
+      <td>Distância OD máxima provisória permitida para o modo walk quando configurada</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.max_distance_km.bike</td>
+      <td>20</td>
+      <td>km</td>
+      <td>Distância OD máxima provisória permitida para o modo bike quando configurada</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.max_distance_km.transit</td>
+      <td></td>
+      <td>km</td>
+      <td>Distância OD máxima provisória permitida para o modo transit quando configurada</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.distance_adjustment.max_distance_km.car</td>
+      <td></td>
+      <td>km</td>
+      <td>Distância OD máxima provisória permitida para o modo car quando configurada</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.work.low</td>
+      <td>0.1</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de work no grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.work.middle</td>
+      <td>0.09</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de work no grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.work.high</td>
+      <td>0.08</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de work no grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.education.low</td>
+      <td>0.18</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de education no grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.education.middle</td>
+      <td>0.14</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de education no grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.education.high</td>
+      <td>0.1</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de education no grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.health.low</td>
+      <td>0.16</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de health no grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.health.middle</td>
+      <td>0.13</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de health no grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.health.high</td>
+      <td>0.1</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de health no grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.shopping.low</td>
+      <td>0.25</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de shopping no grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.shopping.middle</td>
+      <td>0.15</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de shopping no grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.shopping.high</td>
+      <td>0.08</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de shopping no grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.leisure.low</td>
+      <td>0.28</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de leisure no grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.leisure.middle</td>
+      <td>0.16</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de leisure no grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>destination_choice.distance_decay_per_km.leisure.high</td>
+      <td>0.08</td>
+      <td>1/km</td>
+      <td>Coeficiente de decaimento da distância para destino de leisure no grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.low.work</td>
+      <td>0.45</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito work para o grupo de renda low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.low.education</td>
+      <td>0.15</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito education para o grupo de renda low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.low.shopping</td>
+      <td>0.2</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito shopping para o grupo de renda low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.low.health</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito health para o grupo de renda low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.low.leisure</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito leisure para o grupo de renda low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.middle.work</td>
+      <td>0.35</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito work para o grupo de renda middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.middle.education</td>
+      <td>0.15</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito education para o grupo de renda middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.middle.shopping</td>
+      <td>0.2</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito shopping para o grupo de renda middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.middle.health</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito health para o grupo de renda middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.middle.leisure</td>
+      <td>0.2</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito leisure para o grupo de renda middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.high.work</td>
+      <td>0.3</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito work para o grupo de renda high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.high.education</td>
+      <td>0.15</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito education para o grupo de renda high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.high.shopping</td>
+      <td>0.2</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito shopping para o grupo de renda high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.high.health</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito health para o grupo de renda high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>purpose_choice.high.leisure</td>
+      <td>0.25</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade configurada do propósito leisure para o grupo de renda high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.low.walk</td>
+      <td>0.25</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de walk no cenário differentiated para o grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.low.bike</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de bike no cenário differentiated para o grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.low.transit</td>
+      <td>0.55</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de transit no cenário differentiated para o grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.low.car</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de car no cenário differentiated para o grupo low</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.middle.walk</td>
+      <td>0.15</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de walk no cenário differentiated para o grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.middle.bike</td>
+      <td>0.15</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de bike no cenário differentiated para o grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.middle.transit</td>
+      <td>0.3</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de transit no cenário differentiated para o grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.middle.car</td>
+      <td>0.4</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de car no cenário differentiated para o grupo middle</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.high.walk</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de walk no cenário differentiated para o grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.high.bike</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de bike no cenário differentiated para o grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.high.transit</td>
+      <td>0.1</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de transit no cenário differentiated para o grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+    <tr>
+      <td>mode_choice.differentiated.high.car</td>
+      <td>0.7</td>
+      <td>probabilidade de 0 a 1</td>
+      <td>Probabilidade modal base de car no cenário differentiated para o grupo high</td>
+      <td>config/config_agents.json</td>
+    </tr>
+  </tbody>
+</table></section><section id="metodos"><h2>Métodos de análise</h2><p>Métodos computacionais e analíticos empregados ao longo do piloto</p><table class="dataframe metadata-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>nome</th>
+      <th>funcao_codigo</th>
+      <th>descricao</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Geração de população sintética estratificada por renda</td>
+      <td>generate_population</td>
+      <td>Gera agentes sintéticos preservando as participações configuradas para os grupos de renda</td>
+    </tr>
+    <tr>
+      <td>Atribuição ponderada de origens</td>
+      <td>assign_origins</td>
+      <td>Atribui origens residenciais aos agentes usando o peso populacional das unidades espaciais</td>
+    </tr>
+    <tr>
+      <td>Escolha probabilística de propósito</td>
+      <td>assign_purpose</td>
+      <td>Sorteia o propósito da viagem segundo probabilidades configuradas por grupo de renda</td>
+    </tr>
+    <tr>
+      <td>Escolha de destino com atratividade e decaimento da distância</td>
+      <td>assign_destinations</td>
+      <td>Seleciona destinos com peso proporcional à atratividade elevada a um expoente e ao decaimento exponencial da distância</td>
+    </tr>
+    <tr>
+      <td>Escolha modal sensível à distância</td>
+      <td>calculate_mode_probabilities / choose_mode</td>
+      <td>Ajusta as probabilidades modais por uma função exponencial da distância OD e aplica limites máximos configuráveis por modo</td>
+    </tr>
+    <tr>
+      <td>Cenário baseline comportamentalmente equalizado</td>
+      <td>build_behavior_scenarios</td>
+      <td>Remove diferenças comportamentais por renda usando médias ponderadas pelas participações populacionais</td>
+    </tr>
+    <tr>
+      <td>Cenário differentiated</td>
+      <td>build_behavior_scenarios</td>
+      <td>Preserva diferenças por renda nas regras de propósito, destino e probabilidades modais</td>
+    </tr>
+    <tr>
+      <td>Caminho mínimo de Dijkstra</td>
+      <td>route_agent / networkx.shortest_path</td>
+      <td>Calcula a rota sobre a rede modal usando comprimento como impedância no piloto viário</td>
+    </tr>
+    <tr>
+      <td>Explosão de trajetórias em agente × aresta</td>
+      <td>build_edge_usage</td>
+      <td>Converte cada trajetória em registros de passagem por aresta para permitir agregação espacial</td>
+    </tr>
+    <tr>
+      <td>Harmonização multimodal por equivalência OSM</td>
+      <td>build_analysis_segments</td>
+      <td>Associa arestas modais ao mesmo segmento físico quando existe equivalência estável de extremos e identificadores OSM</td>
+    </tr>
+    <tr>
+      <td>Harmonização multimodal por sobreposição geométrica</td>
+      <td>build_analysis_segments</td>
+      <td>Associa arestas modais a segmentos físicos quando a correspondência exata não existe e a cobertura geométrica satisfaz os parâmetros configurados</td>
+    </tr>
+    <tr>
+      <td>Preservação de segmentos exclusivos</td>
+      <td>build_analysis_segments</td>
+      <td>Mantém como unidades próprias as arestas modais que não encontram correspondência física adequada</td>
+    </tr>
+    <tr>
+      <td>Entropia socioeconômica de Shannon normalizada</td>
+      <td>normalized_shannon_entropy</td>
+      <td>Mede a diversidade dos grupos de renda entre agentes distintos que usam o mesmo segmento físico</td>
+    </tr>
+    <tr>
+      <td>Comparação pareada por segmento físico</td>
+      <td>build_scenario_comparison</td>
+      <td>Compara baseline e differentiated usando o mesmo analysis_segment_id e calcula diferenças apenas quando as métricas são comparáveis</td>
+    </tr>
+    <tr>
+      <td>Análise de sensibilidade por limiar de fluxo</td>
+      <td>build_segment_statistics / build_scenario_comparison</td>
+      <td>Mantém indicadores para diferentes números mínimos de agentes por segmento</td>
+    </tr>
+    <tr>
+      <td>Mapeamento diagnóstico com escalas fixas</td>
+      <td>save_pilot_maps</td>
+      <td>Gera mapas de H_soc e delta_H_soc com escalas fixas para permitir comparação visual entre cenários</td>
+    </tr>
+    <tr>
+      <td>Expansão do calendário GTFS</td>
+      <td>_build_service_dates</td>
+      <td>Combina calendar e calendar_dates para gerar uma linha por service_id e data efetivamente ativa</td>
+    </tr>
+    <tr>
+      <td>Interpolação temporal GTFS por shape_dist_traveled</td>
+      <td>_interpolate_stop_time_events</td>
+      <td>Interpola horários intermediários pela distância acumulada fornecida pelo GTFS quando esse campo é utilizável</td>
+    </tr>
+    <tr>
+      <td>Interpolação temporal GTFS pela geometria do shape</td>
+      <td>_refine_stop_times_with_shape_geometry</td>
+      <td>Projeta paradas sobre o shape e interpola horários segundo a posição espacial ao longo da geometria quando a sequência é válida</td>
+    </tr>
+    <tr>
+      <td>Interpolação temporal GTFS por stop_sequence</td>
+      <td>_interpolate_stop_time_events</td>
+      <td>Usa a posição ordinal das paradas como fallback quando não existe uma base de distância válida</td>
+    </tr>
+    <tr>
+      <td>Associação de paradas à rede de caminhada</td>
+      <td>_connect_stops_to_walk_network</td>
+      <td>Associa cada parada GTFS ao nó mais próximo da rede de caminhada e calcula distância e tempo do conector</td>
+    </tr>
+    <tr>
+      <td>Tabela temporal de conexões GTFS</td>
+      <td>_build_scheduled_connections</td>
+      <td>Representa cada par consecutivo de paradas de uma viagem como uma conexão temporal com partida, chegada e duração</td>
+    </tr>
+    <tr>
+      <td>Perfil diário de oferta GTFS</td>
+      <td>_build_service_day_profile</td>
+      <td>Calcula o número de viagens programadas por data e identifica uma data de referência pela maior oferta do feed</td>
+    </tr>
+  </tbody>
+</table></section><section id="estatisticas"><h2>Estatísticas</h2><p>Estatísticas e medidas resumidas usadas nos diagnósticos e comparações</p><table class="dataframe metadata-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>nome</th>
+      <th>descricao</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Contagem</td>
+      <td>Quantifica agentes, viagens, arestas, segmentos, paradas, rotas, shapes e demais unidades discretas</td>
+    </tr>
+    <tr>
+      <td>Número de valores distintos</td>
+      <td>Conta agentes, arestas, nós, pares de paradas e identificadores únicos</td>
+    </tr>
+    <tr>
+      <td>Frequência absoluta</td>
+      <td>Resume quantidades por categoria de renda, propósito, modo, status, método ou tipo</td>
+    </tr>
+    <tr>
+      <td>Proporção</td>
+      <td>Expressa a participação relativa de grupos de renda, métodos de harmonização e outras categorias</td>
+    </tr>
+    <tr>
+      <td>Percentual</td>
+      <td>Apresenta proporções multiplicadas por 100 em diagnósticos de cobertura e qualidade</td>
+    </tr>
+    <tr>
+      <td>Média aritmética</td>
+      <td>Resume valores como distância, H_soc, delta_H_soc, qualidade de correspondência e tempo</td>
+    </tr>
+    <tr>
+      <td>Mediana</td>
+      <td>Resume a tendência central de distâncias, tempos, H_soc e delta_H_soc com menor sensibilidade a extremos</td>
+    </tr>
+    <tr>
+      <td>Mínimo</td>
+      <td>Registra o menor valor observado em distribuições de distância, tempo e outras métricas</td>
+    </tr>
+    <tr>
+      <td>Máximo</td>
+      <td>Registra o maior valor observado em distribuições de distância, tempo e outras métricas</td>
+    </tr>
+    <tr>
+      <td>Percentil 95</td>
+      <td>Resume a cauda superior da distância e do tempo dos conectores entre paradas e rede de caminhada</td>
+    </tr>
+    <tr>
+      <td>Tabela de contingência</td>
+      <td>Cruza renda com propósito e renda com modo para diagnóstico das escolhas dos agentes</td>
+    </tr>
+    <tr>
+      <td>Entropia de Shannon normalizada</td>
+      <td>Calcula a diversidade socioeconômica entre três grupos de renda com resultado normalizado entre zero e um</td>
+    </tr>
+    <tr>
+      <td>Diferença pareada</td>
+      <td>Calcula differentiated menos baseline para H_soc, número de agentes e número de passagens no mesmo segmento físico</td>
+    </tr>
+    <tr>
+      <td>Contagem por limiar</td>
+      <td>Conta segmentos que atingem valores mínimos de 2, 3, 5 e 10 agentes distintos</td>
+    </tr>
+    <tr>
+      <td>Qualidade média de harmonização</td>
+      <td>Resume a qualidade das correspondências geométricas entre arestas modais e segmentos físicos</td>
+    </tr>
+  </tbody>
+</table></section><section id="limpeza"><h2>Métodos de limpeza e validação</h2><p>Operações de limpeza, validação, padronização e controle de consistência aplicadas às bases</p><table class="dataframe metadata-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>nome</th>
+      <th>descricao</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Padronização de strings</td>
+      <td>Remove espaços excedentes e normaliza campos textuais usados como identificadores e categorias</td>
+    </tr>
+    <tr>
+      <td>Preservação de identificadores como texto</td>
+      <td>Lê identificadores GTFS como strings para evitar perda de zeros à esquerda ou conversões indevidas</td>
+    </tr>
+    <tr>
+      <td>Conversão numérica validada</td>
+      <td>Converte campos numéricos com detecção explícita de valores inválidos</td>
+    </tr>
+    <tr>
+      <td>Validação de valores não vazios</td>
+      <td>Verifica campos obrigatórios antes de executar análise ou roteamento</td>
+    </tr>
+    <tr>
+      <td>Validação de unicidade</td>
+      <td>Detecta chaves duplicadas em identificadores e sequências que devem ser únicas</td>
+    </tr>
+    <tr>
+      <td>Validação de chaves estrangeiras GTFS</td>
+      <td>Confere referências entre routes, trips, stop_times, stops, service_ids e shapes</td>
+    </tr>
+    <tr>
+      <td>Filtragem de destinos inválidos</td>
+      <td>Remove destinos sem geometria, categoria, peso de atratividade positivo ou nós modais necessários</td>
+    </tr>
+    <tr>
+      <td>Harmonização de CRS</td>
+      <td>Converte camadas espaciais para o CRS projetado EPSG:31982 quando necessário</td>
+    </tr>
+    <tr>
+      <td>Validação de coordenadas geográficas</td>
+      <td>Rejeita latitudes e longitudes GTFS fora dos intervalos válidos</td>
+    </tr>
+    <tr>
+      <td>Ordenação de sequências de viagem</td>
+      <td>Ordena stop_times por trip_id e stop_sequence antes da análise temporal</td>
+    </tr>
+    <tr>
+      <td>Conversão de horários GTFS para segundos</td>
+      <td>Converte HH:MM:SS em segundos desde o início do dia de serviço e preserva horários acima de 24 horas</td>
+    </tr>
+    <tr>
+      <td>Interpolação explícita de horários ausentes</td>
+      <td>Preenche horários intermediários apenas entre âncoras conhecidas e registra o método usado</td>
+    </tr>
+    <tr>
+      <td>Validação de monotonicidade temporal</td>
+      <td>Rejeita viagens em que os horários processados diminuem ao avançar pela sequência de paradas</td>
+    </tr>
+    <tr>
+      <td>Validação de duração de conexão</td>
+      <td>Rejeita conexões temporais com chegada anterior à partida</td>
+    </tr>
+    <tr>
+      <td>Expansão e aplicação de exceções do calendário</td>
+      <td>Combina o padrão semanal com inclusões e exclusões específicas de calendar_dates</td>
+    </tr>
+    <tr>
+      <td>Remoção de estruturas não serializáveis</td>
+      <td>Remove coleções Python como osmid_set antes de gravar determinadas camadas GeoPackage</td>
+    </tr>
+    <tr>
+      <td>Substituição controlada de arquivos processados</td>
+      <td>Remove a versão anterior de produtos derivados antes de gravar uma nova versão</td>
+    </tr>
+    <tr>
+      <td>Deduplicação agente × segmento</td>
+      <td>Usa apenas uma observação por agente e segmento para composição socioeconômica e evita inflar pesos por repetição de passagem</td>
+    </tr>
+  </tbody>
+</table></section><section id="arquivos"><h2>Arquivos gerados</h2><p>Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto</p><table class="dataframe metadata-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>nome</th>
+      <th>caminho</th>
+      <th>etapa</th>
+      <th>descricao</th>
+      <th>opcional</th>
+      <th>existe_no_momento</th>
+      <th>tamanho_bytes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>rede-poa-car.graphml</td>
+      <td>data/graph/rede-poa-car.graphml</td>
+      <td>rede OSM</td>
+      <td>Rede viária OSM processada para roteamento de carro</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>25498039</td>
+    </tr>
+    <tr>
+      <td>rede-poa-walk.graphml</td>
+      <td>data/graph/rede-poa-walk.graphml</td>
+      <td>rede OSM</td>
+      <td>Rede OSM processada para roteamento de caminhada</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>54288508</td>
+    </tr>
+    <tr>
+      <td>rede-poa-bike.graphml</td>
+      <td>data/graph/rede-poa-bike.graphml</td>
+      <td>rede OSM</td>
+      <td>Rede OSM processada para roteamento de bicicleta</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>43443363</td>
+    </tr>
+    <tr>
+      <td>rede-poa.graphml</td>
+      <td>data/graph/rede-poa.graphml</td>
+      <td>rede OSM</td>
+      <td>Rede OSM legada preservada para compatibilidade com etapas exploratórias anteriores</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>25498039</td>
+    </tr>
+    <tr>
+      <td>origens_porto_alegre.gpkg</td>
+      <td>data/o-d/origens_porto_alegre.gpkg</td>
+      <td>origens</td>
+      <td>Camada de origens espaciais de Porto Alegre usada na preparação das origens socioeconômicas</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>1671168</td>
+    </tr>
+    <tr>
+      <td>origens_porto_alegre_income.gpkg</td>
+      <td>data/o-d/origens_porto_alegre_income.gpkg</td>
+      <td>origens</td>
+      <td>Camada de origens residenciais com informação socioeconômica e nós modais associados</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1970176</td>
+    </tr>
+    <tr>
+      <td>destinos_cnefe_porto_alegre.gpkg</td>
+      <td>data/o-d/destinos_cnefe_porto_alegre.gpkg</td>
+      <td>destinos</td>
+      <td>Camada intermediária de estabelecimentos e destinos derivados do CNEFE</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>18419712</td>
+    </tr>
+    <tr>
+      <td>destinos_cnefe_classificados_porto_alegre.gpkg</td>
+      <td>data/o-d/destinos_cnefe_classificados_porto_alegre.gpkg</td>
+      <td>destinos</td>
+      <td>Camada final de destinos CNEFE classificados por propósito e com nós modais</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>26136576</td>
+    </tr>
+    <tr>
+      <td>porto_alegre_gtfs.zip</td>
+      <td>data/gtfs/porto_alegre_gtfs.zip</td>
+      <td>GTFS</td>
+      <td>Arquivo GTFS original baixado da fonte oficial configurada para a EPTC</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>7745077</td>
+    </tr>
+    <tr>
+      <td>gtfs_download_metadata.json</td>
+      <td>data/gtfs/gtfs_download_metadata.json</td>
+      <td>GTFS</td>
+      <td>Metadados do download GTFS com fonte, data, tamanho e hash SHA-256</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>503</td>
+    </tr>
+    <tr>
+      <td>agency_processed.parquet</td>
+      <td>data/gtfs/agency_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Tabela GTFS de operadores após validação</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>5241</td>
+    </tr>
+    <tr>
+      <td>routes_processed.parquet</td>
+      <td>data/gtfs/routes_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Tabela GTFS de rotas após validação e tipagem</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>16899</td>
+    </tr>
+    <tr>
+      <td>trips_processed.parquet</td>
+      <td>data/gtfs/trips_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Tabela GTFS de viagens programadas após validação</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>279475</td>
+    </tr>
+    <tr>
+      <td>stop_times_processed.parquet</td>
+      <td>data/gtfs/stop_times_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Tabela de horários processados com segundos, flags de ausência e métodos de interpolação</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>9517009</td>
+    </tr>
+    <tr>
+      <td>calendar_processed.parquet</td>
+      <td>data/gtfs/calendar_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Calendário semanal GTFS processado quando disponível</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>11068</td>
+    </tr>
+    <tr>
+      <td>calendar_dates_processed.parquet</td>
+      <td>data/gtfs/calendar_dates_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Exceções de calendário GTFS processadas quando disponíveis</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>14503</td>
+    </tr>
+    <tr>
+      <td>service_dates_processed.parquet</td>
+      <td>data/gtfs/service_dates_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Datas efetivas de serviço após combinar calendário e exceções</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>11601</td>
+    </tr>
+    <tr>
+      <td>stops_processed.gpkg</td>
+      <td>data/gtfs/stops_processed.gpkg</td>
+      <td>GTFS processado</td>
+      <td>Paradas GTFS projetadas para o CRS do estudo</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>921600</td>
+    </tr>
+    <tr>
+      <td>shapes_processed.gpkg</td>
+      <td>data/gtfs/shapes_processed.gpkg</td>
+      <td>GTFS processado</td>
+      <td>Geometrias de shapes GTFS reconstruídas e projetadas para o CRS do estudo</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>4329472</td>
+    </tr>
+    <tr>
+      <td>frequencies_processed.parquet</td>
+      <td>data/gtfs/frequencies_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Tabela GTFS de frequências processada quando o feed fornece frequencies.txt</td>
+      <td>sim</td>
+      <td>não</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>transfers_processed.parquet</td>
+      <td>data/gtfs/transfers_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Tabela GTFS de transferências processada quando o feed fornece transfers.txt</td>
+      <td>sim</td>
+      <td>não</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>feed_info_processed.parquet</td>
+      <td>data/gtfs/feed_info_processed.parquet</td>
+      <td>GTFS processado</td>
+      <td>Metadados do feed GTFS processados quando disponíveis</td>
+      <td>sim</td>
+      <td>sim</td>
+      <td>5040</td>
+    </tr>
+    <tr>
+      <td>gtfs_processed_inventory.csv</td>
+      <td>data/gtfs/gtfs_processed_inventory.csv</td>
+      <td>GTFS processado</td>
+      <td>Inventário das tabelas GTFS encontradas e processadas</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1136</td>
+    </tr>
+    <tr>
+      <td>gtfs_processed_summary.csv</td>
+      <td>data/gtfs/gtfs_processed_summary.csv</td>
+      <td>GTFS processado</td>
+      <td>Resumo quantitativo e diagnóstico do processamento GTFS</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>765</td>
+    </tr>
+    <tr>
+      <td>stops_walk_connected_processed.gpkg</td>
+      <td>data/gtfs/stops_walk_connected_processed.gpkg</td>
+      <td>rede de transporte coletivo</td>
+      <td>Paradas GTFS com associação ao nó mais próximo da rede de caminhada e métricas do conector</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1069056</td>
+    </tr>
+    <tr>
+      <td>transit_stop_walk_connectors_processed.parquet</td>
+      <td>data/gtfs/transit_stop_walk_connectors_processed.parquet</td>
+      <td>rede de transporte coletivo</td>
+      <td>Tabela tabular dos conectores entre paradas GTFS e nós da rede de caminhada</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>187087</td>
+    </tr>
+    <tr>
+      <td>transit_connections_processed.parquet</td>
+      <td>data/gtfs/transit_connections_processed.parquet</td>
+      <td>rede de transporte coletivo</td>
+      <td>Tabela temporal de conexões entre paradas consecutivas de todas as viagens GTFS</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>50224012</td>
+    </tr>
+    <tr>
+      <td>transit_topology_processed.parquet</td>
+      <td>data/gtfs/transit_topology_processed.parquet</td>
+      <td>rede de transporte coletivo</td>
+      <td>Resumo topológico das ligações entre pares direcionais de paradas por rota</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>228006</td>
+    </tr>
+    <tr>
+      <td>transit_service_day_profile_processed.csv</td>
+      <td>data/gtfs/transit_service_day_profile_processed.csv</td>
+      <td>rede de transporte coletivo</td>
+      <td>Perfil diário do número de serviços e viagens programadas no período do GTFS</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>3123</td>
+    </tr>
+    <tr>
+      <td>transit_network_summary.csv</td>
+      <td>data/gtfs/transit_network_summary.csv</td>
+      <td>rede de transporte coletivo</td>
+      <td>Resumo diagnóstico da associação das paradas à caminhada e da tabela temporal de ônibus</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>683</td>
+    </tr>
+    <tr>
+      <td>agents_baseline.csv</td>
+      <td>outputs/pilot/agents_baseline.csv</td>
+      <td>simulação</td>
+      <td>Agentes e resultados de viagem do cenário baseline</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>227102</td>
+    </tr>
+    <tr>
+      <td>agents_differentiated.csv</td>
+      <td>outputs/pilot/agents_differentiated.csv</td>
+      <td>simulação</td>
+      <td>Agentes e resultados de viagem do cenário differentiated</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>224907</td>
+    </tr>
+    <tr>
+      <td>agents_all_scenarios.csv</td>
+      <td>outputs/pilot/agents_all_scenarios.csv</td>
+      <td>simulação</td>
+      <td>Agentes dos dois cenários reunidos em uma única tabela</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>451839</td>
+    </tr>
+    <tr>
+      <td>edge_usage_baseline.csv</td>
+      <td>outputs/pilot/edge_usage_baseline.csv</td>
+      <td>trajetórias</td>
+      <td>Registros agente × aresta modal do cenário baseline</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1288420</td>
+    </tr>
+    <tr>
+      <td>edge_usage_differentiated.csv</td>
+      <td>outputs/pilot/edge_usage_differentiated.csv</td>
+      <td>trajetórias</td>
+      <td>Registros agente × aresta modal do cenário differentiated</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1314652</td>
+    </tr>
+    <tr>
+      <td>edge_usage_all_scenarios.csv</td>
+      <td>outputs/pilot/edge_usage_all_scenarios.csv</td>
+      <td>trajetórias</td>
+      <td>Registros agente × aresta modal dos dois cenários</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>2602915</td>
+    </tr>
+    <tr>
+      <td>edge_usage_analysis_baseline.csv</td>
+      <td>outputs/pilot/edge_usage_analysis_baseline.csv</td>
+      <td>harmonização</td>
+      <td>Uso das arestas do baseline associado aos segmentos físicos comuns</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>2109747</td>
+    </tr>
+    <tr>
+      <td>edge_usage_analysis_differentiated.csv</td>
+      <td>outputs/pilot/edge_usage_analysis_differentiated.csv</td>
+      <td>harmonização</td>
+      <td>Uso das arestas do differentiated associado aos segmentos físicos comuns</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>2106524</td>
+    </tr>
+    <tr>
+      <td>edge_usage_analysis_all_scenarios.csv</td>
+      <td>outputs/pilot/edge_usage_analysis_all_scenarios.csv</td>
+      <td>harmonização</td>
+      <td>Uso harmonizado dos segmentos físicos nos dois cenários</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>4216067</td>
+    </tr>
+    <tr>
+      <td>modal_edge_to_analysis_segment.csv</td>
+      <td>outputs/pilot/modal_edge_to_analysis_segment.csv</td>
+      <td>harmonização</td>
+      <td>Mapeamento de cada aresta modal para um ou mais segmentos físicos de análise</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>15617568</td>
+    </tr>
+    <tr>
+      <td>analysis_segment_match_report.csv</td>
+      <td>outputs/pilot/analysis_segment_match_report.csv</td>
+      <td>harmonização</td>
+      <td>Resumo dos métodos e da qualidade de harmonização nas redes completas</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>556</td>
+    </tr>
+    <tr>
+      <td>analysis_segment_used_match_report.csv</td>
+      <td>outputs/pilot/analysis_segment_used_match_report.csv</td>
+      <td>harmonização</td>
+      <td>Resumo dos métodos e da qualidade de harmonização restrito às arestas usadas pelos agentes</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>525</td>
+    </tr>
+    <tr>
+      <td>analysis_segments.gpkg</td>
+      <td>outputs/pilot/analysis_segments.gpkg</td>
+      <td>harmonização</td>
+      <td>Camada completa dos segmentos físicos usados como unidade comum de análise</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>17707008</td>
+    </tr>
+    <tr>
+      <td>segment_statistics_baseline.csv</td>
+      <td>outputs/pilot/segment_statistics_baseline.csv</td>
+      <td>entropia</td>
+      <td>Estatísticas de fluxo, composição socioeconômica e H_soc do cenário baseline</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>714918</td>
+    </tr>
+    <tr>
+      <td>segment_statistics_differentiated.csv</td>
+      <td>outputs/pilot/segment_statistics_differentiated.csv</td>
+      <td>entropia</td>
+      <td>Estatísticas de fluxo, composição socioeconômica e H_soc do cenário differentiated</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>745255</td>
+    </tr>
+    <tr>
+      <td>segment_statistics_all_scenarios.csv</td>
+      <td>outputs/pilot/segment_statistics_all_scenarios.csv</td>
+      <td>entropia</td>
+      <td>Estatísticas de segmentos dos dois cenários reunidas</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1459825</td>
+    </tr>
+    <tr>
+      <td>segment_metrics_baseline.gpkg</td>
+      <td>outputs/pilot/segment_metrics_baseline.gpkg</td>
+      <td>entropia</td>
+      <td>Camada espacial dos segmentos físicos com métricas do cenário baseline</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>20062208</td>
+    </tr>
+    <tr>
+      <td>segment_metrics_differentiated.gpkg</td>
+      <td>outputs/pilot/segment_metrics_differentiated.gpkg</td>
+      <td>entropia</td>
+      <td>Camada espacial dos segmentos físicos com métricas do cenário differentiated</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>20447232</td>
+    </tr>
+    <tr>
+      <td>segment_scenario_comparison.csv</td>
+      <td>outputs/pilot/segment_scenario_comparison.csv</td>
+      <td>comparação</td>
+      <td>Comparação pareada de baseline e differentiated por analysis_segment_id</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>2492663</td>
+    </tr>
+    <tr>
+      <td>segment_scenario_comparison_summary.csv</td>
+      <td>outputs/pilot/segment_scenario_comparison_summary.csv</td>
+      <td>comparação</td>
+      <td>Resumo quantitativo da comparação pareada entre os cenários</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>704</td>
+    </tr>
+    <tr>
+      <td>segment_scenario_comparison.gpkg</td>
+      <td>outputs/pilot/segment_scenario_comparison.gpkg</td>
+      <td>comparação</td>
+      <td>Camada espacial com métricas pareadas e delta_H_soc</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>23400448</td>
+    </tr>
+    <tr>
+      <td>h_soc_baseline_all.png</td>
+      <td>outputs/pilot/maps/h_soc_baseline_all.png</td>
+      <td>mapas</td>
+      <td>Mapa de H_soc do baseline para todos os segmentos observados</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1094788</td>
+    </tr>
+    <tr>
+      <td>h_soc_baseline_supported.png</td>
+      <td>outputs/pilot/maps/h_soc_baseline_supported.png</td>
+      <td>mapas</td>
+      <td>Mapa de H_soc do baseline restrito aos segmentos com fluxo suficiente</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>870164</td>
+    </tr>
+    <tr>
+      <td>h_soc_differentiated_all.png</td>
+      <td>outputs/pilot/maps/h_soc_differentiated_all.png</td>
+      <td>mapas</td>
+      <td>Mapa de H_soc do differentiated para todos os segmentos observados</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>1095579</td>
+    </tr>
+    <tr>
+      <td>h_soc_differentiated_supported.png</td>
+      <td>outputs/pilot/maps/h_soc_differentiated_supported.png</td>
+      <td>mapas</td>
+      <td>Mapa de H_soc do differentiated restrito aos segmentos com fluxo suficiente</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>877549</td>
+    </tr>
+    <tr>
+      <td>delta_h_soc_all.png</td>
+      <td>outputs/pilot/maps/delta_h_soc_all.png</td>
+      <td>mapas</td>
+      <td>Mapa da diferença pareada de H_soc para todos os segmentos comparáveis</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>940952</td>
+    </tr>
+    <tr>
+      <td>delta_h_soc_supported.png</td>
+      <td>outputs/pilot/maps/delta_h_soc_supported.png</td>
+      <td>mapas</td>
+      <td>Mapa da diferença pareada de H_soc restrito aos segmentos com fluxo suficiente nos dois cenários</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>854357</td>
+    </tr>
+    <tr>
+      <td>map_manifest.csv</td>
+      <td>outputs/pilot/maps/map_manifest.csv</td>
+      <td>mapas</td>
+      <td>Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>542</td>
+    </tr>
+    <tr>
+      <td>metadados_piloto.xlsx</td>
+      <td>outputs/metadados_piloto.xlsx</td>
+      <td>documentação</td>
+      <td>Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto</td>
+      <td>não</td>
+      <td>sim</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>metadados_piloto.html</td>
+      <td>outputs/metadados_piloto.html</td>
+      <td>documentação</td>
+      <td>Relatório HTML navegável com a documentação metodológica consolidada do piloto</td>
+      <td>não</td>
+      <td>sim</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table></section>
+</main>
+<footer>
+    Todas as descrições deste relatório são apresentadas em português
+</footer>
+</body>
+</html>
