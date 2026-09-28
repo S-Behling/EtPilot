@@ -1504,6 +1504,28 @@ def _collect_config_parameters(
             "Diferença angular local máxima permitida na etapa de fallback",
         ),
         (
+            "transit.spatial_mapping.unmatched_policy",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "unmatched_policy"
+            ),
+            "categoria",
+            "Política aplicada quando conexões GTFS usadas não encontram correspondência na camada física comum",
+        ),
+        (
+            "transit.spatial_mapping.paired_exclusion",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "paired_exclusion"
+            ),
+            "booleano",
+            "Indica se a falha espacial de um agente em um cenário também retira o mesmo agent_id da análise espacial no outro cenário",
+        ),
+        (
             "transit.routing.diagnostics.sample_size",
             transit.get(
                 "routing",
