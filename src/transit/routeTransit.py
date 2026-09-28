@@ -370,11 +370,16 @@ class TransitRouter:
                 "stop_connectors_file"
             ]
         )
+        connections_filename = network_config.get(
+            "routable_connections_file",
+            network_config[
+                "connections_file"
+            ],
+        )
+
         connections = pd.read_parquet(
             data_dir
-            / network_config[
-                "connections_file"
-            ]
+            / connections_filename
         )
         service_dates = pd.read_parquet(
             data_dir
