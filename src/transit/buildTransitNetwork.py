@@ -20,6 +20,9 @@ from src.network.multimodal import (
     assign_modal_nodes,
     load_mode_graphs,
 )
+from src.transit.validateGTFSTemporalQuality import (
+    build_trip_temporal_quality,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -855,6 +858,154 @@ def _build_service_day_profile(
     return daily
 
 
+def _build_routing_quality_filter(
+    quality: pd.DataFrame,
+    *,
+    quality_config: dict,
+) -> pd.DataFrame:
+    """Classifica viagens aptas ao roteamento sem apagar o diagnóstico completo"""
+
+    result = quality.copy()
+
+    result[
+        "routing_excluded_missing_temporal_summary"
+    ] = False
+    result[
+        "routing_excluded_nonpositive_duration"
+    ] = False
+    result[
+        "routing_excluded_infeasible_regularization"
+    ] = False
+    result[
+        "routing_excluded_implied_speed"
+    ] = False
+
+    if bool(
+        quality_config.get(
+            "exclude_missing_temporal_summary",
+            True,
+        )
+    ):
+        result[
+            "routing_excluded_missing_temporal_summary"
+        ] = (
+            result[
+                "missing_stop_time_summary"
+            ]
+            | result[
+                "missing_connection_summary"
+            ]
+        )
+
+    if bool(
+        quality_config.get(
+            "exclude_nonpositive_duration",
+            True,
+        )
+    ):
+        result[
+            "routing_excluded_nonpositive_duration"
+        ] = result[
+            "nonpositive_scheduled_duration"
+        ]
+
+    if bool(
+        quality_config.get(
+            "exclude_infeasible_regularization",
+            True,
+        )
+    ):
+        result[
+            "routing_excluded_infeasible_regularization"
+        ] = result[
+            "infeasible_temporal_regularization"
+        ]
+
+    max_speed = quality_config.get(
+        "max_implied_shape_speed_kmh"
+    )
+
+    if max_speed is not None:
+        max_speed_value = float(
+            max_speed
+        )
+
+        if max_speed_value <= 0:
+            raise ValueError(
+                "max_implied_shape_speed_kmh precisa ser maior que zero"
+            )
+
+        result[
+            "routing_excluded_implied_speed"
+        ] = (
+            result[
+                "implied_shape_speed_kmh"
+            ]
+            .notna()
+            & (
+                result[
+                    "implied_shape_speed_kmh"
+                ]
+                > max_speed_value
+            )
+        )
+
+    reason_columns = [
+        "routing_excluded_missing_temporal_summary",
+        "routing_excluded_nonpositive_duration",
+        "routing_excluded_infeasible_regularization",
+        "routing_excluded_implied_speed",
+    ]
+
+    result[
+        "routable_for_transit"
+    ] = ~result[
+        reason_columns
+    ].any(
+        axis=1
+    )
+
+    labels = {
+        "routing_excluded_missing_temporal_summary": "missing_temporal_summary",
+        "routing_excluded_nonpositive_duration": "nonpositive_duration",
+        "routing_excluded_infeasible_regularization": "infeasible_regularization",
+        "routing_excluded_implied_speed": "implied_speed_above_limit",
+    }
+
+    def build_reason(
+        row,
+    ) -> str:
+        """Resume os motivos de exclusão da viagem"""
+
+        reasons = [
+            label
+            for column, label
+            in labels.items()
+            if bool(
+                row[
+                    column
+                ]
+            )
+        ]
+
+        return (
+            "ok"
+            if not reasons
+            else "|".join(
+                reasons
+            )
+        )
+
+    result[
+        "routing_quality_status"
+    ] = result.apply(
+        build_reason,
+        axis=1,
+    )
+
+    return result
+
+
 def build_transit_network() -> dict:
     """Prepara conexões GTFS e associação das paradas à rede de caminhada"""
 
@@ -933,11 +1084,84 @@ def build_transit_network() -> dict:
         trips=trips,
         stop_times=stop_times,
     )
-    topology = _build_topology(
-        connections
+
+    shapes_path = (
+        data_dir
+        / "shapes_processed.gpkg"
     )
-    service_profile = _build_service_day_profile(
+    shapes = (
+        gpd.read_file(
+            shapes_path,
+            layer="shapes_processed",
+            engine="pyogrio",
+        )
+        if shapes_path.exists()
+        else None
+    )
+
+    trip_quality = build_trip_temporal_quality(
         trips=trips,
+        stop_times=stop_times,
+        connections=connections,
+        shapes=shapes,
+    )
+
+    quality_config = routing_config.get(
+        "quality_filter",
+        {}
+    )
+    trip_quality = _build_routing_quality_filter(
+        trip_quality,
+        quality_config=quality_config,
+    )
+
+    routable_trip_ids = set(
+        trip_quality.loc[
+            trip_quality[
+                "routable_for_transit"
+            ],
+            "trip_id",
+        ].astype(
+            str
+        )
+    )
+
+    routable_connections = (
+        connections.loc[
+            connections[
+                "trip_id"
+            ]
+            .astype(
+                str
+            )
+            .isin(
+                routable_trip_ids
+            )
+        ]
+        .copy()
+        .reset_index(
+            drop=True
+        )
+    )
+
+    topology = _build_topology(
+        routable_connections
+    )
+
+    routable_trips = trips.loc[
+        trips[
+            "trip_id"
+        ]
+        .astype(
+            str
+        )
+        .isin(
+            routable_trip_ids
+        )
+    ].copy()
+
+    service_profile = _build_service_day_profile(
+        trips=routable_trips,
         service_dates=service_dates,
     )
 
@@ -966,6 +1190,18 @@ def build_transit_network() -> dict:
         data_dir
         / network_config[
             "connections_file"
+        ]
+    )
+    routable_connections_path = (
+        data_dir
+        / network_config[
+            "routable_connections_file"
+        ]
+    )
+    trip_quality_path = (
+        data_dir
+        / network_config[
+            "trip_quality_file"
         ]
     )
     topology_path = (
@@ -999,6 +1235,15 @@ def build_transit_network() -> dict:
     connections.to_parquet(
         connections_path,
         index=False,
+    )
+    routable_connections.to_parquet(
+        routable_connections_path,
+        index=False,
+    )
+    trip_quality.to_csv(
+        trip_quality_path,
+        index=False,
+        encoding="utf-8",
     )
     topology.to_parquet(
         topology_path,
@@ -1069,8 +1314,62 @@ def build_transit_network() -> dict:
                 connections
             )
         ),
+        "n_routable_connections": int(
+            len(
+                routable_connections
+            )
+        ),
+        "n_total_trips_quality": int(
+            len(
+                trip_quality
+            )
+        ),
+        "n_routable_trips": int(
+            trip_quality[
+                "routable_for_transit"
+            ].sum()
+        ),
+        "n_excluded_trips": int(
+            (
+                ~trip_quality[
+                    "routable_for_transit"
+                ]
+            ).sum()
+        ),
+        "n_excluded_missing_temporal_summary": int(
+            trip_quality[
+                "routing_excluded_missing_temporal_summary"
+            ].sum()
+        ),
+        "n_excluded_nonpositive_duration": int(
+            trip_quality[
+                "routing_excluded_nonpositive_duration"
+            ].sum()
+        ),
+        "n_excluded_infeasible_regularization": int(
+            trip_quality[
+                "routing_excluded_infeasible_regularization"
+            ].sum()
+        ),
+        "n_excluded_implied_speed": int(
+            trip_quality[
+                "routing_excluded_implied_speed"
+            ].sum()
+        ),
+        "max_implied_shape_speed_kmh": (
+            float(
+                quality_config[
+                    "max_implied_shape_speed_kmh"
+                ]
+            )
+            if quality_config.get(
+                "max_implied_shape_speed_kmh"
+            )
+            is not None
+            else None
+        ),
         "n_unique_stop_pairs": int(
-            connections[
+            routable_connections[
                 [
                     "from_stop_id",
                     "to_stop_id",
@@ -1099,13 +1398,21 @@ def build_transit_network() -> dict:
                 == 0
             ).sum()
         ),
+        "routable_zero_duration_connections": int(
+            (
+                routable_connections[
+                    "in_vehicle_time_s"
+                ]
+                == 0
+            ).sum()
+        ),
         "connection_time_median_s": float(
-            connections[
+            routable_connections[
                 "in_vehicle_time_s"
             ].median()
         ),
         "connection_time_p95_s": float(
-            connections[
+            routable_connections[
                 "in_vehicle_time_s"
             ].quantile(
                 0.95
@@ -1222,8 +1529,13 @@ def main() -> None:
         "\nConexões temporais entre paradas"
     )
     print(
-        "  Conexões programadas: "
+        "  Conexões programadas no feed processado: "
         f"{_format_int_pt(summary['n_scheduled_connections'])} conexões"
+    )
+    print(
+        "  Conexões aptas ao roteamento: "
+        f"{_format_int_pt(summary['n_routable_connections'])} conexões "
+        f"({_format_percentage_pt(summary['n_routable_connections'], summary['n_scheduled_connections'])})"
     )
     print(
         "  Pares direcionais de paradas distintos: "
@@ -1240,9 +1552,14 @@ def main() -> None:
         f"({_format_percentage_pt(summary['connections_with_interpolated_time'], summary['n_scheduled_connections'])})"
     )
     print(
-        "  Conexões com duração igual a zero: "
+        "  Conexões com duração igual a zero no conjunto completo: "
         f"{_format_int_pt(summary['zero_duration_connections'])} conexões "
         f"({_format_percentage_pt(summary['zero_duration_connections'], summary['n_scheduled_connections'])})"
+    )
+    print(
+        "  Conexões com duração igual a zero no conjunto roteável: "
+        f"{_format_int_pt(summary['routable_zero_duration_connections'])} conexões "
+        f"({_format_percentage_pt(summary['routable_zero_duration_connections'], summary['n_routable_connections'])})"
     )
     print(
         "  Duração entre paradas — mediana: "
@@ -1252,6 +1569,45 @@ def main() -> None:
         "  Duração entre paradas — percentil 95: "
         f"{_format_float_pt(summary['connection_time_p95_s'])} s"
     )
+
+    print(
+        "\nFiltro de qualidade para roteamento"
+    )
+    print(
+        "  Viagens avaliadas: "
+        f"{_format_int_pt(summary['n_total_trips_quality'])} viagens"
+    )
+    print(
+        "  Viagens aptas ao roteamento: "
+        f"{_format_int_pt(summary['n_routable_trips'])} viagens "
+        f"({_format_percentage_pt(summary['n_routable_trips'], summary['n_total_trips_quality'])})"
+    )
+    print(
+        "  Viagens excluídas por pelo menos um critério: "
+        f"{_format_int_pt(summary['n_excluded_trips'])} viagens "
+        f"({_format_percentage_pt(summary['n_excluded_trips'], summary['n_total_trips_quality'])})"
+    )
+    print(
+        "    sem resumo temporal: "
+        f"{_format_int_pt(summary['n_excluded_missing_temporal_summary'])} viagens"
+    )
+    print(
+        "    duração não positiva: "
+        f"{_format_int_pt(summary['n_excluded_nonpositive_duration'])} viagens"
+    )
+    print(
+        "    regularização temporal inviável: "
+        f"{_format_int_pt(summary['n_excluded_infeasible_regularization'])} viagens"
+    )
+
+    if summary[
+        "max_implied_shape_speed_kmh"
+    ] is not None:
+        print(
+            "    velocidade implícita acima do limite técnico "
+            f"({_format_float_pt(summary['max_implied_shape_speed_kmh'])} km/h): "
+            f"{_format_int_pt(summary['n_excluded_implied_speed'])} viagens"
+        )
 
     print(
         "\nData de serviço de referência"
@@ -1268,7 +1624,7 @@ def main() -> None:
         f"{summary['representative_weekday']}"
     )
     print(
-        "  Viagens programadas nessa data: "
+        "  Viagens roteáveis programadas nessa data: "
         f"{_format_int_pt(summary['representative_scheduled_trips'])} viagens"
     )
 
