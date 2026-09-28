@@ -291,8 +291,17 @@ def build_transit_edge_usage(
             "transit_connections_routable_processed.parquet possui connection_id duplicado"
         )
 
+    connection_table = connections.copy()
+    connection_table[
+        "connection_id"
+    ] = connection_table[
+        "connection_id"
+    ].astype(
+        "string"
+    )
+
     connection_lookup = (
-        connections.set_index(
+        connection_table.set_index(
             "connection_id",
             drop=False,
         )
@@ -474,9 +483,18 @@ def build_used_transit_connection_geometries(
             ),
         )
 
+    connection_table = connections.copy()
+    connection_table[
+        "connection_id"
+    ] = connection_table[
+        "connection_id"
+    ].astype(
+        "string"
+    )
+
     selected = (
-        connections.loc[
-            connections[
+        connection_table.loc[
+            connection_table[
                 "connection_id"
             ]
             .astype(
@@ -494,13 +512,22 @@ def build_used_transit_connection_geometries(
         .copy()
     )
 
-    shape_lookup = (
-        shapes[
-            [
-                "shape_id",
-                "geometry",
-            ]
+    shape_table = shapes[
+        [
+            "shape_id",
+            "geometry",
         ]
+    ].copy()
+    shape_table[
+        "shape_id"
+    ] = shape_table[
+        "shape_id"
+    ].astype(
+        "string"
+    )
+
+    shape_lookup = (
+        shape_table
         .drop_duplicates(
             subset=[
                 "shape_id",
