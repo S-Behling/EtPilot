@@ -30,6 +30,7 @@ class Agent:
     # Destino espacial
     destination_id: int | str | None = None
     destination_nodes: dict[str, int] = field(default_factory=dict)
+    od_distance_m: float | None = None
 
     # Modo
     mode: TravelMode | None = None
