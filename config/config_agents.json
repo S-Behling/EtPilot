@@ -12,11 +12,11 @@
       "mode_distance_adjustment"
     ],
     "baseline": {
-      "description": "Mantém a estrutura residencial por renda, mas aplica as mesmas regras comportamentais de propósito, destino e modo aos três grupos. O nó efetivo de roteamento pode variar porque depende do modo escolhido.",
+      "description": "Mantém a estrutura residencial por renda, aplica as mesmas regras comportamentais de propósito, destino e probabilidades modais aos três grupos e usa a mesma resposta modal à distância do cenário differentiated. O nó efetivo de roteamento pode variar porque depende do modo escolhido.",
       "parameter_rule": "Os parâmetros comuns do baseline são derivados por média ponderada do cenário differentiated usando as participações populacionais."
     },
     "differentiated": {
-      "description": "Mantém diferenças por grupo de renda nas probabilidades de propósito, sensibilidade à distância na escolha de destino e escolha modal."
+      "description": "Mantém diferenças por grupo de renda nas probabilidades de propósito, sensibilidade à distância na escolha de destino e probabilidades modais, usando a mesma resposta modal à distância aplicada no baseline."
     }
   },
   "purpose_choice": {
