@@ -347,6 +347,21 @@ def _result_row(
         "n_transit_connections": len(
             result.transit_connection_ids
         ),
+        "mean_in_vehicle_time_per_connection_s": (
+            (
+                float(
+                    result.in_vehicle_time_s
+                )
+                / len(
+                    result.transit_connection_ids
+                )
+            )
+            if (
+                result.in_vehicle_time_s is not None
+                and result.transit_connection_ids
+            )
+            else None
+        ),
         "transit_connection_ids": "|".join(
             result.transit_connection_ids
         ),
@@ -617,6 +632,46 @@ def main() -> None:
             f"{_format_float_pt(successful['n_transfers'].mean(), decimals=2)} "
             "transferências por viagem"
         )
+        print(
+            "  Transferências — máxima: "
+            f"{_format_int_pt(successful['n_transfers'].max())} transferências"
+        )
+        print(
+            "  Tempo médio por conexão dentro do veículo — mediana: "
+            f"{_format_float_pt(successful['mean_in_vehicle_time_per_connection_s'].median())} s/conexão"
+        )
+        print(
+            "  Tempo médio por conexão dentro do veículo — mínimo: "
+            f"{_format_float_pt(successful['mean_in_vehicle_time_per_connection_s'].min())} s/conexão"
+        )
+
+        zero_vehicle = successful.loc[
+            successful[
+                "in_vehicle_time_s"
+            ]
+            <= 0
+        ]
+
+        print(
+            "  Rotas com tempo total dentro do veículo igual a zero: "
+            f"{_format_int_pt(len(zero_vehicle))} viagens "
+            f"({_format_percentage_pt(len(zero_vehicle), len(successful))})"
+        )
+
+        if not zero_vehicle.empty:
+            print(
+                "  IDs das amostras com tempo veicular zero: "
+                + ", ".join(
+                    str(
+                        int(
+                            sample_id
+                        )
+                    )
+                    for sample_id in zero_vehicle[
+                        "sample_id"
+                    ]
+                )
+            )
 
     print(
         "\nSaída"
