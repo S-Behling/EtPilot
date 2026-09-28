@@ -49,7 +49,7 @@ class FinalPilotSensitivityTests(unittest.TestCase):
         )
         self.assertEqual(
             len(plan),
-            10,
+            14,
         )
         self.assertEqual(
             len(
@@ -76,7 +76,7 @@ class FinalPilotSensitivityTests(unittest.TestCase):
                     == "mode_homogenized"
                 ]
             ),
-            1,
+            5,
         )
 
     def test_seed_stability_uses_nominal_runs_only(self):
