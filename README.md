@@ -323,9 +323,8 @@ pilot rather than an empirical estimate of normal bus operating speed.
 
 ## GTFS temporal quality diagnostics
 
-The EPTC feed contains a large share of interpolated stop times. Before
-integrating transit into the main agent simulation, evaluate temporal
-consistency at the trip level with:
+The EPTC feed contains a large share of interpolated stop times. Evaluate
+temporal consistency at the trip level with:
 
 ```bash
 python -m src.transit.validateGTFSTemporalQuality
@@ -345,8 +344,8 @@ speed from the shape length and scheduled duration.
 The console report emphasizes descriptive diagnostics rather than filtering
 trips automatically. It reports trip-duration percentiles, prevalence of
 zero-duration connections, and the distribution of implied shape speeds.
-These results are used to decide whether the temporal reconstruction needs
-additional treatment before transit enters `run_pilot`.
+These results support the quality filter used by the transit network and
+remain part of the audit trail after transit enters `run_pilot`.
 
 ## Timetable transit routing
 
@@ -423,8 +422,9 @@ networks:
 - `walk` → OSMnx `network_type="walk"`
 - `bike` → OSMnx `network_type="bike"`
 
-Transit now has a separate GTFS timetable router, but it is intentionally kept
-outside `run_pilot` until the real-data diagnostics are validated.
+Transit now uses the GTFS timetable router inside `run_pilot`. The modal
+choice includes `walk`, `bike`, `car`, and `transit` without
+redistributing the transit probability to the three OSM-only modes.
 
 Origins and destinations are spatial entities independent of a single graph.
 Each point stores a mode-specific nearest node:
@@ -434,9 +434,9 @@ Each point stores a mode-specific nearest node:
 - `node_bike`
 
 For the three OSM modes, select the corresponding origin and destination nodes
-after mode choice. The standalone transit router instead uses `node_walk`
-for access and egress and the processed GTFS connection table for the bus
-portion of the trip.
+after mode choice. Transit reuses `node_walk` as the spatial origin and
+destination for access and egress and uses the quality-filtered GTFS
+connection table for the bus portion of the trip.
 
 Build the common analysis network from the complete walk, bike and car
 graphs, not from the sampled trajectories. Use walk as the initial reference,
@@ -444,6 +444,27 @@ map bike and car edges first by exact OSM equivalence and then by geometric
 overlap, and preserve unmatched edges as exclusive segments. Keep this layer
 independent of agent count, seed and scenario so that `analysis_segment_id`
 remains stable across simulations.
+
+
+For transit trips, preserve three leg types in the usage table:
+
+```text
+access_walk
+in_vehicle
+egress_walk
+```
+
+The walking legs keep `mode=transit` as the trip mode but use
+`mapping_mode=walk` to reuse the existing walk-edge harmonization. The bus
+leg uses `mapping_mode=transit`: each used GTFS connection is cut from its
+shape between the two stop positions and matched geometrically to the common
+physical segments.
+
+The transit-to-segment match currently uses provisional geometric controls
+defined in `config/config.json`: spatial tolerance, minimum segment
+coverage, and maximum orientation difference. The pilot stops instead of
+silently discarding a used transit connection when no physical segment match
+is found.
 
 To prepare the multimodal data:
 
@@ -666,12 +687,16 @@ Current implementation:
 - ✔ GTFS trip-level temporal quality diagnostic
 - ✔ Positive-interval reconstruction between published GTFS timepoints
 - ✔ Separate complete and quality-filtered routable GTFS connection tables
+- ✔ Transit included in the main agent mode choice and routing pipeline
+- ✔ Transit access and egress represented on the walk network
+- ✔ Used GTFS shape segments mapped to the common physical analysis network
+- ✔ Transit included in segment-level modal counts and H_soc trajectory usage
 - ✔ Pilot metadata export in XLSX and HTML
 
 In progress:
 
-- Local validation of the reconstructed GTFS times and routable connection subset
-- Integration of transit into the main agent simulation
+- Local validation of integrated transit spatial matching in the N=100 pilot
+- Sensitivity analysis of the provisional GTFS-to-segment mapping parameters
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
 - Empirical calibration of provisional modal-distance parameters
@@ -680,10 +705,10 @@ In progress:
 
 Complete the pilot in this order:
 
-1. reprocess the GTFS with positive-interval temporal reconstruction and
-   validate the quality-filtered routable connection table;
-2. integrate transit into the main agent simulation without redistributing the
-   transit probability to car, bicycle or walking;
+1. run the integrated N=100 pilot and validate GTFS-to-segment spatial
+   matching coverage and transit routing success;
+2. run sensitivity checks for the provisional transit spatial-matching
+   tolerance, minimum coverage, and angular compatibility;
 3. validate the provisional distance-sensitive mode rule against routed
    distances and replace its parameters with empirical calibration when an
    appropriate observed mobility source is selected;
