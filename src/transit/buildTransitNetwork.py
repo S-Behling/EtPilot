@@ -1220,7 +1220,7 @@ def main() -> None:
         export_pilot_metadata,
     )
 
-    metadata_path = export_pilot_metadata(
+    metadata_paths = export_pilot_metadata(
         project_root=PROJECT_ROOT
     )
 
@@ -1228,8 +1228,12 @@ def main() -> None:
         "\nDocumentação do piloto"
     )
     print(
-        "  Metadados XML: "
-        f"{metadata_path}"
+        "  Metadados XLSX: "
+        f"{metadata_paths['xlsx']}"
+    )
+    print(
+        "  Metadados HTML: "
+        f"{metadata_paths['html']}"
     )
 
 
