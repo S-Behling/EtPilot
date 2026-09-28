@@ -1584,8 +1584,12 @@ def main() -> None:
         f"{_format_int_pt(transit_physical_summary['fallback_matches'])} trechos"
     )
     print(
-        "  Trechos incorporados como segmentos exclusivos transit: "
-        f"{_format_int_pt(transit_physical_summary['exclusive_transit_segments'])} trechos"
+        "  Trechos GTFS representados pela rede exclusiva transit: "
+        f"{_format_int_pt(transit_physical_summary['exclusive_transit_edges'])} trechos"
+    )
+    print(
+        "  Novos analysis_segment_id exclusivos transit: "
+        f"{_format_int_pt(transit_physical_summary['exclusive_transit_segments'])} segmentos"
     )
     print(
         "  Trechos físicos transit mapeados: "
