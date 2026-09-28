@@ -1,14 +1,12 @@
-"""Roteamento multimodal do piloto EtPilot.
+"""Roteamento das redes OSM usadas pelo piloto EtPilot
 
-Nesta etapa, os modos implementados são carro, caminhada e bicicleta.
-Cada modo usa seu próprio MultiDiGraph OSM e o caminho mínimo é calculado
-por comprimento (``length``) por padrão.
+Este módulo calcula caminhos para carro, caminhada e bicicleta em seus
+MultiDiGraph OSM correspondentes usando comprimento como peso por padrão
+O transporte coletivo usa o roteador GTFS separado e é integrado ao piloto
+por src.routing.pilot_router
 
-O transporte coletivo permanece fora deste módulo e será tratado
-posteriormente com GTFS.
-
-A rota de cada agente é armazenada como uma sequência de arestas
-``(u, v, key)``, preservando a estrutura MultiDiGraph do OSMnx.
+A rota OSM de cada agente é armazenada como sequência de arestas
+(u, v, key) preservando a estrutura MultiDiGraph do OSMnx
 """
 
 from __future__ import annotations
