@@ -1492,6 +1492,353 @@ def _process_shapes(
     )
 
 
+def _refine_stop_times_with_shape_geometry(
+    stop_times: pd.DataFrame,
+    *,
+    trips: pd.DataFrame,
+    stops: gpd.GeoDataFrame,
+    shapes: gpd.GeoDataFrame | None,
+) -> pd.DataFrame:
+    """Refina horários interpolados pela posição das paradas ao longo do shape"""
+
+    result = stop_times.copy()
+
+    if (
+        shapes is None
+        or "shape_id" not in trips.columns
+    ):
+        result[
+            "shape_position_m"
+        ] = pd.Series(
+            pd.NA,
+            index=result.index,
+            dtype="Float64",
+        )
+        return result
+
+    trip_shapes = (
+        trips[
+            [
+                "trip_id",
+                "shape_id",
+            ]
+        ]
+        .copy()
+    )
+
+    trip_shapes[
+        "shape_id"
+    ] = (
+        trip_shapes[
+            "shape_id"
+        ]
+        .astype(
+            "string"
+        )
+        .str.strip()
+    )
+
+    result = result.merge(
+        trip_shapes,
+        on="trip_id",
+        how="left",
+        validate="many_to_one",
+    )
+
+    stop_geometry = (
+        stops[
+            [
+                "stop_id",
+                "geometry",
+            ]
+        ]
+        .drop_duplicates(
+            subset="stop_id"
+        )
+        .set_index(
+            "stop_id"
+        )[
+            "geometry"
+        ]
+        .to_dict()
+    )
+
+    shape_geometry = (
+        shapes[
+            [
+                "shape_id",
+                "geometry",
+            ]
+        ]
+        .drop_duplicates(
+            subset="shape_id"
+        )
+        .set_index(
+            "shape_id"
+        )[
+            "geometry"
+        ]
+        .to_dict()
+    )
+
+    pairs = (
+        result.loc[
+            result[
+                "shape_id"
+            ]
+            .notna()
+            & result[
+                "shape_id"
+            ]
+            .ne(
+                ""
+            ),
+            [
+                "shape_id",
+                "stop_id",
+            ],
+        ]
+        .drop_duplicates()
+    )
+
+    position_lookup: dict[
+        tuple[
+            str,
+            str,
+        ],
+        float,
+    ] = {}
+
+    for row in pairs.itertuples(
+        index=False
+    ):
+        shape_id = str(
+            row.shape_id
+        )
+        stop_id = str(
+            row.stop_id
+        )
+
+        line = shape_geometry.get(
+            shape_id
+        )
+        point = stop_geometry.get(
+            stop_id
+        )
+
+        if (
+            line is None
+            or point is None
+            or line.is_empty
+            or point.is_empty
+        ):
+            continue
+
+        position_lookup[
+            (
+                shape_id,
+                stop_id,
+            )
+        ] = float(
+            line.project(
+                point
+            )
+        )
+
+    result[
+        "shape_position_m"
+    ] = pd.array(
+        [
+            position_lookup.get(
+                (
+                    str(
+                        shape_id
+                    ),
+                    str(
+                        stop_id
+                    ),
+                ),
+                pd.NA,
+            )
+            if pd.notna(
+                shape_id
+            )
+            and str(
+                shape_id
+            ).strip()
+            else pd.NA
+            for shape_id, stop_id
+            in zip(
+                result[
+                    "shape_id"
+                ],
+                result[
+                    "stop_id"
+                ],
+                strict=True,
+            )
+        ],
+        dtype="Float64",
+    )
+
+    grouped_indices = result.groupby(
+        "trip_id",
+        sort=False,
+    ).indices
+
+    for _, positions in grouped_indices.items():
+        positions = np.asarray(
+            positions,
+            dtype=int,
+        )
+
+        group = result.iloc[
+            positions
+        ]
+
+        interpolation_mask = (
+            group[
+                "time_interpolated"
+            ]
+            .fillna(
+                False
+            )
+            .to_numpy(
+                dtype=bool
+            )
+        )
+
+        if not interpolation_mask.any():
+            continue
+
+        shape_positions = (
+            group[
+                "shape_position_m"
+            ]
+            .astype(
+                "Float64"
+            )
+            .to_numpy(
+                dtype=float,
+                na_value=np.nan,
+            )
+        )
+
+        if not np.isfinite(
+            shape_positions
+        ).all():
+            continue
+
+        if np.any(
+            np.diff(
+                shape_positions
+            )
+            < -1e-6
+        ):
+            continue
+
+        raw_anchor_mask = ~(
+            group[
+                "arrival_missing_raw"
+            ].to_numpy(
+                dtype=bool
+            )
+            & group[
+                "departure_missing_raw"
+            ].to_numpy(
+                dtype=bool
+            )
+        )
+
+        anchor_positions = shape_positions[
+            raw_anchor_mask
+        ]
+
+        if (
+            len(
+                anchor_positions
+            )
+            < 2
+            or np.any(
+                np.diff(
+                    anchor_positions
+                )
+                <= 0
+            )
+        ):
+            continue
+
+        anchor_seconds = (
+            group[
+                "departure_seconds"
+            ]
+            .where(
+                raw_anchor_mask
+            )
+            .fillna(
+                group[
+                    "arrival_seconds"
+                ]
+                .where(
+                    raw_anchor_mask
+                )
+            )
+            .astype(
+                "Float64"
+            )
+            .to_numpy(
+                dtype=float,
+                na_value=np.nan,
+            )[
+                raw_anchor_mask
+            ]
+        )
+
+        if not np.isfinite(
+            anchor_seconds
+        ).all():
+            continue
+
+        target_positions = shape_positions[
+            interpolation_mask
+        ]
+
+        interpolated = np.rint(
+            np.interp(
+                target_positions,
+                anchor_positions,
+                anchor_seconds,
+            )
+        ).astype(
+            int
+        )
+
+        target_indices = positions[
+            interpolation_mask
+        ]
+
+        result.loc[
+            target_indices,
+            "arrival_seconds",
+        ] = pd.array(
+            interpolated,
+            dtype="Int64",
+        )
+        result.loc[
+            target_indices,
+            "departure_seconds",
+        ] = pd.array(
+            interpolated,
+            dtype="Int64",
+        )
+        result.loc[
+            target_indices,
+            "time_interpolation_method",
+        ] = "shape_geometry"
+
+    return result
+
+
 def _process_frequencies(
     frequencies: pd.DataFrame,
 ) -> pd.DataFrame:
@@ -1953,6 +2300,13 @@ def process_gtfs_zip(
         else None
     )
 
+    stop_times = _refine_stop_times_with_shape_geometry(
+        stop_times,
+        trips=trips,
+        stops=stops,
+        shapes=shapes,
+    )
+
     frequencies = (
         _process_frequencies(
             raw_frequencies
@@ -2301,6 +2655,14 @@ def process_gtfs_zip(
                 == "shape_dist_traveled"
             ).sum()
         ),
+        "stop_times_interpolated_shape_geometry": int(
+            (
+                stop_times[
+                    "time_interpolation_method"
+                ]
+                == "shape_geometry"
+            ).sum()
+        ),
         "stop_times_interpolated_stop_sequence": int(
             (
                 stop_times[
@@ -2424,6 +2786,10 @@ def process_configured_gtfs() -> dict:
     print(
         "  por shape_dist_traveled: "
         f"{summary['stop_times_interpolated_shape_distance']:,}"
+    )
+    print(
+        "  pela geometria do shape: "
+        f"{summary['stop_times_interpolated_shape_geometry']:,}"
     )
     print(
         "  por stop_sequence: "
