@@ -2,14 +2,14 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-import xml.etree.ElementTree as ET
+import zipfile
 
 from src.reporting.exportPilotMetadata import export_pilot_metadata
 
 
 class ExportPilotMetadataTests(unittest.TestCase):
-    def test_exports_required_metadata_sections(self):
-        # Cria uma estrutura mínima de projeto para validar o XML
+    def test_exports_required_metadata_formats(self):
+        # Cria uma estrutura mínima de projeto para validar XLSX e HTML
         with tempfile.TemporaryDirectory() as directory:
             root = Path(
                 directory
@@ -98,61 +98,75 @@ class ExportPilotMetadataTests(unittest.TestCase):
                     file,
                 )
 
-            output_path = export_pilot_metadata(
+            paths = export_pilot_metadata(
                 project_root=root
             )
 
-            tree = ET.parse(
-                output_path
-            )
-            xml_root = tree.getroot()
-
-            self.assertEqual(
-                xml_root.tag,
-                "metadados_piloto",
-            )
-            self.assertIsNotNone(
-                xml_root.find(
-                    "variaveis_principais"
-                )
-            )
-            self.assertIsNotNone(
-                xml_root.find(
-                    "metodos_analise"
-                )
-            )
-            self.assertIsNotNone(
-                xml_root.find(
-                    "estatisticas"
-                )
-            )
-            self.assertIsNotNone(
-                xml_root.find(
-                    "metodos_limpeza"
-                )
-            )
-            self.assertIsNotNone(
-                xml_root.find(
-                    "arquivos_gerados"
-                )
-            )
-
-            descriptions = [
-                element.text
-                for element in xml_root.findall(
-                    ".//descricao"
-                )
-                if element.text
+            xlsx_path = paths[
+                "xlsx"
+            ]
+            html_path = paths[
+                "html"
             ]
 
-            self.assertGreater(
-                len(
-                    descriptions
-                ),
-                20,
+            self.assertTrue(
+                xlsx_path.exists()
             )
             self.assertTrue(
-                output_path.exists()
+                html_path.exists()
+            )
+            self.assertFalse(
+                (
+                    root
+                    / "outputs"
+                    / "metadados_piloto.xml"
+                ).exists()
+            )
+
+            with zipfile.ZipFile(
+                xlsx_path,
+                "r",
+            ) as archive:
+                names = set(
+                    archive.namelist()
+                )
+
+            self.assertIn(
+                "xl/workbook.xml",
+                names,
+            )
+            self.assertIn(
+                "xl/worksheets/sheet1.xml",
+                names,
+            )
+
+            html = html_path.read_text(
+                encoding="utf-8"
+            )
+
+            self.assertIn(
+                "Variáveis principais",
+                html,
+            )
+            self.assertIn(
+                "Métodos de análise",
+                html,
+            )
+            self.assertIn(
+                "Estatísticas",
+                html,
+            )
+            self.assertIn(
+                "Métodos de limpeza e validação",
+                html,
+            )
+            self.assertIn(
+                "Arquivos gerados",
+                html,
+            )
+            self.assertIn(
+                "português",
+                html,
             )
 
 
