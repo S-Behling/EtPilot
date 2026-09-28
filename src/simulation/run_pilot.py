@@ -13,7 +13,8 @@ Siga o fluxo:
 5. atribua propósito, destino e modo;
 6. calcule a rota na rede correspondente ao modo;
 7. harmonize as arestas modais em segmentos físicos comuns;
-8. valide, resuma e salve os resultados.
+8. calcule volume, composição social e H_soc por segmento;
+9. valide, resuma e salve os resultados.
 
 Execute com:
     python -m src.simulation.run_pilot
@@ -29,6 +30,10 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from src.analysis.edge_statistics import (
+    attach_statistics_to_segments,
+    build_segment_statistics,
+)
 from src.domain.enums import IncomeGroup, TravelMode
 from src.network.analysis_segments import (
     apply_analysis_segment_mapping,
@@ -264,6 +269,8 @@ def _save_outputs(
     segment_mapping: pd.DataFrame,
     match_report: pd.DataFrame,
     used_match_report: pd.DataFrame,
+    segment_statistics: dict[str, pd.DataFrame],
+    segment_geodata: dict[str, gpd.GeoDataFrame],
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -342,6 +349,47 @@ def _save_outputs(
         encoding="utf-8",
     )
 
+    for scenario_name, statistics in segment_statistics.items():
+        statistics.to_csv(
+            OUTPUT_DIR / f"segment_statistics_{scenario_name}.csv",
+            index=False,
+            encoding="utf-8",
+        )
+
+    statistics_all = pd.concat(
+        segment_statistics.values(),
+        ignore_index=True,
+    )
+
+    statistics_all.to_csv(
+        OUTPUT_DIR / "segment_statistics_all_scenarios.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    for scenario_name, geodata in segment_geodata.items():
+        geodata_to_save = geodata.drop(
+            columns=[
+                "osmid_set",
+            ],
+            errors="ignore",
+        )
+
+        metrics_path = (
+            OUTPUT_DIR
+            / f"segment_metrics_{scenario_name}.gpkg"
+        )
+
+        if metrics_path.exists():
+            metrics_path.unlink()
+
+        geodata_to_save.to_file(
+            metrics_path,
+            layer="segment_metrics",
+            driver="GPKG",
+            engine="pyogrio",
+        )
+
     # Remova estruturas Python que o GeoPackage não consegue serializar.
     segments_to_save = analysis_segments.drop(
         columns=[
@@ -415,6 +463,24 @@ def main() -> None:
         ]
     )
 
+    statistics_config = config[
+        "analysis"
+    ][
+        "segment_statistics"
+    ]
+
+    min_agents_for_interpretation = int(
+        statistics_config[
+            "min_agents_for_interpretation"
+        ]
+    )
+    flow_thresholds = tuple(
+        int(value)
+        for value in statistics_config[
+            "flow_thresholds"
+        ]
+    )
+
     origins_path = (
         PROJECT_ROOT
         / config["paths"]["origins_income"]
@@ -424,7 +490,7 @@ def main() -> None:
         / config["paths"]["destinations"]
     )
 
-    print("1/8 - Carregando dados...")
+    print("1/9 - Carregando dados...")
 
     origins = gpd.read_file(origins_path)
 
@@ -433,7 +499,7 @@ def main() -> None:
         layer="destinations",
     )
 
-    print("2/8 - Carregando redes modais...")
+    print("2/9 - Carregando redes modais...")
 
     graphs = load_mode_graphs(
         config=config,
@@ -448,7 +514,7 @@ def main() -> None:
             f"{len(graph.edges):,} arestas"
         )
 
-    print("3/8 - Gerando população sintética...")
+    print("3/9 - Gerando população sintética...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -464,7 +530,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(base_agents)}")
 
-    print("4/8 - Atribuindo origens residenciais...")
+    print("4/9 - Atribuindo origens residenciais...")
 
     base_agents = assign_origins(
         agents=base_agents,
@@ -483,7 +549,7 @@ def main() -> None:
         ),
     )
 
-    print("5/8 - Construindo cenários experimentais...")
+    print("5/9 - Construindo cenários experimentais...")
 
     behavior_scenarios = build_behavior_scenarios(
         config_agents=config_agents,
@@ -493,7 +559,7 @@ def main() -> None:
     summaries: dict[str, pd.DataFrame] = {}
     edge_usages: dict[str, pd.DataFrame] = {}
 
-    print("6/8 - Executando cenários e roteamento...")
+    print("6/9 - Executando cenários e roteamento...")
 
     for scenario_name in SCENARIOS:
         print(f"\n--- {scenario_name} ---")
@@ -588,7 +654,7 @@ def main() -> None:
             "arestas modais únicas"
         )
 
-    print("\n7/8 - Harmonizando segmentos físicos de análise...")
+    print("\n7/9 - Harmonizando segmentos físicos de análise...")
 
     edge_usage_all = pd.concat(
         edge_usages.values(),
@@ -691,7 +757,92 @@ def main() -> None:
         .to_string(index=False)
     )
 
-    print("\n8/8 - Validando e salvando resultados...")
+    print("\n8/9 - Calculando estatísticas e entropia socioeconômica...")
+
+    segment_statistics: dict[
+        str,
+        pd.DataFrame,
+    ] = {}
+    segment_geodata: dict[
+        str,
+        gpd.GeoDataFrame,
+    ] = {}
+
+    for scenario_name, edge_usage in harmonized_edge_usages.items():
+        statistics = build_segment_statistics(
+            edge_usage=edge_usage,
+            min_agents_for_interpretation=(
+                min_agents_for_interpretation
+            ),
+            flow_thresholds=flow_thresholds,
+        )
+
+        segment_statistics[
+            scenario_name
+        ] = statistics
+
+        segment_geodata[
+            scenario_name
+        ] = attach_statistics_to_segments(
+            analysis_segments=analysis_segments,
+            statistics=statistics,
+            scenario_name=scenario_name,
+            flow_thresholds=flow_thresholds,
+        )
+
+        used_segments = len(
+            statistics
+        )
+        supported = statistics.loc[
+            statistics[
+                "sufficient_flow"
+            ]
+        ]
+
+        print(
+            f"\n{scenario_name}: "
+            f"{used_segments:,} segmentos usados"
+        )
+        print(
+            "  H_soc — todos os segmentos usados: "
+            f"média={statistics['H_soc'].mean():.3f} | "
+            f"mediana={statistics['H_soc'].median():.3f}"
+        )
+        print(
+            "  Segmentos com fluxo suficiente "
+            f"(n_agents >= {min_agents_for_interpretation}): "
+            f"{len(supported):,}"
+        )
+
+        if not supported.empty:
+            print(
+                "  H_soc — fluxo suficiente: "
+                f"média={supported['H_soc'].mean():.3f} | "
+                f"mediana={supported['H_soc'].median():.3f}"
+            )
+
+        threshold_counts = {
+            threshold: int(
+                (
+                    statistics[
+                        "n_agents"
+                    ]
+                    >= threshold
+                ).sum()
+            )
+            for threshold in flow_thresholds
+        }
+
+        print(
+            "  Sensibilidade por n_agents: "
+            + " | ".join(
+                f">={threshold}: {count:,}"
+                for threshold, count
+                in threshold_counts.items()
+            )
+        )
+
+    print("\n9/9 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
     _save_outputs(
@@ -702,6 +853,8 @@ def main() -> None:
         segment_mapping=segment_mapping,
         match_report=match_report,
         used_match_report=used_match_report,
+        segment_statistics=segment_statistics,
+        segment_geodata=segment_geodata,
     )
 
     print("\n=== TESTE FINAL ===")
