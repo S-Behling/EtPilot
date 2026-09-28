@@ -270,6 +270,72 @@ python -m src.reporting.exportPilotMetadata
 The exporter removes the former `outputs/metadados_piloto.xml` file when it
 exists so that XLSX and HTML remain the canonical metadata formats.
 
+## Timetable transit routing
+
+The pilot now includes a standalone timetable router in:
+
+```text
+src/transit/routeTransit.py
+```
+
+The router combines:
+
+```text
+origin walk node
+    ↓
+walking access to one of several candidate stops
+    ↓
+scheduled GTFS connections
+    ↓
+same-stop transfers between trips
+    ↓
+walking egress from one of several candidate stops
+    ↓
+destination walk node
+```
+
+The search scans only the `service_id` values active on the requested date
+and seeks the earliest final arrival within the configured travel-time
+horizon.
+
+Current provisional routing parameters are defined in `config/config.json`:
+
+```text
+max_access_walk_m
+max_egress_walk_m
+minimum_transfer_time_s
+max_total_travel_time_s
+```
+
+These values are technical pilot assumptions and are not treated as
+empirically calibrated travel-demand parameters.
+
+Walking access and egress preserve the exact OSM walk edges used by the
+shortest path so they can later be incorporated into physical-segment usage.
+The transit portion preserves the ordered GTFS connection, trip, and route
+identifiers.
+
+At this stage transfers are implemented between trips that share the same
+`stop_id`. Walking transfers between distinct nearby stops remain outside
+the router until the same-stop implementation is validated.
+
+Run the real-data diagnostic with:
+
+```bash
+python -m src.transit.validateTransitRouting
+```
+
+The diagnostic samples reproducible origin-destination pairs from the current
+pilot bases, uses the representative GTFS service date and configured
+departure time, and writes:
+
+```text
+outputs/pilot/transit_routing_diagnostics.csv
+```
+
+The console output reports units and percentages for routing coverage, travel
+times, walking distances, waiting time, and transfers.
+
 ## Multimodal network
 
 The first routing implementation uses three OSM networks:
@@ -511,12 +577,16 @@ Current implementation:
 - ✔ Validation of the downloaded EPTC GTFS feed
 - ✔ Stop-to-walking-network association code
 - ✔ Scheduled GTFS connection-table construction
+- ✔ Standalone timetable transit router with walking access and egress
+- ✔ Same-stop transfer logic with configurable transfer time
+- ✔ Real-data transit routing diagnostic
 - ✔ Pilot metadata export in XLSX and HTML
 
 In progress:
 
 - Local validation of the stop connectors and scheduled connection table
-- Timetable transit routing with walking access and egress
+- Local validation of the timetable router on real pilot OD pairs
+- Integration of transit into the main agent simulation
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
 - Empirical calibration of provisional modal-distance parameters
@@ -525,18 +595,20 @@ In progress:
 
 Complete the pilot in this order:
 
-1. validate the scheduled GTFS connection table and stop-to-walk connectors,
-   then implement timetable routing with walking access and egress;
-2. validate the provisional distance-sensitive mode rule against routed
+1. validate the scheduled GTFS connection table, stop-to-walk connectors and
+   real-data timetable routing diagnostics;
+2. integrate transit into the main agent simulation without redistributing the
+   transit probability to car, bicycle or walking;
+3. validate the provisional distance-sensitive mode rule against routed
    distances and replace its parameters with empirical calibration when an
    appropriate observed mobility source is selected;
-3. increase the synthetic population progressively and inspect convergence of
+4. increase the synthetic population progressively and inspect convergence of
    segment coverage, flow support, and `H_soc`;
-4. repeat paired baseline × differentiated runs across multiple seeds and
+5. repeat paired baseline × differentiated runs across multiple seeds and
    summarize the stability of `delta_H_soc`;
-5. run sensitivity checks for the flow thresholds and for the geometric
+6. run sensitivity checks for the flow thresholds and for the geometric
    harmonization parameters;
-6. consolidate final pilot tables, maps, diagnostics, limitations, and
+7. consolidate final pilot tables, maps, diagnostics, limitations, and
    reproducibility instructions.
 
 The current GTFS integration covers the EPTC bus feed. Add other public
