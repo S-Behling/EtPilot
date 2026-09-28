@@ -2703,6 +2703,111 @@ def process_gtfs_zip(
     return summary
 
 
+def _format_int_pt(
+    value,
+) -> str:
+    """Formata números inteiros com separador de milhar no padrão brasileiro"""
+
+    return f"{int(value):,}".replace(
+        ",",
+        ".",
+    )
+
+
+def _format_percentage_pt(
+    numerator,
+    denominator,
+) -> str:
+    """Formata uma proporção como percentual com vírgula decimal"""
+
+    denominator_value = float(
+        denominator
+    )
+
+    if denominator_value <= 0:
+        return "0,0%"
+
+    percentage = (
+        100.0
+        * float(
+            numerator
+        )
+        / denominator_value
+    )
+
+    return (
+        f"{percentage:.1f}%"
+        .replace(
+            ".",
+            ",",
+        )
+    )
+
+
+def _format_date_pt(
+    value,
+) -> str:
+    """Formata uma data ISO no padrão dia/mês/ano"""
+
+    return pd.Timestamp(
+        value
+    ).strftime(
+        "%d/%m/%Y"
+    )
+
+
+def _format_route_types(
+    value: str,
+) -> str:
+    """Formata os tipos de rota GTFS com quantidade e unidade"""
+
+    if not value:
+        return "não informado"
+
+    labels = {
+        0: "bonde ou VLT",
+        1: "metrô",
+        2: "trem",
+        3: "ônibus",
+        4: "balsa",
+        5: "bonde por cabo",
+        6: "teleférico",
+        7: "funicular",
+        11: "trólebus",
+        12: "monotrilho",
+    }
+
+    formatted: list[
+        str
+    ] = []
+
+    for item in str(
+        value
+    ).split(
+        "|"
+    ):
+        route_type, count = item.split(
+            ":",
+            maxsplit=1,
+        )
+        route_type_int = int(
+            route_type
+        )
+        label = labels.get(
+            route_type_int,
+            "tipo não classificado",
+        )
+
+        formatted.append(
+            f"{route_type_int} ({label}): "
+            f"{_format_int_pt(count)} rotas"
+        )
+
+    return "; ".join(
+        formatted
+    )
+
+
 def process_configured_gtfs() -> dict:
     """Processa o GTFS definido no config.json"""
 
@@ -2734,7 +2839,19 @@ def process_configured_gtfs() -> dict:
     )
 
     print(
-        "Processando GTFS em "
+        "\n"
+        + "="
+        * 72
+    )
+    print(
+        "PROCESSAMENTO DO GTFS"
+    )
+    print(
+        "="
+        * 72
+    )
+    print(
+        "Arquivo de origem: "
         f"{zip_path}"
     )
 
@@ -2744,79 +2861,154 @@ def process_configured_gtfs() -> dict:
         projected_crs=projected_crs,
     )
 
+    service_start = pd.Timestamp(
+        summary[
+            "service_start_date"
+        ]
+    )
+    service_end = pd.Timestamp(
+        summary[
+            "service_end_date"
+        ]
+    )
+    service_days = (
+        service_end
+        - service_start
+    ).days + 1
+
+    n_stop_times = int(
+        summary[
+            "n_stop_times"
+        ]
+    )
+    n_interpolated = int(
+        summary[
+            "stop_times_interpolated"
+        ]
+    )
+
     print(
-        "GTFS processado com "
-        f"{summary['n_stops']:,} paradas, "
-        f"{summary['n_routes']:,} rotas e "
-        f"{summary['n_trips']:,} viagens"
+        "\nResumo da oferta GTFS"
     )
     print(
-        "Período de serviço processado: "
-        f"{summary['service_start_date']} a "
-        f"{summary['service_end_date']}"
+        f"  Paradas: {_format_int_pt(summary['n_stops'])} unidades"
     )
     print(
-        "Shapes processados: "
-        f"{summary['n_shapes']:,}"
+        f"  Rotas: {_format_int_pt(summary['n_routes'])} unidades"
     )
     print(
-        "Frequências processadas: "
-        f"{summary['n_frequencies']:,}"
+        f"  Viagens programadas: {_format_int_pt(summary['n_trips'])} viagens"
     )
     print(
-        "Transferências processadas: "
-        f"{summary['n_transfers']:,}"
+        "  Registros em stop_times: "
+        f"{_format_int_pt(n_stop_times)} registros de parada"
     )
     print(
-        "Tipos de rota: "
-        f"{summary['route_types'] or 'não informado'}"
+        f"  Shapes: {_format_int_pt(summary['n_shapes'])} geometrias"
     )
     print(
-        "Horários sem chegada no GTFS original: "
-        f"{summary['stop_times_missing_arrival_raw']:,}"
+        "  Registros em frequencies: "
+        f"{_format_int_pt(summary['n_frequencies'])} registros"
     )
     print(
-        "Horários sem partida no GTFS original: "
-        f"{summary['stop_times_missing_departure_raw']:,}"
+        "  Registros em transfers: "
+        f"{_format_int_pt(summary['n_transfers'])} registros"
     )
     print(
-        "Horários interpolados: "
-        f"{summary['stop_times_interpolated']:,}"
+        "  Tipos de rota: "
+        f"{_format_route_types(summary['route_types'])}"
+    )
+
+    print(
+        "\nPeríodo de serviço"
     )
     print(
-        "  por shape_dist_traveled: "
-        f"{summary['stop_times_interpolated_shape_distance']:,}"
+        "  Início: "
+        f"{_format_date_pt(summary['service_start_date'])}"
     )
     print(
-        "  pela geometria do shape: "
-        f"{summary['stop_times_interpolated_shape_geometry']:,}"
+        "  Fim: "
+        f"{_format_date_pt(summary['service_end_date'])}"
     )
     print(
-        "  por stop_sequence: "
-        f"{summary['stop_times_interpolated_stop_sequence']:,}"
+        f"  Duração do período: {_format_int_pt(service_days)} dias"
+    )
+
+    print(
+        "\nQualidade e preenchimento dos horários"
     )
     print(
-        "Horários preenchidos a partir do par chegada/partida: "
-        f"{summary['stop_times_filled_from_pair']:,}"
+        "  Chegadas ausentes no GTFS original: "
+        f"{_format_int_pt(summary['stop_times_missing_arrival_raw'])} "
+        "registros de parada "
+        f"({_format_percentage_pt(summary['stop_times_missing_arrival_raw'], n_stop_times)})"
     )
     print(
-        "Horários sem chegada após processamento: "
-        f"{summary['stop_times_missing_arrival_processed']:,}"
+        "  Partidas ausentes no GTFS original: "
+        f"{_format_int_pt(summary['stop_times_missing_departure_raw'])} "
+        "registros de parada "
+        f"({_format_percentage_pt(summary['stop_times_missing_departure_raw'], n_stop_times)})"
     )
     print(
-        "Horários sem partida após processamento: "
-        f"{summary['stop_times_missing_departure_processed']:,}"
+        "  Horários interpolados: "
+        f"{_format_int_pt(n_interpolated)} registros de parada "
+        f"({_format_percentage_pt(n_interpolated, n_stop_times)})"
+    )
+    print(
+        "    por shape_dist_traveled: "
+        f"{_format_int_pt(summary['stop_times_interpolated_shape_distance'])} "
+        "registros "
+        f"({_format_percentage_pt(summary['stop_times_interpolated_shape_distance'], n_interpolated)})"
+    )
+    print(
+        "    pela geometria do shape: "
+        f"{_format_int_pt(summary['stop_times_interpolated_shape_geometry'])} "
+        "registros "
+        f"({_format_percentage_pt(summary['stop_times_interpolated_shape_geometry'], n_interpolated)})"
+    )
+    print(
+        "    por stop_sequence: "
+        f"{_format_int_pt(summary['stop_times_interpolated_stop_sequence'])} "
+        "registros "
+        f"({_format_percentage_pt(summary['stop_times_interpolated_stop_sequence'], n_interpolated)})"
+    )
+    print(
+        "  Horários preenchidos pelo par chegada/partida: "
+        f"{_format_int_pt(summary['stop_times_filled_from_pair'])} registros"
+    )
+    print(
+        "  Chegadas ausentes após processamento: "
+        f"{_format_int_pt(summary['stop_times_missing_arrival_processed'])} "
+        "registros de parada"
+    )
+    print(
+        "  Partidas ausentes após processamento: "
+        f"{_format_int_pt(summary['stop_times_missing_departure_processed'])} "
+        "registros de parada"
     )
 
     if summary[
         "service_period_expired_at_processing"
     ]:
         print(
-            "AVISO: o período de serviço do GTFS termina antes da data "
-            "de processamento e deve ser tratado como uma referência histórica"
+            "\nAVISO"
         )
+        print(
+            "  O período de serviço termina antes da data de processamento"
+        )
+        print(
+            "  O GTFS é tratado como referência histórica da oferta de ônibus"
+        )
+
     print(
-        "Produtos salvos em "
+        "\nSaída"
+    )
+    print(
+        "  CRS dos dados espaciais processados: "
+        f"{summary['projected_crs']}"
+    )
+    print(
+        "  Diretório dos produtos processados: "
         f"{data_dir}"
     )
 
