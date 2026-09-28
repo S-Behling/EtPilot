@@ -19,21 +19,6 @@ import numpy as np
 from src.domain.enums import TravelMode
 
 
-def _mode_name(value) -> str:
-    """Retorna o nome textual de um modo"""
-
-    return (
-        value.value
-        if hasattr(
-            value,
-            "value",
-        )
-        else str(
-            value
-        )
-    )
-
-
 def _validate_distance_config(
     distance_config: Mapping | None,
 ) -> None:
