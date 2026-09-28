@@ -148,6 +148,20 @@ class TransitRouterTests(unittest.TestCase):
                     "B",
                     "C",
                 ],
+                "from_stop_sequence": pd.Series(
+                    [
+                        1,
+                        2,
+                    ],
+                    dtype="Int64",
+                ),
+                "to_stop_sequence": pd.Series(
+                    [
+                        2,
+                        3,
+                    ],
+                    dtype="Int64",
+                ),
                 "departure_seconds": pd.Series(
                     [
                         8 * 3600 + 5 * 60,
@@ -273,6 +287,20 @@ class TransitRouterTests(unittest.TestCase):
                     "B",
                     "C",
                 ],
+                "from_stop_sequence": pd.Series(
+                    [
+                        1,
+                        1,
+                    ],
+                    dtype="Int64",
+                ),
+                "to_stop_sequence": pd.Series(
+                    [
+                        2,
+                        2,
+                    ],
+                    dtype="Int64",
+                ),
                 "departure_seconds": pd.Series(
                     [
                         8 * 3600 + 5 * 60,
@@ -350,6 +378,20 @@ class TransitRouterTests(unittest.TestCase):
                     "B",
                     "C",
                 ],
+                "from_stop_sequence": pd.Series(
+                    [
+                        1,
+                        1,
+                    ],
+                    dtype="Int64",
+                ),
+                "to_stop_sequence": pd.Series(
+                    [
+                        2,
+                        2,
+                    ],
+                    dtype="Int64",
+                ),
                 "departure_seconds": pd.Series(
                     [
                         8 * 3600 + 5 * 60,
@@ -389,6 +431,100 @@ class TransitRouterTests(unittest.TestCase):
         self.assertEqual(
             result.status,
             ROUTE_NO_TRANSIT_PATH,
+        )
+
+    def test_preserves_numeric_sequence_when_times_are_equal(self):
+        # Mantém a ordem numérica das paradas quando vários horários coincidem
+        rows = []
+
+        for sequence in range(
+            1,
+            13,
+        ):
+            rows.append(
+                {
+                    "connection_id": (
+                        f"T1:{sequence}:{sequence + 1}"
+                    ),
+                    "route_id": "R1",
+                    "service_id": "WK",
+                    "trip_id": "T1",
+                    "from_stop_id": (
+                        "A"
+                        if sequence == 1
+                        else f"S{sequence}"
+                    ),
+                    "to_stop_id": (
+                        "C"
+                        if sequence == 12
+                        else f"S{sequence + 1}"
+                    ),
+                    "from_stop_sequence": sequence,
+                    "to_stop_sequence": sequence + 1,
+                    "departure_seconds": 8 * 3600 + 5 * 60,
+                    "arrival_seconds": 8 * 3600 + 5 * 60,
+                    "in_vehicle_time_s": 0,
+                }
+            )
+
+        connectors = pd.DataFrame(
+            {
+                "stop_id": [
+                    "A",
+                    "C",
+                ],
+                "node_walk": pd.Series(
+                    [
+                        2,
+                        4,
+                    ],
+                    dtype="Int64",
+                ),
+                "walk_connector_distance_m": [
+                    0.0,
+                    0.0,
+                ],
+                "walk_connector_time_s": [
+                    0.0,
+                    0.0,
+                ],
+            }
+        )
+
+        router = TransitRouter(
+            walk_graph=self._walk_graph(),
+            connectors=connectors,
+            connections=pd.DataFrame(
+                rows
+            ),
+            service_dates=self._service_dates(),
+            walk_speed_m_s=1.0,
+            max_access_walk_m=150.0,
+            max_egress_walk_m=50.0,
+            minimum_transfer_time_s=60,
+            max_total_travel_time_s=7200,
+        )
+
+        result = router.route(
+            origin_walk_node=1,
+            destination_walk_node=4,
+            service_date="2025-09-15",
+            departure_time_s=8 * 3600,
+        )
+
+        self.assertEqual(
+            result.status,
+            ROUTE_OK,
+        )
+        self.assertEqual(
+            result.transit_connection_ids,
+            [
+                f"T1:{sequence}:{sequence + 1}"
+                for sequence in range(
+                    1,
+                    13,
+                )
+            ],
         )
 
     def test_reports_date_without_active_service(self):
