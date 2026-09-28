@@ -531,12 +531,20 @@ trajectory analysis in both scenarios when either scenario contains a direct
 outlier.
 
 The routed records remain in the agent tables with `analysis_included=False`
-and an explicit exclusion reason. The audit files are:
+and an explicit exclusion reason. The complete pre-filter trajectory usage is
+also preserved separately from the filtered analytical usage.
 
 ```text
+outputs/pilot/edge_usage_routed_baseline.csv
+outputs/pilot/edge_usage_routed_differentiated.csv
+outputs/pilot/edge_usage_routed_all_scenarios.csv
 outputs/pilot/outlier_exclusions.csv
 outputs/pilot/outlier_filter_summary.csv
 ```
+
+The regular `edge_usage_baseline.csv` and `edge_usage_differentiated.csv`
+files contain the post-filter trajectory set that enters spatial
+harmonization.
 ## Segment statistics and H_soc
 
 Aggregate the harmonized edge usage by `analysis_segment_id`. Keep passage
