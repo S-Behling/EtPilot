@@ -141,6 +141,8 @@ class TransitRouter:
             "trip_id",
             "from_stop_id",
             "to_stop_id",
+            "from_stop_sequence",
+            "to_stop_sequence",
             "departure_seconds",
             "arrival_seconds",
             "in_vehicle_time_s",
@@ -258,6 +260,26 @@ class TransitRouter:
             "to_stop_id"
         ].astype(
             "string"
+        )
+        self.connections[
+            "from_stop_sequence"
+        ] = pd.to_numeric(
+            self.connections[
+                "from_stop_sequence"
+            ],
+            errors="raise",
+        ).astype(
+            "Int64"
+        )
+        self.connections[
+            "to_stop_sequence"
+        ] = pd.to_numeric(
+            self.connections[
+                "to_stop_sequence"
+            ],
+            errors="raise",
+        ).astype(
+            "Int64"
         )
         self.connections[
             "departure_seconds"
@@ -439,8 +461,9 @@ class TransitRouter:
                 .sort_values(
                     [
                         "departure_seconds",
-                        "arrival_seconds",
                         "trip_id",
+                        "from_stop_sequence",
+                        "arrival_seconds",
                         "connection_id",
                     ]
                 )
@@ -735,12 +758,9 @@ class TransitRouter:
                 stop_id
             ] = tuple()
 
-        reachable_trip_paths: dict[
+        reachable_trip_states: dict[
             str,
-            tuple[
-                int,
-                ...,
-            ],
+            dict,
         ] = {}
 
         horizon = (
@@ -775,11 +795,41 @@ class TransitRouter:
                 row.trip_id
             )
 
-            trip_path = reachable_trip_paths.get(
+            from_stop_sequence = int(
+                row.from_stop_sequence
+            )
+            to_stop_sequence = int(
+                row.to_stop_sequence
+            )
+
+            trip_state = reachable_trip_states.get(
                 trip_id
             )
 
-            if trip_path is None:
+            continues_same_trip = bool(
+                trip_state
+                and str(
+                    trip_state[
+                        "to_stop_id"
+                    ]
+                )
+                == from_stop_id
+                and int(
+                    trip_state[
+                        "to_stop_sequence"
+                    ]
+                )
+                == from_stop_sequence
+            )
+
+            if continues_same_trip:
+                trip_path = (
+                    *trip_state[
+                        "path"
+                    ],
+                    connection_index,
+                )
+            else:
                 arrival_at_stop = stop_arrival.get(
                     from_stop_id
                 )
@@ -809,15 +859,14 @@ class TransitRouter:
                     *prior_path,
                     connection_index,
                 )
-            else:
-                trip_path = (
-                    *trip_path,
-                    connection_index,
-                )
 
-            reachable_trip_paths[
+            reachable_trip_states[
                 trip_id
-            ] = trip_path
+            ] = {
+                "path": trip_path,
+                "to_stop_id": to_stop_id,
+                "to_stop_sequence": to_stop_sequence,
+            }
 
             connection_arrival = float(
                 row.arrival_seconds
@@ -907,7 +956,48 @@ class TransitRouter:
             list(
                 path_indices
             )
-        ]
+        ].reset_index(
+            drop=True
+        )
+
+        if len(
+            path_rows
+        ) > 1:
+            previous_to_stop = (
+                path_rows[
+                    "to_stop_id"
+                ]
+                .astype(
+                    str
+                )
+                .iloc[
+                    :-1
+                ]
+                .reset_index(
+                    drop=True
+                )
+            )
+            next_from_stop = (
+                path_rows[
+                    "from_stop_id"
+                ]
+                .astype(
+                    str
+                )
+                .iloc[
+                    1:
+                ]
+                .reset_index(
+                    drop=True
+                )
+            )
+
+            if not previous_to_stop.equals(
+                next_from_stop
+            ):
+                raise RuntimeError(
+                    "O roteador produziu uma sequência descontínua de paradas"
+                )
 
         access_stop_id = str(
             path_rows.iloc[
