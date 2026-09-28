@@ -772,9 +772,67 @@ In progress:
 
 - Local validation of the full GTFS physical network integration in the N=100 pilot
 - Sensitivity analysis of the provisional GTFS-to-OSM matching parameters
-- Sensitivity analysis with larger synthetic populations
+- Population-size sensitivity for N=100, 250, 500 and 1000
 - Repeated paired runs with multiple seeds
 - Empirical calibration of provisional modal-distance parameters
+
+## Population-size sensitivity
+
+After the N=100 architecture is validated, evaluate the population size with:
+
+```bash
+python -m src.analysis.population_sensitivity
+```
+
+The default experiment is defined in `config/config.json` and currently uses:
+
+```text
+N = 100, 250, 500, 1000
+seed = 42
+```
+
+Each population size runs in an isolated directory under:
+
+```text
+outputs/pilot/population_sensitivity/
+```
+
+The sensitivity runner disables maps and global metadata regeneration during
+the repeated runs, preserves the full analytical outputs for every N, and
+creates:
+
+```text
+population_sensitivity_summary.csv
+population_sensitivity_stability.csv
+population_sensitivity_selection.csv
+population_sensitivity_report.md
+```
+
+The summary records analytical agents, outliers, used segments, flow-support
+thresholds, H_soc, paired delta_H_soc and processing time. The stability table
+compares each N with the next larger population using the supported H_soc of
+both scenarios, the supported paired delta_H_soc and the paired delta_H_soc
+over all commonly used segments.
+
+The provisional selection rule chooses the smallest N whose maximum absolute
+change in these key metrics is within the configured tolerance and that has at
+least the configured number of paired segments with n_agents >= 10. If no
+tested N reaches that plateau, the largest tested population remains the
+technical reference. This selection is provisional and must later be checked
+with multiple seeds.
+
+Use `--resume` to reuse complete runs that already exist:
+
+```bash
+python -m src.analysis.population_sensitivity --resume
+```
+
+The main pilot also accepts isolated runtime arguments without changing the
+permanent configuration:
+
+```bash
+python -m src.simulation.run_pilot --n-agents 500 --seed 42 --output-dir outputs/pilot/example_n500 --skip-maps --skip-metadata
+```
 
 ## Remaining work to close the pilot
 
