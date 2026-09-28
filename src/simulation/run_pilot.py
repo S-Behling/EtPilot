@@ -36,9 +36,6 @@ import pandas as pd
 from src.analysis.trip_outliers import (
     apply_paired_transit_outlier_filter,
 )
-from src.analysis.transit_spatial_exclusions import (
-    apply_paired_transit_spatial_exclusions,
-)
 from src.analysis.edge_statistics import (
     attach_statistics_to_segments,
     build_segment_statistics,
@@ -72,9 +69,10 @@ from src.simulation.scenarios import build_behavior_scenarios
 from src.trajectory.edge_usage import build_edge_usage
 from src.trajectory.transit_usage import (
     build_transit_edge_usage,
-    build_used_transit_connection_geometries,
-    map_transit_connections_hierarchically,
-    summarize_transit_spatial_matching,
+)
+from src.transit.physicalNetwork import (
+    integrate_transit_physical_network,
+    summarize_transit_physical_integration,
 )
 from src.transit.routeTransit import TransitRouter
 
