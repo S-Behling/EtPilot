@@ -75,6 +75,36 @@ def _format_float_pt(
     )
 
 
+def _format_percentage_pt(
+    numerator,
+    denominator,
+) -> str:
+    """Formata uma proporção como percentual com vírgula decimal"""
+
+    denominator_value = float(
+        denominator
+    )
+
+    if denominator_value <= 0:
+        return "0,0%"
+
+    value = (
+        100.0
+        * float(
+            numerator
+        )
+        / denominator_value
+    )
+
+    return (
+        f"{value:.1f}%"
+        .replace(
+            ".",
+            ",",
+        )
+    )
+
+
 def _format_date_pt(
     value,
 ) -> str:
@@ -1163,7 +1193,8 @@ def main() -> None:
     print(
         "  Conexões que usam pelo menos um horário interpolado: "
         f"{_format_int_pt(summary['connections_with_interpolated_time'])} "
-        "conexões"
+        "conexões "
+        f"({_format_percentage_pt(summary['connections_with_interpolated_time'], summary['n_scheduled_connections'])})"
     )
 
     print(
