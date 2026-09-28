@@ -100,6 +100,35 @@ def _parse_args():
         action="store_true",
         help="Executa a bateria sem --resume.",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=int(
+            config.get(
+                "analysis",
+                {},
+            ).get(
+                "final_pilot_sensitivity",
+                {},
+            ).get(
+                "max_parallel_workers",
+                2,
+            )
+        ),
+        help=(
+            "Número de simulações independentes em paralelo. "
+            "Use 1 se faltar memória."
+        ),
+    )
+    parser.add_argument(
+        "--core-only",
+        action="store_true",
+        help=(
+            "Produz primeiro os resultados centrais do artigo usando apenas "
+            "as cinco realizações nominais. Sensibilidades adicionais podem "
+            "ser concluídas depois com o comando completo."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -159,14 +188,26 @@ def _ensure_dirs(root: Path) -> dict[str, Path]:
 def _run_final_sensitivity(
     *,
     force: bool,
+    workers: int,
+    core_only: bool,
 ) -> None:
     command = [
         sys.executable,
         "-m",
         "src.analysis.final_pilot_sensitivity",
+        "--workers",
+        str(workers),
     ]
     if not force:
         command.append("--resume")
+
+    if core_only:
+        command.extend(
+            [
+                "--experiments",
+                "nominal_seed",
+            ]
+        )
 
     subprocess.run(
         command,
@@ -2546,6 +2587,8 @@ def main() -> None:
     if not args.skip_simulations:
         _run_final_sensitivity(
             force=args.force_simulations,
+            workers=args.workers,
+            core_only=args.core_only,
         )
 
     runs_path = (
