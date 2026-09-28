@@ -1362,10 +1362,16 @@ def export_pilot_metadata(
             "opcional",
             optional,
         )
+        exists_now = (
+            absolute_path.exists()
+            or absolute_path
+            == output_path
+        )
+
         _add_text(
             item,
             "existe_no_momento",
-            absolute_path.exists(),
+            exists_now,
         )
 
         if absolute_path.exists():
