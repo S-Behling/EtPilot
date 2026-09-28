@@ -202,14 +202,20 @@ def build_scenario_comparison(
 
     comparison[
         "usage_status"
-    ] = comparison[
-        "_merge"
-    ].map(
-        {
-            "left_only": "baseline_only",
-            "right_only": "differentiated_only",
-            "both": "used_both",
-        }
+    ] = (
+        comparison[
+            "_merge"
+        ]
+        .map(
+            {
+                "left_only": "baseline_only",
+                "right_only": "differentiated_only",
+                "both": "used_both",
+            }
+        )
+        .astype(
+            "object"
+        )
     )
 
     comparison = comparison.drop(
