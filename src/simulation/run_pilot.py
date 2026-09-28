@@ -439,6 +439,35 @@ def _print_scenario_summary(
             f"({_format_percentage_pt(count, total_agents)})"
         )
 
+    transit_selected = summary.loc[
+        summary[
+            "mode"
+        ]
+        == TravelMode.TRANSIT.value
+    ]
+
+    if not transit_selected.empty:
+        transit_success_count = int(
+            transit_selected[
+                "route_status"
+            ].isin(
+                SUCCESS_STATUSES
+            ).sum()
+        )
+
+        print(
+            "\nCobertura do roteamento transit"
+        )
+        print(
+            "  Agentes que escolheram transit: "
+            f"{_format_int_pt(len(transit_selected))} agentes"
+        )
+        print(
+            "  Rotas transit bem-sucedidas: "
+            f"{_format_int_pt(transit_success_count)} viagens "
+            f"({_format_percentage_pt(transit_success_count, len(transit_selected))})"
+        )
+
     successful = summary.loc[
         summary[
             "route_status"
