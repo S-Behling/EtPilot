@@ -30,6 +30,7 @@ ipykernel
 
 # Arquivos tabulares e colunares
 pyarrow
+xlsxwriter
 
 # Utilidades
 tqdm
