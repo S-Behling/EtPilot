@@ -1,16 +1,16 @@
-"""Calcule a entropia normalizada da composição socioeconômica.
+"""Calcula a entropia normalizada da composição socioeconômica
 
-Use a entropia de Shannon para medir a diversidade dos grupos de renda que
-utilizam cada segmento físico. Normalize o valor pelo máximo teórico definido
-pelo número total de grupos considerados.
+Usa a entropia de Shannon para medir a diversidade dos grupos de renda que
+utilizam cada segmento físico. Normaliza o valor pelo máximo teórico definido
+pelo número total de grupos considerados
 
-Interprete o resultado no intervalo [0, 1]:
-- use 0 quando apenas um grupo estiver representado;
+Interpreta o resultado no intervalo [0, 1]:
+- usa 0 quando apenas um grupo estiver representado;
 - aproxime-se de 1 quando os grupos aparecerem em proporções semelhantes;
-- retorne NaN quando não houver observações no segmento.
+- retorna NaN quando não houver observações no segmento
 
-Não interprete a entropia isoladamente. Acompanhe-a sempre pelo número de
-agentes e de passagens observados no segmento.
+Não interpreta a entropia isoladamente. Acompanha-a sempre pelo número de
+agentes e de passagens observados no segmento
 """
 
 from __future__ import annotations
@@ -26,15 +26,15 @@ def normalized_shannon_entropy(
     n_categories: int | None = None,
 ) -> float:
     """
-    Calcule a entropia de Shannon normalizada para uma composição.
+    Calcula a entropia de Shannon normalizada para uma composição
 
-    Use somente contagens não negativas. Ignore categorias com probabilidade
-    zero no somatório e normalize pelo máximo teórico `ln(K)`, em que `K`
-    representa o número total de categorias possíveis no experimento.
+    Usa somente contagens não negativas. Ignora categorias com probabilidade
+    zero no somatório e normaliza pelo máximo teórico `ln(K)`, em que `K`
+    representa o número total de categorias possíveis no experimento
 
-    Retorne NaN quando a soma das contagens for zero. Não converta ausência de
+    Retorna NaN quando a soma das contagens for zero. Não converte ausência de
     observação em entropia zero, pois zero deve representar composição
-    observada por um único grupo.
+    observada por um único grupo
     """
 
     values = np.asarray(
@@ -115,7 +115,7 @@ def normalized_shannon_entropy(
         / maximum
     )
 
-    # Limite pequenos erros numéricos sem mascarar resultados fora do domínio.
+    # Limite pequenos erros numéricos sem mascarar resultados fora do domínio
     if -1e-12 <= normalized < 0:
         normalized = 0.0
 
