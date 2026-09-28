@@ -805,7 +805,7 @@ local perturbations of the behavioral parameters:
 ```text
 destination distance decay: 0.75 x, 1.00 x, 1.25 x
 modal distance decay:       0.75 x, 1.00 x, 1.25 x
-decomposition: differentiated purpose/destination with homogenized mode shares
+decomposition: differentiated purpose/destination with homogenized mode shares for all nominal seeds
 ```
 
 The nominal 1.00 x, seed=42 run is reused as the reference. When available,
@@ -851,20 +851,67 @@ Use `--homogenize-differentiated-mode` to isolate the contribution of
 differentiated purpose/destination rules while keeping modal probabilities
 equal between income groups.
 
+## Article v01 reproducible package
+
+The full article pipeline has a single entry point:
+
+```bash
+python -m src.analysis.article_v01
+```
+
+The command first executes/reuses the fixed-N sensitivity battery and then
+creates the complete article package under:
+
+```text
+outputs/v01 artigo/
+```
+
+Use the following command only when all simulation runs already exist and the
+goal is to rebuild the analytical package:
+
+```bash
+python -m src.analysis.article_v01 --skip-simulations
+```
+
+The package contains three final analytical bases:
+
+```text
+01_bases/base01_agentes_pareados
+01_bases/base02_segmentos_pareados
+01_bases/base03_realizacoes
+```
+
+The inferential result does **not** treat street segments as independent
+observations. Uncertainty is estimated with a hierarchical bootstrap that
+resamples seeds and, within each seed, paired agents while preserving every
+agent's complete trajectory. Segment-level outputs remain the descriptive and
+spatial representation layer.
+
+The article package also produces:
+
+- a direct answer table for the operational research question;
+- a multi-seed spatial consensus layer;
+- exact additive contributions of each income group to `delta_H_soc`;
+- a behavioral decomposition separating purpose+destination from differentiated
+  mode probabilities;
+- route-overlap and behavioral-change diagnostics by income group;
+- local parameter-sensitivity results;
+- automatic article tables in CSV and XLSX;
+- a figure/map set and a figure manifest;
+- a reproducibility manifest and a concise results report.
+
 ## Remaining work to close the pilot
 
 Complete the pilot in this order:
 
 1. run the unit-test suite after pulling this branch;
-2. execute the final fixed-N sensitivity battery with
-   `python -m src.analysis.final_pilot_sensitivity --resume`;
-3. inspect the five-seed stability table and the local parameter perturbations,
-   using `n_agents >= 5` as the primary support threshold and the other
-   thresholds only as sensitivity diagnostics;
+2. execute `python -m src.analysis.article_v01`;
+3. inspect the five-seed stability, hierarchical-bootstrap interval, spatial
+   consensus, mechanism decomposition and local parameter perturbations;
 4. freeze the nominal behavioral configuration if the central pattern is not
    driven by a single seed or by the local 0.75x/1.25x perturbations;
-5. regenerate the final pilot maps and metadata with the frozen nominal
-   configuration and document the remaining limitations.
+5. use the generated `outputs/v01 artigo/` package as the frozen analytical
+   source for article tables, maps, figures and reported numerical results.
 
 Increasing N above 100 is not part of the closing battery. The previous N=250
 run remains useful as a diagnostic showing that N=100 must be described as an
