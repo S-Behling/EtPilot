@@ -132,14 +132,26 @@ Current structure:
 
 ```text
 src/
-└── downloads/
+├── downloads/
+│   ├── __init__.py
+│   └── downloadGTFS.py
+└── transit/
     ├── __init__.py
-    └── downloadGTFS.py
+    └── processGTFS.py
 
 data/
 └── gtfs/
     ├── porto_alegre_gtfs.zip
-    └── gtfs_download_metadata.json
+    ├── gtfs_download_metadata.json
+    ├── agency_processed.parquet
+    ├── routes_processed.parquet
+    ├── trips_processed.parquet
+    ├── stop_times_processed.parquet
+    ├── service_dates_processed.parquet
+    ├── stops_processed.gpkg
+    ├── shapes_processed.gpkg
+    ├── gtfs_processed_inventory.csv
+    └── gtfs_processed_summary.csv
 ```
 
 Run the official Porto Alegre GTFS download with:
@@ -156,6 +168,24 @@ Keep later processed GTFS products in the same `data/gtfs/` directory and
 make their processed state explicit in the filename, for example
 `porto_alegre_gtfs_processed.gpkg` or
 `transit_network_processed.parquet`.
+
+Process the downloaded feed with:
+
+```bash
+python -m src.transit.processGTFS
+```
+
+The processor reads the original ZIP directly without creating an additional
+`raw/` directory. It validates the core GTFS relationships, converts GTFS
+times such as `25:10:00` to seconds from the beginning of the service day,
+expands active service dates, projects stops to the study CRS, and builds
+projected line geometries from `shapes.txt` when the feed provides shapes.
+
+The current official EPTC GTFS source represents the Porto Alegre bus mode.
+Keep the internal `transit` label for the pilot while documenting this bus
+scope explicitly. Add other transit systems through additional feeds or
+network layers instead of assuming that this EPTC feed represents every
+public-transport mode.
 
 ## Multimodal network
 
@@ -389,9 +419,13 @@ Current implementation:
 - ✔ Supported-flow map variants and map manifest
 - ✔ Distance-sensitive mode choice using pre-routing OD distance
 - ✔ Fixed distance-response rule across baseline and differentiated
+- ✔ GTFS downloader with direct storage under data/gtfs
+- ✔ GTFS validation and preprocessing pipeline
+- ✔ Processed service dates, stops and optional shapes for transit construction
 
 In progress:
 
+- Transit graph construction and transit routing
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
 - Empirical calibration of provisional modal-distance parameters
@@ -400,16 +434,18 @@ In progress:
 
 Complete the pilot in this order:
 
-1. validate the provisional distance-sensitive mode rule against routed
+1. build the scheduled bus transit network from the processed GTFS and
+   connect transit access and egress to the walking network;
+2. validate the provisional distance-sensitive mode rule against routed
    distances and replace its parameters with empirical calibration when an
    appropriate observed mobility source is selected;
-2. increase the synthetic population progressively and inspect convergence of
+3. increase the synthetic population progressively and inspect convergence of
    segment coverage, flow support, and `H_soc`;
-3. repeat paired baseline × differentiated runs across multiple seeds and
+4. repeat paired baseline × differentiated runs across multiple seeds and
    summarize the stability of `delta_H_soc`;
-4. run sensitivity checks for the flow thresholds and for the geometric
+5. run sensitivity checks for the flow thresholds and for the geometric
    harmonization parameters;
-5. consolidate final pilot tables, maps, diagnostics, limitations, and
+6. consolidate final pilot tables, maps, diagnostics, limitations, and
    reproducibility instructions.
 
 Keep GTFS public transport outside this first closed pilot unless the research
