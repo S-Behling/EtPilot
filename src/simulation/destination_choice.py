@@ -471,7 +471,11 @@ def assign_destinations(
 
     probability_cache: dict[
         tuple[object, str, str],
-        tuple[pd.DataFrame, np.ndarray],
+        tuple[
+            pd.DataFrame,
+            np.ndarray,
+            np.ndarray,
+        ],
     ] = {}
 
     for agent in agents:
@@ -584,10 +588,11 @@ def assign_destinations(
                 cache_key
             ] = (
                 candidates,
+                distances_m,
                 probabilities,
             )
 
-        candidates, probabilities = (
+        candidates, distances_m, probabilities = (
             probability_cache[
                 cache_key
             ]
@@ -619,7 +624,14 @@ def assign_destinations(
             for mode in modes
         }
 
-        # Só será definido após a escolha modal.
+        # Registra a distância euclidiana usada como impedância pré-roteamento
+        agent.od_distance_m = float(
+            distances_m[
+                position
+            ]
+        )
+
+        # Mantém o nó efetivo indefinido até a escolha modal
         agent.destination_node = None
 
     return agents
@@ -649,6 +661,9 @@ def destination_choice_summary(
                 "origin_id": agent.origin_id,
                 "destination_id": (
                     agent.destination_id
+                ),
+                "od_distance_m": (
+                    agent.od_distance_m
                 ),
                 "destination_node": (
                     agent.destination_node
