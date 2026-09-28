@@ -49,6 +49,7 @@ from src.simulation.origin_assignment import assign_origins
 from src.simulation.population import generate_population
 from src.simulation.purpose_choice import assign_purpose
 from src.simulation.scenarios import build_behavior_scenarios
+from src.trajectory.edge_usage import build_edge_usage
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -256,6 +257,7 @@ def _validate_fixed_population(
 
 def _save_outputs(
     summaries: dict[str, pd.DataFrame],
+    edge_usages: dict[str, pd.DataFrame],
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -276,6 +278,24 @@ def _save_outputs(
 
     comparison.to_csv(
         OUTPUT_DIR / "agents_all_scenarios.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    for scenario_name, edge_usage in edge_usages.items():
+        edge_usage.to_csv(
+            OUTPUT_DIR / f"edge_usage_{scenario_name}.csv",
+            index=False,
+            encoding="utf-8",
+        )
+
+    edge_usage_all = pd.concat(
+        edge_usages.values(),
+        ignore_index=True,
+    )
+
+    edge_usage_all.to_csv(
+        OUTPUT_DIR / "edge_usage_all_scenarios.csv",
         index=False,
         encoding="utf-8",
     )
@@ -379,6 +399,7 @@ def main() -> None:
     )
 
     summaries: dict[str, pd.DataFrame] = {}
+    edge_usages: dict[str, pd.DataFrame] = {}
 
     print("6/7 - Executando cenários e roteamento...")
 
@@ -455,15 +476,33 @@ def main() -> None:
 
         summaries[scenario_name] = summary
 
+        edge_usage = build_edge_usage(
+            agents=agents,
+            graphs=graphs,
+            scenario_name=scenario_name,
+        )
+
+        edge_usages[scenario_name] = edge_usage
+
         _print_scenario_summary(
             scenario_name=scenario_name,
             summary=summary,
         )
 
+        print(
+            "\nUso das arestas: "
+            f"{len(edge_usage):,} passagens agente×aresta | "
+            f"{edge_usage['modal_edge_id'].nunique():,} "
+            "arestas modais únicas"
+        )
+
     print("\n7/7 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
-    _save_outputs(summaries)
+    _save_outputs(
+        summaries,
+        edge_usages,
+    )
 
     print("\n=== TESTE FINAL ===")
     print(
