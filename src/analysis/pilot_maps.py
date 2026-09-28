@@ -405,6 +405,10 @@ def save_pilot_maps(
             "scenario": "baseline",
             "supported_only": False,
             "title": "H_soc — baseline — todos os segmentos observados",
+            "description_pt": (
+                "Mostra a diversidade socioeconômica das trajetórias no cenário "
+                "baseline para todos os segmentos com H_soc calculável"
+            ),
         },
         {
             "map_id": "h_soc_baseline_supported",
@@ -412,6 +416,10 @@ def save_pilot_maps(
             "scenario": "baseline",
             "supported_only": True,
             "title": "H_soc — baseline — fluxo suficiente",
+            "description_pt": (
+                "Mostra o H_soc no cenário baseline apenas nos segmentos que "
+                "atingem o fluxo mínimo de agentes definido para interpretação"
+            ),
         },
         {
             "map_id": "h_soc_differentiated_all",
@@ -419,6 +427,10 @@ def save_pilot_maps(
             "scenario": "differentiated",
             "supported_only": False,
             "title": "H_soc — differentiated — todos os segmentos observados",
+            "description_pt": (
+                "Mostra a diversidade socioeconômica das trajetórias no cenário "
+                "differentiated para todos os segmentos com H_soc calculável"
+            ),
         },
         {
             "map_id": "h_soc_differentiated_supported",
@@ -426,6 +438,10 @@ def save_pilot_maps(
             "scenario": "differentiated",
             "supported_only": True,
             "title": "H_soc — differentiated — fluxo suficiente",
+            "description_pt": (
+                "Mostra o H_soc no cenário differentiated apenas nos segmentos "
+                "que atingem o fluxo mínimo de agentes definido para interpretação"
+            ),
         },
         {
             "map_id": "delta_h_soc_all",
@@ -433,6 +449,10 @@ def save_pilot_maps(
             "scenario": "paired",
             "supported_only": False,
             "title": "ΔH_soc — differentiated − baseline — segmentos comparáveis",
+            "description_pt": (
+                "Mostra a diferença pareada de H_soc entre differentiated e "
+                "baseline nos mesmos segmentos físicos observados nos dois cenários"
+            ),
         },
         {
             "map_id": "delta_h_soc_supported",
@@ -440,6 +460,10 @@ def save_pilot_maps(
             "scenario": "paired",
             "supported_only": True,
             "title": "ΔH_soc — differentiated − baseline — fluxo suficiente nos dois",
+            "description_pt": (
+                "Mostra a diferença pareada de H_soc somente nos segmentos que "
+                "atingem o fluxo mínimo de agentes em ambos os cenários"
+            ),
         },
     ]
 
@@ -505,6 +529,9 @@ def save_pilot_maps(
                     "supported_only"
                 ],
                 "n_segments_plotted": n_plotted,
+                "description_pt": job[
+                    "description_pt"
+                ],
                 "filename": filename,
             }
         )
