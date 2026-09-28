@@ -807,7 +807,7 @@ ANALYSIS_METHODS = [
     {
         "nome": "Integração da rede física GTFS à camada comum",
         "funcao_codigo": "integrate_transit_physical_network",
-        "descricao": "Integra todos os trechos físicos GTFS válidos à camada comum e cria analysis_segment_id exclusivos para trechos que não possuem correspondência segura nas redes OSM",
+        "descricao": "Integra todos os trechos físicos GTFS válidos à camada comum e cria analysis_segment_id exclusivos para trechos que não possuem correspondência segura nas redes OSM, sem interpretar automaticamente essa exclusividade como infraestrutura física exclusiva de ônibus",
     },
     {
         "nome": "Recuperação ordenada da posição de paradas no shape",
@@ -1035,7 +1035,7 @@ CLEANING_METHODS = [
     },
     {
         "nome": "Incorporação de trechos transit exclusivos",
-        "descricao": "Preserva a trajetória do agente ao criar um analysis_segment_id exclusivo para trechos físicos GTFS válidos que não possuem correspondência segura nas redes OSM",
+        "descricao": "Preserva a trajetória do agente ao criar um analysis_segment_id exclusivo para trechos físicos GTFS válidos que não possuem correspondência segura nas redes OSM; a causa pode ser infraestrutura dedicada, diferença de cobertura OSM ou desacordo geométrico entre as fontes",
     },
 ]
 
