@@ -1449,59 +1449,19 @@ def main() -> None:
         "mapping_scope"
     ] = "full_road_active_network"
 
-    (
-        transit_connection_geometries,
-        transit_geometry_diagnostics,
-    ) = build_used_transit_connection_geometries(
-        edge_usage_all,
-        connections=transit_connections,
-        shapes=transit_shapes,
-        stops=transit_stops,
+    road_analysis_segment_count = len(
+        analysis_segments
     )
-
-    car_supported_segment_ids = set(
-        segment_mapping.loc[
-            segment_mapping[
-                "mode"
-            ]
-            == TravelMode.CAR.value,
-            "analysis_segment_id",
-        ].astype(
-            str
-        )
-    )
-
-    transit_candidate_segments = (
-        analysis_segments.loc[
-            analysis_segments[
-                "analysis_segment_id"
-            ]
-            .astype(
-                str
-            )
-            .isin(
-                car_supported_segment_ids
-            )
-        ]
-        .copy()
-        .reset_index(
-            drop=True
-        )
-    )
-
-    if transit_candidate_segments.empty:
-        raise RuntimeError(
-            "A camada física não possui segmentos associados à rede car "
-            "para mapear as conexões GTFS"
-        )
 
     (
+        analysis_segments,
+        segment_mapping,
         transit_mapping,
         transit_match_diagnostics,
-    ) = map_transit_connections_hierarchically(
-        transit_connection_geometries,
-        primary_segments=transit_candidate_segments,
-        fallback_segments=analysis_segments,
+    ) = integrate_transit_physical_network(
+        analysis_segments,
+        segment_mapping,
+        transit_physical_edges,
         primary_config=(
             transit_primary_spatial_config
         ),
@@ -1510,9 +1470,10 @@ def main() -> None:
         ),
     )
 
-    transit_spatial_summary = (
-        summarize_transit_spatial_matching(
-            transit_geometry_diagnostics,
+    transit_physical_summary = (
+        summarize_transit_physical_integration(
+            transit_physical_edges,
+            transit_mapping,
             transit_match_diagnostics,
         )
     )
@@ -1533,15 +1494,31 @@ def main() -> None:
     mapped_transit_modal_edges = set(
         transit_mapping[
             "modal_edge_id"
-        ].astype(
+        ]
+        .dropna()
+        .astype(
             str
         )
     )
 
-    missing_transit_mapping = (
+    missing_used_transit_edges = (
         used_transit_modal_edges
         - mapped_transit_modal_edges
     )
+
+    if missing_used_transit_edges:
+        sample_ids = sorted(
+            missing_used_transit_edges
+        )[
+            :10
+        ]
+
+        raise RuntimeError(
+            "A rede física transit completa não cobre todos os trechos "
+            "usados pelos agentes: "
+            f"{_format_int_pt(len(missing_used_transit_edges))} trechos | "
+            f"amostra={sample_ids}"
+        )
 
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -1550,284 +1527,72 @@ def main() -> None:
 
     transit_mapping.to_csv(
         OUTPUT_DIR
-        / "transit_connection_to_analysis_segment.csv",
-        index=False,
-        encoding="utf-8",
-    )
-    transit_geometry_diagnostics.to_csv(
-        OUTPUT_DIR
-        / "transit_connection_geometry_diagnostics.csv",
+        / transit_spatial_config.get(
+            "transit_physical_mapping_file",
+            "transit_physical_edge_to_analysis_segment.csv",
+        ),
         index=False,
         encoding="utf-8",
     )
     transit_match_diagnostics.to_csv(
         OUTPUT_DIR
-        / "transit_connection_match_diagnostics.csv",
+        / "transit_physical_match_diagnostics.csv",
         index=False,
         encoding="utf-8",
     )
     pd.DataFrame(
         [
-            transit_spatial_summary,
+            transit_physical_summary,
         ]
     ).to_csv(
         OUTPUT_DIR
-        / "transit_spatial_match_report.csv",
+        / transit_spatial_config.get(
+            "transit_physical_summary_file",
+            "transit_physical_network_summary.csv",
+        ),
         index=False,
         encoding="utf-8",
     )
 
-    if missing_transit_mapping:
-        missing_connection_ids = {
-            modal_edge_id.split(
-                "transit:",
-                1,
-            )[
-                -1
-            ]
-            for modal_edge_id in missing_transit_mapping
-        }
-
-        invalid_geometry = (
-            transit_geometry_diagnostics.loc[
-                transit_geometry_diagnostics[
-                    "connection_id"
-                ]
-                .astype(
-                    str
-                )
-                .isin(
-                    missing_connection_ids
-                )
-                & (
-                    ~transit_geometry_diagnostics[
-                        "geometry_status"
-                    ]
-                    .astype(
-                        str
-                    )
-                    .str.startswith(
-                        "ok"
-                    )
-                )
-            ]
-        )
-
-        valid_but_unmatched = (
-            transit_match_diagnostics.loc[
-                transit_match_diagnostics[
-                    "connection_id"
-                ]
-                .astype(
-                    str
-                )
-                .isin(
-                    missing_connection_ids
-                )
-                & (
-                    transit_match_diagnostics[
-                        "matched_segments"
-                    ]
-                    == 0
-                )
-            ]
-        )
-
-        print(
-            "\nControle de falhas de espacialização transit"
-        )
-        print(
-            "  Conexões sem correspondência antes da exclusão: "
-            f"{_format_int_pt(len(missing_transit_mapping))} conexões"
-        )
-        print(
-            "    com geometria inválida: "
-            f"{_format_int_pt(len(invalid_geometry))} conexões"
-        )
-        print(
-            "    com geometria válida sem segmento compatível: "
-            f"{_format_int_pt(len(valid_but_unmatched))} conexões"
-        )
-
-        unmatched_policy = transit_spatial_config.get(
-            "unmatched_policy",
-            "error",
-        )
-
-        if unmatched_policy == "exclude_agent_paired":
-            (
-                summaries,
-                edge_usages,
-                spatial_exclusions,
-                spatial_exclusion_summary,
-            ) = apply_paired_transit_spatial_exclusions(
-                summaries,
-                edge_usages,
-                missing_modal_edge_ids=(
-                    missing_transit_mapping
-                ),
-                paired_exclusion=bool(
-                    transit_spatial_config.get(
-                        "paired_exclusion",
-                        True,
-                    )
-                ),
-            )
-
-            spatial_exclusions.to_csv(
-                OUTPUT_DIR
-                / transit_spatial_config.get(
-                    "exclusions_file",
-                    "transit_spatial_exclusions.csv",
-                ),
-                index=False,
-                encoding="utf-8",
-            )
-            spatial_exclusion_summary.to_csv(
-                OUTPUT_DIR
-                / transit_spatial_config.get(
-                    "exclusion_summary_file",
-                    "transit_spatial_exclusion_summary.csv",
-                ),
-                index=False,
-                encoding="utf-8",
-            )
-
-            spatial_row = (
-                spatial_exclusion_summary.iloc[
-                    0
-                ]
-            )
-
-            print(
-                "  Agentes diretamente afetados: "
-                f"{_format_int_pt(spatial_row['directly_affected_agents'])} agentes"
-            )
-            print(
-                "  Registros removidos da análise pareada: "
-                f"{_format_int_pt(spatial_row['excluded_scenario_rows'])} linhas"
-            )
-
-            for scenario_name in SCENARIOS:
-                included_agents = int(
-                    summaries[
-                        scenario_name
-                    ][
-                        "analysis_included"
-                    ].sum()
-                )
-
-                print(
-                    f"  {scenario_name}: "
-                    f"{_format_int_pt(included_agents)} agentes mantidos "
-                    "na análise espacial"
-                )
-
-            edge_usage_all = pd.concat(
-                edge_usages.values(),
-                ignore_index=True,
-            )
-
-            used_transit_modal_edges = set(
-                edge_usage_all.loc[
-                    edge_usage_all[
-                        "mapping_mode"
-                    ]
-                    == TravelMode.TRANSIT.value,
-                    "modal_edge_id",
-                ]
-                .dropna()
-                .astype(
-                    str
-                )
-            )
-
-            missing_transit_mapping = (
-                used_transit_modal_edges
-                - mapped_transit_modal_edges
-            )
-
-            if missing_transit_mapping:
-                sample_ids = sorted(
-                    missing_transit_mapping
-                )[
-                    :10
-                ]
-
-                raise RuntimeError(
-                    "Persistem conexões GTFS sem correspondência após a "
-                    "exclusão pareada dos agentes afetados: "
-                    f"{_format_int_pt(len(missing_transit_mapping))} conexões | "
-                    f"amostra={sample_ids}"
-                )
-
-            print(
-                "  Conexões sem correspondência após a exclusão pareada: "
-                "0 conexões"
-            )
-        else:
-            sample_ids = sorted(
-                missing_connection_ids
-            )[
-                :10
-            ]
-
-            raise RuntimeError(
-                "Existem conexões GTFS usadas pelos agentes sem correspondência "
-                "na camada física comum: "
-                f"{_format_int_pt(len(missing_transit_mapping))} conexões | "
-                f"{_format_int_pt(len(invalid_geometry))} com geometria inválida | "
-                f"{_format_int_pt(len(valid_but_unmatched))} com geometria válida "
-                "mas sem segmento compatível | "
-                f"amostra={sample_ids}. "
-                "Os diagnósticos espaciais foram salvos em outputs/pilot"
-            )
-
-    segment_mapping = pd.concat(
-        [
-            segment_mapping,
-            transit_mapping,
-        ],
-        ignore_index=True,
-        sort=False,
-    )
-
     print(
-        "\nMapeamento espacial do transporte coletivo"
+        "\nIntegração da rede física completa do transporte coletivo"
     )
     print(
-        "  Segmentos físicos candidatos com suporte da rede car: "
-        f"{_format_int_pt(len(transit_candidate_segments))} segmentos"
+        "  Segmentos físicos OSM antes de transit: "
+        f"{_format_int_pt(road_analysis_segment_count)} segmentos"
     )
     print(
-        "  Conexões GTFS usadas: "
-        f"{_format_int_pt(transit_spatial_summary['used_transit_connections'])} conexões"
+        "  Trechos físicos GTFS processados: "
+        f"{_format_int_pt(transit_physical_summary['transit_physical_edges'])} trechos"
     )
     print(
-        "  Conexões com geometria válida: "
-        f"{_format_int_pt(transit_spatial_summary['connections_with_valid_geometry'])} conexões "
-        f"({_format_percentage_pt(transit_spatial_summary['connections_with_valid_geometry'], max(transit_spatial_summary['used_transit_connections'], 1))})"
+        "  Trechos associados na etapa primária car-supported: "
+        f"{_format_int_pt(transit_physical_summary['primary_matches'])} trechos"
     )
     print(
-        "  Conexões associadas a segmentos físicos: "
-        f"{_format_int_pt(transit_spatial_summary['connections_with_segment_match'])} conexões "
-        f"({_format_percentage_pt(transit_spatial_summary['connections_with_segment_match'], max(transit_spatial_summary['used_transit_connections'], 1))})"
+        "  Trechos associados na etapa de fallback: "
+        f"{_format_int_pt(transit_physical_summary['fallback_matches'])} trechos"
     )
     print(
-        "    na etapa primária car-supported: "
-        f"{_format_int_pt(transit_spatial_summary['primary_matches'])} conexões"
+        "  Trechos incorporados como segmentos exclusivos transit: "
+        f"{_format_int_pt(transit_physical_summary['exclusive_transit_segments'])} trechos"
     )
     print(
-        "    na etapa de fallback da rede física completa: "
-        f"{_format_int_pt(transit_spatial_summary['fallback_matches'])} conexões"
+        "  Trechos físicos transit mapeados: "
+        f"{_format_int_pt(transit_physical_summary['mapped_transit_physical_edges'])} trechos "
+        f"({_format_percentage_pt(transit_physical_summary['mapped_transit_physical_edges'], max(transit_physical_summary['transit_physical_edges'], 1))})"
     )
     print(
-        "  Cobertura média do shape pelos segmentos associados: "
-        f"{_format_float_pt(transit_spatial_summary['mean_shape_coverage_pct'])}%"
+        "  Trechos transit efetivamente usados no N=100: "
+        f"{_format_int_pt(len(used_transit_modal_edges))} trechos"
     )
     print(
-        "  Cobertura mediana do shape pelos segmentos associados: "
-        f"{_format_float_pt(transit_spatial_summary['median_shape_coverage_pct'])}%"
+        "  Trechos usados sem analysis_segment_id: "
+        f"{_format_int_pt(len(missing_used_transit_edges))} trechos"
+    )
+    print(
+        "  Segmentos físicos totais após integrar transit: "
+        f"{_format_int_pt(len(analysis_segments))} segmentos"
     )
 
     harmonized_edge_usages: dict[
