@@ -1,0 +1,2 @@
+candidate_operational_n,selection_status,seed,flow_ge_5_both,flow_ge_10_both,H_soc_mean_supported_baseline,H_soc_mean_supported_differentiated,sufficient_delta_H_soc_mean,paired_delta_H_soc_mean,note_pt
+100,no_plateau_within_tested_range,42,42,0,0.7140375731461494,0.6624821251480367,-0.1235144431558809,-0.0327936069591722,Seleção técnica provisória baseada em uma única seed A escolha final permanece condicionada à inspeção da curva de sensibilidade e à etapa posterior de múltiplas seeds
