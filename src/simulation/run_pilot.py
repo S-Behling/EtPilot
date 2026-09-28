@@ -1,23 +1,24 @@
 """
-Execute o pipeline piloto do EtPilot até a comparação pareada entre cenários
+Executa o pipeline piloto do EtPilot até a visualização espacial dos cenários
 
 Preserva o mesmo conjunto de agentes e as mesmas origens residenciais nos
-dois cenários. Remove diferenças comportamentais por renda no baseline e
+dois cenários, remove diferenças comportamentais por renda no baseline e
 preserva diferenças de propósito, destino e modo no differentiated
 
-Siga o fluxo:
-1. carregue configurações e dados;
-2. carregue as redes de carro, caminhada e bicicleta;
-3. gere a população sintética e atribua origens;
-4. constrói os cenários comportamentais;
-5. atribua propósito, destino e modo;
-6. calcula a rota na rede correspondente ao modo;
-7. harmonize as arestas modais em segmentos físicos comuns;
-8. calcula volume, composição social e H_soc por segmento;
-9. compara baseline e differentiated de forma pareada por segmento;
-10. valide, resume e salve os resultados
+O fluxo:
+1. carrega configurações e dados
+2. carrega as redes de carro, caminhada e bicicleta
+3. gera a população sintética e atribui origens
+4. constrói os cenários comportamentais
+5. atribui propósito, destino e modo
+6. calcula a rota na rede correspondente ao modo
+7. harmoniza as arestas modais em segmentos físicos comuns
+8. calcula volume, composição social e H_soc por segmento
+9. compara baseline e differentiated de forma pareada por segmento
+10. gera mapas comparáveis de H_soc e delta_H_soc
+11. valida, resume e salva os resultados
 
-Execute com:
+A execução ocorre com:
     python -m src.simulation.run_pilot
 """
 
@@ -40,6 +41,7 @@ from src.analysis.scenario_comparison import (
     build_scenario_comparison,
     comparison_summary,
 )
+from src.analysis.pilot_maps import save_pilot_maps
 from src.domain.enums import IncomeGroup, TravelMode
 from src.network.analysis_segments import (
     apply_analysis_segment_mapping,
@@ -530,6 +532,25 @@ def main() -> None:
         ]
     )
 
+    maps_config = config[
+        "analysis"
+    ].get(
+        "maps",
+        {},
+    )
+    maps_enabled = bool(
+        maps_config.get(
+            "enabled",
+            True,
+        )
+    )
+    maps_dpi = int(
+        maps_config.get(
+            "dpi",
+            220,
+        )
+    )
+
     origins_path = (
         PROJECT_ROOT
         / config["paths"]["origins_income"]
@@ -539,7 +560,7 @@ def main() -> None:
         / config["paths"]["destinations"]
     )
 
-    print("1/10 - Carregando dados...")
+    print("1/11 - Carregando dados...")
 
     origins = gpd.read_file(origins_path)
 
@@ -548,7 +569,7 @@ def main() -> None:
         layer="destinations",
     )
 
-    print("2/10 - Carregando redes modais...")
+    print("2/11 - Carregando redes modais...")
 
     graphs = load_mode_graphs(
         config=config,
@@ -563,7 +584,7 @@ def main() -> None:
             f"{len(graph.edges):,} arestas"
         )
 
-    print("3/10 - Gerando população sintética...")
+    print("3/11 - Gerando população sintética...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -579,7 +600,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(base_agents)}")
 
-    print("4/10 - Atribuindo origens residenciais...")
+    print("4/11 - Atribuindo origens residenciais...")
 
     base_agents = assign_origins(
         agents=base_agents,
@@ -598,7 +619,7 @@ def main() -> None:
         ),
     )
 
-    print("5/10 - Construindo cenários experimentais...")
+    print("5/11 - Construindo cenários experimentais...")
 
     behavior_scenarios = build_behavior_scenarios(
         config_agents=config_agents,
@@ -608,7 +629,7 @@ def main() -> None:
     summaries: dict[str, pd.DataFrame] = {}
     edge_usages: dict[str, pd.DataFrame] = {}
 
-    print("6/10 - Executando cenários e roteamento...")
+    print("6/11 - Executando cenários e roteamento...")
 
     for scenario_name in SCENARIOS:
         print(f"\n--- {scenario_name} ---")
@@ -703,7 +724,7 @@ def main() -> None:
             "arestas modais únicas"
         )
 
-    print("\n7/10 - Harmonizando segmentos físicos de análise...")
+    print("\n7/11 - Harmonizando segmentos físicos de análise...")
 
     edge_usage_all = pd.concat(
         edge_usages.values(),
@@ -806,7 +827,7 @@ def main() -> None:
         .to_string(index=False)
     )
 
-    print("\n8/10 - Calculando estatísticas e entropia socioeconômica...")
+    print("\n8/11 - Calculando estatísticas e entropia socioeconômica...")
 
     segment_statistics: dict[
         str,
@@ -891,7 +912,7 @@ def main() -> None:
             )
         )
 
-    print("\n9/10 - Comparando cenários de forma pareada...")
+    print("\n9/11 - Comparando cenários de forma pareada...")
 
     statistics_all = pd.concat(
         segment_statistics.values(),
@@ -971,7 +992,43 @@ def main() -> None:
         )
     )
 
-    print("\n10/10 - Validando e salvando resultados...")
+    print("\n10/11 - Gerando mapas espaciais...")
+
+    if maps_enabled:
+        map_manifest = save_pilot_maps(
+            segment_geodata=segment_geodata,
+            scenario_comparison_geodata=(
+                paired_comparison_geodata
+            ),
+            output_dir=(
+                OUTPUT_DIR
+                / "maps"
+            ),
+            dpi=maps_dpi,
+        )
+
+        print(
+            "  Mapas gerados: "
+            f"{len(map_manifest):,}"
+        )
+        print(
+            "  Diretório: "
+            f"{(OUTPUT_DIR / 'maps').resolve()}"
+        )
+
+        for row in map_manifest.itertuples(
+            index=False
+        ):
+            print(
+                f"  {row.map_id}: "
+                f"{row.n_segments_plotted:,} segmentos destacados"
+            )
+    else:
+        print(
+            "  Geração de mapas desativada em analysis.maps.enabled"
+        )
+
+    print("\n11/11 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
     _save_outputs(
