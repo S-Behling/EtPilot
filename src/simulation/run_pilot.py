@@ -1,5 +1,5 @@
 """
-Execute o pipeline piloto do EtPilot até as estatísticas e o H_soc por segmento.
+Execute o pipeline piloto do EtPilot até a comparação pareada entre cenários.
 
 Preserve o mesmo conjunto de agentes e as mesmas origens residenciais nos
 dois cenários. Remova diferenças comportamentais por renda no baseline e
@@ -279,6 +279,7 @@ def _save_outputs(
     segment_geodata: dict[str, gpd.GeoDataFrame],
     scenario_comparison: pd.DataFrame,
     scenario_comparison_geodata: gpd.GeoDataFrame,
+    scenario_comparison_summary: dict,
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -381,6 +382,22 @@ def _save_outputs(
         index=False,
         encoding="utf-8",
     )
+
+
+    with (
+        OUTPUT_DIR
+        / "segment_scenario_comparison_summary.json"
+    ).open(
+        "w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(
+            scenario_comparison_summary,
+            f,
+            ensure_ascii=False,
+            indent=4,
+            allow_nan=True,
+        )
 
     comparison_to_save = scenario_comparison_geodata.drop(
         columns=[
@@ -974,6 +991,7 @@ def main() -> None:
         segment_geodata=segment_geodata,
         scenario_comparison=paired_comparison,
         scenario_comparison_geodata=paired_comparison_geodata,
+        scenario_comparison_summary=paired_summary,
     )
 
     print("\n=== TESTE FINAL ===")
