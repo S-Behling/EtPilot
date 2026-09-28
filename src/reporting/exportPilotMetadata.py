@@ -756,7 +756,17 @@ ANALYSIS_METHODS = [
     {
         "nome": "Mapeamento geométrico de transit para segmentos físicos",
         "funcao_codigo": "map_transit_connections_to_analysis_segments",
-        "descricao": "Associa trechos GTFS usados aos segmentos físicos com suporte da rede car usando proximidade, cobertura do segmento e compatibilidade da orientação local do shape",
+        "descricao": "Associa trechos GTFS usados aos segmentos físicos usando proximidade, cobertura do segmento ou do shape e compatibilidade da orientação local",
+    },
+    {
+        "nome": "Mapeamento espacial hierárquico do transporte coletivo",
+        "funcao_codigo": "map_transit_connections_hierarchically",
+        "descricao": "Procura primeiro correspondência em segmentos com suporte da rede car e aplica uma segunda etapa na rede física completa somente às conexões ainda não mapeadas",
+    },
+    {
+        "nome": "Recuperação ordenada da posição de paradas no shape",
+        "funcao_codigo": "_forward_stop_positions",
+        "descricao": "Seleciona projeções sucessivas das paradas ao longo do shape quando as posições processadas estão ausentes, iguais ou decrescentes, preservando a ordem do deslocamento",
     },
 ]
 
@@ -946,7 +956,15 @@ CLEANING_METHODS = [
     },
     {
         "nome": "Validação de cobertura espacial das conexões GTFS usadas",
-        "descricao": "Interrompe o piloto quando uma conexão transit usada por agente não encontra correspondência na camada física comum e evita omissão silenciosa no H_soc",
+        "descricao": "Interrompe o piloto quando uma conexão transit usada por agente não encontra correspondência na camada física comum após as etapas primária e de fallback e evita omissão silenciosa no H_soc",
+    },
+    {
+        "nome": "Fallback de projeção ordenada das paradas no shape",
+        "descricao": "Recupera trechos GTFS com progresso geométrico não positivo por meio de projeções sucessivas das paradas e registra explicitamente position_method e distâncias de snap",
+    },
+    {
+        "nome": "Cobertura bidirecional no mapeamento GTFS",
+        "descricao": "Aceita uma correspondência quando o segmento físico ou o trecho de shape atinge a cobertura mínima configurada, reduzindo rejeições artificiais de conexões curtas contidas em segmentos mais longos",
     },
 ]
 
