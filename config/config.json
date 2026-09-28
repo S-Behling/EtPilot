@@ -65,6 +65,15 @@
             ],
             "geometry_tolerance_m": 5,
             "min_geometry_coverage": 0.8
+        },
+        "segment_statistics": {
+            "min_agents_for_interpretation": 5,
+            "flow_thresholds": [
+                2,
+                3,
+                5,
+                10
+            ]
         }
     },
     "income": {
