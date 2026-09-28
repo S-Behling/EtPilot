@@ -39,12 +39,11 @@ class ProcessGTFSTests(unittest.TestCase):
                 "R1,WK,T1,SH1\n"
             ),
             "stop_times.txt": (
-                "trip_id,arrival_time,departure_time,stop_id,stop_sequence,"
-                "shape_dist_traveled\n"
-                "T1,23:50:00,23:50:00,S1,1,0\n"
-                "T1,,,S2,2,5\n"
+                "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+                "T1,23:50:00,23:50:00,S1,1\n"
+                "T1,,,S2,2\n"
                 f"T1,25:10:00,25:10:00,"
-                f"{'SX' if invalid_stop_reference else 'S3'},3,10\n"
+                f"{'SX' if invalid_stop_reference else 'S3'},3\n"
             ),
             "shapes.txt": (
                 "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
@@ -158,7 +157,7 @@ class ProcessGTFSTests(unittest.TestCase):
                 middle_stop[
                     "time_interpolation_method"
                 ],
-                "shape_dist_traveled",
+                "shape_geometry",
             )
             self.assertEqual(
                 last_stop[
@@ -180,6 +179,18 @@ class ProcessGTFSTests(unittest.TestCase):
                     "stop_times_interpolated"
                 ],
                 1,
+            )
+            self.assertEqual(
+                summary[
+                    "stop_times_interpolated_shape_geometry"
+                ],
+                1,
+            )
+            self.assertEqual(
+                summary[
+                    "stop_times_interpolated_stop_sequence"
+                ],
+                0,
             )
             self.assertEqual(
                 summary[
