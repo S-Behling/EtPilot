@@ -192,8 +192,6 @@
             "coverage_rule": "segment_or_shape",
             "unmatched_policy": "exclusive_segment",
             "calibration_status": "provisional_pilot",
-            "connection_mapping_file": "transit_connection_to_analysis_segment.csv",
-            "match_report_file": "transit_spatial_match_report.csv",
             "transit_physical_mapping_file": "transit_physical_edge_to_analysis_segment.csv",
             "transit_physical_summary_file": "transit_physical_network_summary.csv"
         }

@@ -395,6 +395,11 @@ def build_transit_physical_network(
         crs=shapes.crs,
     )
 
+    if physical_edges.empty:
+        raise ValueError(
+            "Nenhum trecho físico GTFS válido foi construído"
+        )
+
     valid_physical_ids = set(
         physical_edges[
             "transit_physical_edge_id"
