@@ -213,6 +213,49 @@ Keep all physical analysis segments in each GeoPackage. Fill count fields with
 zero for unused segments and preserve proportions and `H_soc` as null values
 when no agent uses the segment.
 
+
+## Paired scenario comparison
+
+Compare baseline and differentiated by the same `analysis_segment_id`. Do not
+compare scenario-level averages as if they represented the same spatial
+sample.
+
+Preserve four spatial states in the comparison layer:
+
+- `used_both`: use the segment in both scenarios;
+- `baseline_only`: use the segment only in baseline;
+- `differentiated_only`: use the segment only in differentiated;
+- `unused_both`: keep the physical segment in the GeoPackage even when
+  neither scenario uses it.
+
+Calculate:
+
+```text
+delta_H_soc = H_soc_differentiated - H_soc_baseline
+delta_n_agents = n_agents_differentiated - n_agents_baseline
+delta_n_passages = n_passages_differentiated - n_passages_baseline
+```
+
+Calculate `delta_H_soc` only when both scenarios contain an observed
+`H_soc` on the same physical segment. Flag paired support with
+`sufficient_flow_both` and with `flow_ge_2_both`, `flow_ge_3_both`,
+`flow_ge_5_both`, and `flow_ge_10_both`.
+
+Interpret a positive `delta_H_soc` only as an increase in the observed
+socioeconomic diversity of trajectories on that segment. Interpret a negative
+value only as a reduction. Do not label either direction as better or worse.
+
+Write:
+
+```text
+outputs/pilot/
+├── segment_scenario_comparison.csv
+└── segment_scenario_comparison.gpkg
+```
+
+Use the CSV for statistical diagnostics and the GeoPackage for paired spatial
+comparison and mapping.
+
 ## Current Status
 
 Current implementation:
@@ -232,11 +275,34 @@ Current implementation:
 - ✔ Normalized socioeconomic trajectory entropy (H_soc)
 - ✔ Flow-threshold flags for sensitivity analysis
 - ✔ GeoPackage outputs with metrics attached to the complete analysis network
+- ✔ Paired baseline × differentiated comparison by analysis_segment_id
+- ✔ Paired flow-threshold flags and delta_H_soc
 
 In progress:
 
-- Scenario comparison and map visualization
-- Sensitivity analysis with larger synthetic populations and multiple seeds
+- Map visualization of H_soc and delta_H_soc
+- Sensitivity analysis with larger synthetic populations
+- Repeated paired runs with multiple seeds
+- Calibration of distance-sensitive mode choice for the road-routable pilot
+
+## Remaining work to close the pilot
+
+Complete the pilot in this order:
+
+1. map `H_soc` for baseline and differentiated and map paired `delta_H_soc`;
+2. calibrate mode choice against trip distance so that walk and bike do not
+   receive implausibly long trips in the road-routable experiment;
+3. increase the synthetic population progressively and inspect convergence of
+   segment coverage, flow support, and `H_soc`;
+4. repeat paired baseline × differentiated runs across multiple seeds and
+   summarize the stability of `delta_H_soc`;
+5. run sensitivity checks for the flow thresholds and for the geometric
+   harmonization parameters;
+6. consolidate final pilot tables, maps, diagnostics, limitations, and
+   reproducibility instructions.
+
+Keep GTFS public transport outside this first closed pilot unless the research
+scope explicitly requires it before validation.
 
 Future work:
 
