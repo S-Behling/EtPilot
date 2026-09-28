@@ -384,6 +384,173 @@ class TransitPhysicalNetworkTests(unittest.TestCase):
             "exclusive",
         )
 
+    def test_shared_exclusive_corridor_uses_same_analysis_segment(self):
+        # Consolida trechos GTFS coincidentes antes de criar segmentos exclusivos
+        transit_edges = gpd.GeoDataFrame(
+            {
+                "transit_physical_edge_id": [
+                    "T_0000001",
+                    "T_0000002",
+                ],
+                "modal_edge_id": [
+                    "transit:T_0000001",
+                    "transit:T_0000002",
+                ],
+                "shape_id": [
+                    "SH1",
+                    "SH2",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            100.0,
+                        ),
+                        (
+                            100.0,
+                            100.0,
+                        ),
+                    ]
+                ),
+                LineString(
+                    [
+                        (
+                            100.0,
+                            100.0,
+                        ),
+                        (
+                            0.0,
+                            100.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        analysis_segments = gpd.GeoDataFrame(
+            {
+                "analysis_segment_id": [
+                    "S_0000001",
+                ],
+                "source_mode": [
+                    "walk",
+                ],
+                "source_modal_edge_id": [
+                    "walk:1:2:0",
+                ],
+                "strict_key": [
+                    "1:2:1",
+                ],
+                "osmid_signature": [
+                    "1",
+                ],
+                "osmid_set": [
+                    frozenset(
+                        {
+                            "1",
+                        }
+                    ),
+                ],
+                "name_norm": [
+                    "rua a",
+                ],
+                "highway_norm": [
+                    "residential",
+                ],
+                "length_m": [
+                    100.0,
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            0.0,
+                        ),
+                        (
+                            100.0,
+                            0.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        road_mapping = pd.DataFrame(
+            {
+                "modal_edge_id": [
+                    "car:1:2:0",
+                ],
+                "mode": [
+                    "car",
+                ],
+                "analysis_segment_id": [
+                    "S_0000001",
+                ],
+                "match_method": [
+                    "osm_exact",
+                ],
+                "match_quality": [
+                    1.0,
+                ],
+            }
+        )
+
+        (
+            integrated_segments,
+            _,
+            transit_mapping,
+            _,
+        ) = integrate_transit_physical_network(
+            analysis_segments,
+            road_mapping,
+            transit_edges,
+            primary_config={
+                "tolerance_m": 5.0,
+                "min_coverage": 0.5,
+                "max_angle_difference_deg": 45.0,
+                "candidate_scope": "car_supported",
+            },
+            fallback_config={
+                "enabled": True,
+                "tolerance_m": 10.0,
+                "min_coverage": 0.35,
+                "max_angle_difference_deg": 60.0,
+                "candidate_scope": "full_analysis_network",
+            },
+        )
+
+        exclusive = transit_mapping.loc[
+            transit_mapping[
+                "match_stage"
+            ]
+            == "exclusive"
+        ]
+
+        self.assertEqual(
+            len(
+                integrated_segments
+            ),
+            2,
+        )
+        self.assertEqual(
+            exclusive[
+                "analysis_segment_id"
+            ].nunique(),
+            1,
+        )
+        self.assertEqual(
+            exclusive[
+                "modal_edge_id"
+            ].nunique(),
+            2,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
