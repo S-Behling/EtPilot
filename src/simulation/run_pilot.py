@@ -1068,7 +1068,8 @@ def main() -> None:
         "  transit: "
         f"{_format_int_pt(len(transit_connections))} conexões GTFS roteáveis | "
         f"data de serviço {transit_service_date} | "
-        f"partida fixa {transit_departure_time_s / 3600:.2f} h"
+        "partida fixa "
+        f"{_format_float_pt(transit_departure_time_s / 3600, decimals=2)} h"
     )
 
     print("3/12 - Gerando população sintética...")
@@ -1244,8 +1245,8 @@ def main() -> None:
 
         print(
             "\nUso das arestas: "
-            f"{len(edge_usage):,} passagens agente×aresta | "
-            f"{edge_usage['modal_edge_id'].nunique():,} "
+            f"{_format_int_pt(len(edge_usage))} passagens agente×aresta | "
+            f"{_format_int_pt(edge_usage['modal_edge_id'].nunique())} "
             "arestas modais únicas"
         )
 
@@ -1446,11 +1447,11 @@ def main() -> None:
 
     print(
         "\nSegmentos físicos de análise: "
-        f"{len(analysis_segments):,}"
+        f"{_format_int_pt(len(analysis_segments))} segmentos"
     )
     print(
         "Arestas modais harmonizadas: "
-        f"{segment_mapping['modal_edge_id'].nunique():,}"
+        f"{_format_int_pt(segment_mapping['modal_edge_id'].nunique())} arestas"
     )
 
     print("\nMétodos de harmonização — redes completas e conexões GTFS usadas")
@@ -1539,7 +1540,7 @@ def main() -> None:
 
         print(
             f"\n{scenario_name}: "
-            f"{used_segments:,} segmentos usados"
+            f"{_format_int_pt(used_segments)} segmentos usados"
         )
         print(
             "  H_soc — todos os segmentos usados: "
@@ -1549,7 +1550,7 @@ def main() -> None:
         print(
             "  Segmentos com fluxo suficiente "
             f"(n_agents >= {min_agents_for_interpretation}): "
-            f"{len(supported):,}"
+            f"{_format_int_pt(len(supported))} segmentos"
         )
 
         if not supported.empty:
@@ -1574,7 +1575,7 @@ def main() -> None:
         print(
             "  Sensibilidade por n_agents: "
             + " | ".join(
-                f">={threshold}: {count:,}"
+                f">={threshold}: {_format_int_pt(count)} segmentos"
                 for threshold, count
                 in threshold_counts.items()
             )
@@ -1615,19 +1616,19 @@ def main() -> None:
     )
     print(
         "  Segmentos usados em pelo menos um cenário: "
-        f"{paired_summary['segments_union']:,}"
+        f"{_format_int_pt(paired_summary['segments_union'])} segmentos"
     )
     print(
         "  Usados nos dois cenários: "
-        f"{paired_summary['used_both']:,}"
+        f"{_format_int_pt(paired_summary['used_both'])} segmentos"
     )
     print(
         "  Apenas baseline: "
-        f"{paired_summary['baseline_only']:,}"
+        f"{_format_int_pt(paired_summary['baseline_only'])} segmentos"
     )
     print(
         "  Apenas differentiated: "
-        f"{paired_summary['differentiated_only']:,}"
+        f"{_format_int_pt(paired_summary['differentiated_only'])} segmentos"
     )
     print(
         "  Delta H_soc pareado — todos os segmentos usados nos dois: "
@@ -1637,7 +1638,7 @@ def main() -> None:
     print(
         "  Segmentos com fluxo suficiente nos dois cenários "
         f"(n_agents >= {min_agents_for_interpretation}): "
-        f"{paired_summary['sufficient_flow_both']:,}"
+        f"{_format_int_pt(paired_summary['sufficient_flow_both'])} segmentos"
     )
 
     if paired_summary[
@@ -1654,7 +1655,7 @@ def main() -> None:
         + " | ".join(
             (
                 f">={threshold}: "
-                f"{paired_summary[f'flow_ge_{threshold}_both']:,}"
+                f"{_format_int_pt(paired_summary[f'flow_ge_{threshold}_both'])} segmentos"
             )
             for threshold in flow_thresholds
         )
@@ -1689,7 +1690,7 @@ def main() -> None:
 
         print(
             "  Mapas gerados: "
-            f"{len(map_manifest):,}"
+            f"{_format_int_pt(len(map_manifest))} mapas"
         )
         print(
             "  Diretório: "
@@ -1701,7 +1702,7 @@ def main() -> None:
         ):
             print(
                 f"  {row.map_id}: "
-                f"{row.n_segments_plotted:,} segmentos destacados"
+                f"{_format_int_pt(row.n_segments_plotted)} segmentos destacados"
             )
     else:
         print(
