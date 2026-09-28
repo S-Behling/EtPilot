@@ -50,9 +50,15 @@
             "car"
         ],
         "node_column_prefix": "node_",
-        "transit_status": "standalone_gtfs_validation",
+        "transit_status": "integrated_pilot",
         "weight": "length",
-        "strict": false
+        "strict": false,
+        "choice_modes": [
+            "walk",
+            "bike",
+            "car",
+            "transit"
+        ]
     },
     "analysis": {
         "entropy_base": 2,
@@ -150,7 +156,16 @@
                 "exclude_infeasible_regularization": true,
                 "max_implied_shape_speed_kmh": 80,
                 "status": "provisional_quality_control"
-            }
+            },
+            "pilot_departure_time_s": 28800
+        },
+        "spatial_mapping": {
+            "tolerance_m": 20,
+            "min_segment_coverage": 0.5,
+            "max_angle_difference_deg": 45,
+            "calibration_status": "provisional_pilot",
+            "connection_mapping_file": "transit_connection_to_analysis_segment.csv",
+            "match_report_file": "transit_spatial_match_report.csv"
         }
     }
 }
