@@ -314,7 +314,7 @@ VARIABLES = [
         "nome": "direct_outlier",
         "grupo": "controle de outliers",
         "unidade": "booleano",
-        "descricao": "Indica que a viagem transit excede simultaneamente as cercas externas da distância roteada e da razão rota por OD",
+        "descricao": "Indica que a viagem transit excede a cerca externa da distância roteada ou combina circuity extrema com distância roteada acima do terceiro quartil",
     },
     {
         "nome": "analysis_included",
@@ -795,7 +795,7 @@ ANALYSIS_METHODS = [
     {
         "nome": "Filtro pareado de outliers de trajetórias transit",
         "funcao_codigo": "apply_paired_transit_outlier_filter",
-        "descricao": "Calcula limites robustos com os dois cenários combinados, identifica somente viagens simultaneamente extremas em distância e circuity e propaga a exclusão ao mesmo agent_id nos dois cenários",
+        "descricao": "Calcula limites robustos com os dois cenários combinados, identifica distância extrema ou circuity extrema acompanhada de rota longa e propaga a exclusão ao mesmo agent_id nos dois cenários",
     },
 ]
 
@@ -1008,8 +1008,8 @@ CLEANING_METHODS = [
         "descricao": "Remove a trajetória do cálculo espacial sem apagar o registro original do agente e aplica a mesma exclusão ao agent_id correspondente no outro cenário para preservar comparabilidade",
     },
     {
-        "nome": "Critério conjunto de distância e circuity",
-        "descricao": "Exige que uma viagem transit ultrapasse simultaneamente a cerca externa da distância roteada e da razão rota por OD para evitar excluir viagens curtas apenas por apresentarem razão elevada",
+        "nome": "Critério conservador de distância e circuity",
+        "descricao": "Exclui distância roteada acima da cerca externa ou circuity acima da cerca externa quando a rota também está acima do terceiro quartil, evitando excluir viagens curtas apenas por apresentarem razão elevada",
     },
 ]
 
