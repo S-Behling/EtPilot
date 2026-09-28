@@ -322,7 +322,7 @@ def _to_numeric(
 
 def _parse_gtfs_time(
     value,
-) -> int | pd._libs.missing.NAType:
+) -> int | object:
     """Converte HH:MM:SS GTFS para segundos desde o início do dia de serviço"""
 
     if pd.isna(
@@ -730,7 +730,29 @@ def _process_stop_times(
         "departure_seconds",
     )
 
-    return (
+    invalid_dwell = (
+        stop_times[
+            "arrival_seconds"
+        ].notna()
+        & stop_times[
+            "departure_seconds"
+        ].notna()
+        & (
+            stop_times[
+                "departure_seconds"
+            ]
+            < stop_times[
+                "arrival_seconds"
+            ]
+        )
+    )
+
+    if invalid_dwell.any():
+        raise ValueError(
+            "stop_times.txt possui departure_time anterior a arrival_time"
+        )
+
+    ordered = (
         stop_times
         .sort_values(
             [
@@ -741,6 +763,68 @@ def _process_stop_times(
         .reset_index(
             drop=True
         )
+    )
+
+    stop_counts = ordered.groupby(
+        "trip_id"
+    ).size()
+
+    invalid_trips = stop_counts.loc[
+        stop_counts
+        < 2
+    ]
+
+    if not invalid_trips.empty:
+        raise ValueError(
+            "stop_times.txt possui viagens com menos de duas paradas: "
+            f"{invalid_trips.index.astype(str).tolist()[:5]}"
+        )
+
+    event_seconds = (
+        ordered[
+            "departure_seconds"
+        ]
+        .fillna(
+            ordered[
+                "arrival_seconds"
+            ]
+        )
+    )
+
+    ordered[
+        "_event_seconds"
+    ] = event_seconds
+
+    previous = ordered.groupby(
+        "trip_id"
+    )[
+        "_event_seconds"
+    ].shift(
+        1
+    )
+
+    invalid_sequence = (
+        ordered[
+            "_event_seconds"
+        ].notna()
+        & previous.notna()
+        & (
+            ordered[
+                "_event_seconds"
+            ]
+            < previous
+        )
+    )
+
+    if invalid_sequence.any():
+        raise ValueError(
+            "stop_times.txt possui horários decrescentes dentro de uma viagem"
+        )
+
+    return ordered.drop(
+        columns=[
+            "_event_seconds",
+        ]
     )
 
 
@@ -1160,6 +1244,40 @@ def _process_frequencies(
         "headway_secs",
         integer=True,
     )
+
+    invalid_headway = (
+        frequencies[
+            "headway_secs"
+        ]
+        <= 0
+    )
+
+    if invalid_headway.any():
+        raise ValueError(
+            "frequencies.txt possui headway_secs menor ou igual a zero"
+        )
+
+    invalid_window = (
+        frequencies[
+            "start_seconds"
+        ].notna()
+        & frequencies[
+            "end_seconds"
+        ].notna()
+        & (
+            frequencies[
+                "end_seconds"
+            ]
+            <= frequencies[
+                "start_seconds"
+            ]
+        )
+    )
+
+    if invalid_window.any():
+        raise ValueError(
+            "frequencies.txt possui end_time menor ou igual a start_time"
+        )
 
     return frequencies
 
@@ -1583,6 +1701,22 @@ def process_gtfs_zip(
         service_dates=service_dates,
         shapes=shapes,
     )
+
+    processed_paths = [
+        output_dir
+        / filename
+        for filename in (
+            *PROCESSED_TABLE_FILES.values(),
+            STOPS_GPKG,
+            SHAPES_GPKG,
+            SUMMARY_CSV,
+            INVENTORY_CSV,
+        )
+    ]
+
+    for processed_path in processed_paths:
+        if processed_path.exists():
+            processed_path.unlink()
 
     _write_parquet(
         agency,
