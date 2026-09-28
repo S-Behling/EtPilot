@@ -889,6 +889,16 @@ def build_transit_network() -> dict:
             "walk_speed_m_s"
         ]
     )
+    routing_config = config[
+        "transit"
+    ][
+        "routing"
+    ]
+    max_access_walk_m = float(
+        routing_config[
+            "max_access_walk_m"
+        ]
+    )
     service_date_strategy = str(
         network_config[
             "service_date_strategy"
@@ -1047,6 +1057,13 @@ def build_transit_network() -> dict:
         "connector_time_max_s": float(
             connector_times.max()
         ),
+        "connector_access_limit_m": max_access_walk_m,
+        "n_connectors_above_access_limit": int(
+            (
+                connector_distances
+                > max_access_walk_m
+            ).sum()
+        ),
         "n_scheduled_connections": int(
             len(
                 connections
@@ -1073,6 +1090,26 @@ def build_transit_network() -> dict:
             connections[
                 "uses_interpolated_time"
             ].sum()
+        ),
+        "zero_duration_connections": int(
+            (
+                connections[
+                    "in_vehicle_time_s"
+                ]
+                == 0
+            ).sum()
+        ),
+        "connection_time_median_s": float(
+            connections[
+                "in_vehicle_time_s"
+            ].median()
+        ),
+        "connection_time_p95_s": float(
+            connections[
+                "in_vehicle_time_s"
+            ].quantile(
+                0.95
+            )
         ),
         "representative_service_date": (
             pd.Timestamp(
@@ -1174,6 +1211,12 @@ def main() -> None:
         "  Tempo do conector — máximo: "
         f"{_format_float_pt(summary['connector_time_max_s'])} s"
     )
+    print(
+        "  Paradas cujo conector excede o limite de acesso "
+        f"({_format_float_pt(summary['connector_access_limit_m'])} m): "
+        f"{_format_int_pt(summary['n_connectors_above_access_limit'])} paradas "
+        f"({_format_percentage_pt(summary['n_connectors_above_access_limit'], summary['n_stops_connected'])})"
+    )
 
     print(
         "\nConexões temporais entre paradas"
@@ -1195,6 +1238,19 @@ def main() -> None:
         f"{_format_int_pt(summary['connections_with_interpolated_time'])} "
         "conexões "
         f"({_format_percentage_pt(summary['connections_with_interpolated_time'], summary['n_scheduled_connections'])})"
+    )
+    print(
+        "  Conexões com duração igual a zero: "
+        f"{_format_int_pt(summary['zero_duration_connections'])} conexões "
+        f"({_format_percentage_pt(summary['zero_duration_connections'], summary['n_scheduled_connections'])})"
+    )
+    print(
+        "  Duração entre paradas — mediana: "
+        f"{_format_float_pt(summary['connection_time_median_s'])} s"
+    )
+    print(
+        "  Duração entre paradas — percentil 95: "
+        f"{_format_float_pt(summary['connection_time_p95_s'])} s"
     )
 
     print(
