@@ -115,7 +115,8 @@ The project is organized as a sequential research pipeline:
 7. Compute routes and edge usage
 8. Harmonize the complete modal networks into common physical analysis segments
 9. Compute segment statistics and normalized socioeconomic trajectory entropy (H_soc)
-10. Compare experimental scenarios and visualize results
+10. Compare experimental scenarios
+11. Generate spatial maps of H_soc and paired delta_H_soc
 
 ---
 
@@ -257,6 +258,39 @@ outputs/pilot/
 Use the CSV for statistical diagnostics and the GeoPackage for paired spatial
 comparison and mapping.
 
+
+## Pilot maps
+
+Generate six static PNG maps with the same physical network extent and fixed
+metric scales so that visual differences are not created by automatic
+rescaling between figures.
+
+Use `H_soc` with the fixed interval [0, 1] and use `delta_H_soc` with the
+fixed interval [-1, 1] centered on zero.
+
+Generate one map with all observed or comparable segments and one map
+restricted to the configured flow support for each metric:
+
+```text
+outputs/pilot/maps/
+├── h_soc_baseline_all.png
+├── h_soc_baseline_supported.png
+├── h_soc_differentiated_all.png
+├── h_soc_differentiated_supported.png
+├── delta_h_soc_all.png
+├── delta_h_soc_supported.png
+└── map_manifest.csv
+```
+
+The supported H_soc maps highlight only segments with
+`sufficient_flow=True`. The supported delta map highlights only segments
+with `sufficient_flow_both=True`. The complete physical network remains in
+the background as a spatial reference.
+
+Treat the current maps as diagnostic outputs while the experiment still uses
+100 agents. Use them to validate spatial behavior and the comparison pipeline,
+not as final empirical representations of segregation.
+
 ## Current Status
 
 Current implementation:
@@ -278,10 +312,12 @@ Current implementation:
 - ✔ GeoPackage outputs with metrics attached to the complete analysis network
 - ✔ Paired baseline × differentiated comparison by analysis_segment_id
 - ✔ Paired flow-threshold flags and delta_H_soc
+- ✔ Static H_soc maps with fixed [0, 1] scale
+- ✔ Static paired delta_H_soc maps with fixed [-1, 1] scale
+- ✔ Supported-flow map variants and map manifest
 
 In progress:
 
-- Map visualization of H_soc and delta_H_soc
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
 - Calibration of distance-sensitive mode choice for the road-routable pilot
@@ -290,16 +326,15 @@ In progress:
 
 Complete the pilot in this order:
 
-1. map `H_soc` for baseline and differentiated and map paired `delta_H_soc`;
-2. calibrate mode choice against trip distance so that walk and bike do not
+1. calibrate mode choice against trip distance so that walk and bike do not
    receive implausibly long trips in the road-routable experiment;
-3. increase the synthetic population progressively and inspect convergence of
+2. increase the synthetic population progressively and inspect convergence of
    segment coverage, flow support, and `H_soc`;
-4. repeat paired baseline × differentiated runs across multiple seeds and
+3. repeat paired baseline × differentiated runs across multiple seeds and
    summarize the stability of `delta_H_soc`;
-5. run sensitivity checks for the flow thresholds and for the geometric
+4. run sensitivity checks for the flow thresholds and for the geometric
    harmonization parameters;
-6. consolidate final pilot tables, maps, diagnostics, limitations, and
+5. consolidate final pilot tables, maps, diagnostics, limitations, and
    reproducibility instructions.
 
 Keep GTFS public transport outside this first closed pilot unless the research
