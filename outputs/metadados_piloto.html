@@ -134,7 +134,7 @@ code {
 <header>
     <h1>Metadados do piloto EtPilot</h1>
     <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
-    <p>Documento gerado em UTC: 2026-09-28T13:51:19.688133+00:00</p>
+    <p>Documento gerado em UTC: 2026-09-28T14:39:24.335304+00:00</p>
 </header>
 <nav><a href="#variaveis">Variáveis principais</a><a href="#parametros">Parâmetros de configuração</a><a href="#metodos">Métodos de análise</a><a href="#estatisticas">Estatísticas</a><a href="#limpeza">Métodos de limpeza e validação</a><a href="#arquivos">Arquivos gerados</a></nav>
 <main>
@@ -1596,7 +1596,7 @@ code {
     <tr>
       <td>Integração da rede física GTFS à camada comum</td>
       <td>integrate_transit_physical_network</td>
-      <td>Integra todos os trechos físicos GTFS válidos à camada comum e cria analysis_segment_id exclusivos para trechos que não possuem correspondência segura nas redes OSM</td>
+      <td>Integra todos os trechos físicos GTFS válidos à camada comum e cria analysis_segment_id exclusivos para trechos que não possuem correspondência segura nas redes OSM, sem interpretar automaticamente essa exclusividade como infraestrutura física exclusiva de ônibus</td>
     </tr>
     <tr>
       <td>Recuperação ordenada da posição de paradas no shape</td>
@@ -1836,7 +1836,7 @@ code {
     </tr>
     <tr>
       <td>Incorporação de trechos transit exclusivos</td>
-      <td>Preserva a trajetória do agente ao criar um analysis_segment_id exclusivo para trechos físicos GTFS válidos que não possuem correspondência segura nas redes OSM</td>
+      <td>Preserva a trajetória do agente ao criar um analysis_segment_id exclusivo para trechos físicos GTFS válidos que não possuem correspondência segura nas redes OSM; a causa pode ser infraestrutura dedicada, diferença de cobertura OSM ou desacordo geométrico entre as fontes</td>
     </tr>
   </tbody>
 </table></section><section id="arquivos"><h2>Arquivos gerados</h2><p>Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto</p><table class="dataframe metadata-table">
@@ -2318,7 +2318,7 @@ code {
       <td>Camada completa dos segmentos físicos usados como unidade comum de análise, incluindo segmentos transit exclusivos quando ausentes nas redes OSM</td>
       <td>não</td>
       <td>sim</td>
-      <td>18964480</td>
+      <td>18960384</td>
     </tr>
     <tr>
       <td>segment_statistics_baseline.csv</td>
@@ -2354,7 +2354,7 @@ code {
       <td>Camada espacial dos segmentos físicos com métricas do cenário baseline</td>
       <td>não</td>
       <td>sim</td>
-      <td>21585920</td>
+      <td>21581824</td>
     </tr>
     <tr>
       <td>segment_metrics_differentiated.gpkg</td>
@@ -2363,7 +2363,7 @@ code {
       <td>Camada espacial dos segmentos físicos com métricas do cenário differentiated</td>
       <td>não</td>
       <td>sim</td>
-      <td>21999616</td>
+      <td>21995520</td>
     </tr>
     <tr>
       <td>segment_scenario_comparison.csv</td>
@@ -2390,7 +2390,7 @@ code {
       <td>Camada espacial com métricas pareadas e delta_H_soc</td>
       <td>não</td>
       <td>sim</td>
-      <td>25288704</td>
+      <td>25284608</td>
     </tr>
     <tr>
       <td>h_soc_baseline_all.png</td>
@@ -2399,7 +2399,7 @@ code {
       <td>Mapa de H_soc do baseline para todos os segmentos observados</td>
       <td>não</td>
       <td>sim</td>
-      <td>1138208</td>
+      <td>1138199</td>
     </tr>
     <tr>
       <td>h_soc_baseline_supported.png</td>
@@ -2408,7 +2408,7 @@ code {
       <td>Mapa de H_soc do baseline restrito aos segmentos com fluxo suficiente</td>
       <td>não</td>
       <td>sim</td>
-      <td>912685</td>
+      <td>912675</td>
     </tr>
     <tr>
       <td>h_soc_differentiated_all.png</td>
@@ -2417,7 +2417,7 @@ code {
       <td>Mapa de H_soc do differentiated para todos os segmentos observados</td>
       <td>não</td>
       <td>sim</td>
-      <td>1167410</td>
+      <td>1167401</td>
     </tr>
     <tr>
       <td>h_soc_differentiated_supported.png</td>
@@ -2426,7 +2426,7 @@ code {
       <td>Mapa de H_soc do differentiated restrito aos segmentos com fluxo suficiente</td>
       <td>não</td>
       <td>sim</td>
-      <td>917474</td>
+      <td>917457</td>
     </tr>
     <tr>
       <td>delta_h_soc_all.png</td>
@@ -2435,7 +2435,7 @@ code {
       <td>Mapa da diferença pareada de H_soc para todos os segmentos comparáveis</td>
       <td>não</td>
       <td>sim</td>
-      <td>980808</td>
+      <td>980789</td>
     </tr>
     <tr>
       <td>delta_h_soc_supported.png</td>
@@ -2444,7 +2444,7 @@ code {
       <td>Mapa da diferença pareada de H_soc restrito aos segmentos com fluxo suficiente nos dois cenários</td>
       <td>não</td>
       <td>sim</td>
-      <td>900128</td>
+      <td>900122</td>
     </tr>
     <tr>
       <td>map_manifest.csv</td>
@@ -2525,7 +2525,7 @@ code {
       <td>Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td>32860</td>
+      <td>32875</td>
     </tr>
     <tr>
       <td>metadados_piloto.html</td>
@@ -2534,7 +2534,7 @@ code {
       <td>Relatório HTML navegável com a documentação metodológica consolidada do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td>97345</td>
+      <td>97381</td>
     </tr>
   </tbody>
 </table></section>
