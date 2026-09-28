@@ -1839,6 +1839,413 @@ def _refine_stop_times_with_shape_geometry(
     return result
 
 
+def _allocate_positive_intervals(
+    *,
+    total_seconds: int,
+    weights: np.ndarray,
+    minimum_interval_s: int,
+) -> np.ndarray | None:
+    """Distribui segundos inteiros preservando um mínimo por intervalo"""
+
+    if minimum_interval_s < 0:
+        raise ValueError(
+            "minimum_interval_s não pode ser negativo"
+        )
+
+    weights = np.asarray(
+        weights,
+        dtype=float,
+    )
+
+    n_intervals = len(
+        weights
+    )
+
+    if n_intervals == 0:
+        return np.asarray(
+            [],
+            dtype=int,
+        )
+
+    minimum_total = (
+        n_intervals
+        * minimum_interval_s
+    )
+
+    if total_seconds < minimum_total:
+        return None
+
+    valid_weights = (
+        np.isfinite(
+            weights
+        )
+        & (
+            weights
+            > 0
+        )
+    )
+
+    if not valid_weights.all():
+        weights = np.ones(
+            n_intervals,
+            dtype=float,
+        )
+
+    remaining = (
+        int(
+            total_seconds
+        )
+        - minimum_total
+    )
+
+    weighted = (
+        weights
+        / weights.sum()
+        * remaining
+    )
+
+    base = (
+        np.floor(
+            weighted
+        ).astype(
+            int
+        )
+        + minimum_interval_s
+    )
+
+    remainder = (
+        int(
+            total_seconds
+        )
+        - int(
+            base.sum()
+        )
+    )
+
+    if remainder > 0:
+        fractions = (
+            weighted
+            - np.floor(
+                weighted
+            )
+        )
+        order = np.argsort(
+            -fractions,
+            kind="stable",
+        )
+        base[
+            order[
+                :remainder
+            ]
+        ] += 1
+
+    return base
+
+
+def _regularize_interpolated_stop_times(
+    stop_times: pd.DataFrame,
+    *,
+    minimum_interval_s: int,
+) -> pd.DataFrame:
+    """Reconstrói horários intermediários preservando os pontos temporais originais"""
+
+    result = stop_times.copy()
+
+    result[
+        "time_regularized"
+    ] = False
+    result[
+        "time_regularization_method"
+    ] = "not_applied"
+    result[
+        "temporal_regularization_feasible"
+    ] = True
+
+    grouped_indices = result.groupby(
+        "trip_id",
+        sort=False,
+    ).indices
+
+    for _, positions in grouped_indices.items():
+        positions = np.asarray(
+            positions,
+            dtype=int,
+        )
+
+        group = result.iloc[
+            positions
+        ]
+
+        raw_anchor_mask = ~(
+            group[
+                "arrival_missing_raw"
+            ].to_numpy(
+                dtype=bool
+            )
+            & group[
+                "departure_missing_raw"
+            ].to_numpy(
+                dtype=bool
+            )
+        )
+
+        anchor_indices = np.flatnonzero(
+            raw_anchor_mask
+        )
+
+        if len(
+            anchor_indices
+        ) < 2:
+            result.loc[
+                positions,
+                "temporal_regularization_feasible",
+            ] = False
+            continue
+
+        trip_feasible = True
+
+        for start_local, end_local in zip(
+            anchor_indices[
+                :-1
+            ],
+            anchor_indices[
+                1:
+            ],
+            strict=True,
+        ):
+            start_row = group.iloc[
+                int(
+                    start_local
+                )
+            ]
+            end_row = group.iloc[
+                int(
+                    end_local
+                )
+            ]
+
+            start_seconds = (
+                start_row[
+                    "departure_seconds"
+                ]
+                if pd.notna(
+                    start_row[
+                        "departure_seconds"
+                    ]
+                )
+                else start_row[
+                    "arrival_seconds"
+                ]
+            )
+            end_seconds = (
+                end_row[
+                    "arrival_seconds"
+                ]
+                if pd.notna(
+                    end_row[
+                        "arrival_seconds"
+                    ]
+                )
+                else end_row[
+                    "departure_seconds"
+                ]
+            )
+
+            if (
+                pd.isna(
+                    start_seconds
+                )
+                or pd.isna(
+                    end_seconds
+                )
+            ):
+                trip_feasible = False
+                continue
+
+            total_seconds = (
+                int(
+                    end_seconds
+                )
+                - int(
+                    start_seconds
+                )
+            )
+            n_intervals = (
+                int(
+                    end_local
+                )
+                - int(
+                    start_local
+                )
+            )
+
+            if n_intervals <= 0:
+                continue
+
+            span = group.iloc[
+                int(
+                    start_local
+                ):
+                int(
+                    end_local
+                )
+                + 1
+            ]
+
+            shape_positions = (
+                span[
+                    "shape_position_m"
+                ]
+                .astype(
+                    "Float64"
+                )
+                .to_numpy(
+                    dtype=float,
+                    na_value=np.nan,
+                )
+                if "shape_position_m"
+                in span.columns
+                else np.full(
+                    n_intervals
+                    + 1,
+                    np.nan,
+                    dtype=float,
+                )
+            )
+
+            shape_differences = np.diff(
+                shape_positions
+            )
+
+            use_shape = bool(
+                np.isfinite(
+                    shape_positions
+                ).all()
+                and (
+                    shape_differences
+                    > 1e-6
+                ).all()
+            )
+
+            weights = (
+                shape_differences
+                if use_shape
+                else np.ones(
+                    n_intervals,
+                    dtype=float,
+                )
+            )
+            method = (
+                "shape_geometry_positive"
+                if use_shape
+                else "stop_sequence_positive"
+            )
+
+            allocated = _allocate_positive_intervals(
+                total_seconds=total_seconds,
+                weights=weights,
+                minimum_interval_s=minimum_interval_s,
+            )
+
+            if allocated is None:
+                trip_feasible = False
+                continue
+
+            if n_intervals == 1:
+                continue
+
+            cumulative = (
+                int(
+                    start_seconds
+                )
+                + np.cumsum(
+                    allocated
+                )[
+                    :-1
+                ]
+            )
+
+            target_local = np.arange(
+                int(
+                    start_local
+                )
+                + 1,
+                int(
+                    end_local
+                ),
+                dtype=int,
+            )
+            target_positions = positions[
+                target_local
+            ]
+
+            if len(
+                target_positions
+            ) != len(
+                cumulative
+            ):
+                raise RuntimeError(
+                    "A reconstrução temporal produziu tamanhos incompatíveis"
+                )
+
+            result.loc[
+                target_positions,
+                "arrival_seconds",
+            ] = pd.array(
+                cumulative,
+                dtype="Int64",
+            )
+            result.loc[
+                target_positions,
+                "departure_seconds",
+            ] = pd.array(
+                cumulative,
+                dtype="Int64",
+            )
+            result.loc[
+                target_positions,
+                "time_regularized",
+            ] = True
+            result.loc[
+                target_positions,
+                "time_regularization_method",
+            ] = method
+
+        if not trip_feasible:
+            result.loc[
+                positions,
+                "temporal_regularization_feasible",
+            ] = False
+
+    previous_departure = result.groupby(
+        "trip_id"
+    )[
+        "departure_seconds"
+    ].shift(
+        1
+    )
+
+    invalid_sequence = (
+        previous_departure.notna()
+        & result[
+            "arrival_seconds"
+        ].notna()
+        & (
+            result[
+                "arrival_seconds"
+            ]
+            < previous_departure
+        )
+    )
+
+    if invalid_sequence.any():
+        raise ValueError(
+            "A reconstrução temporal produziu horários decrescentes"
+        )
+
+    return result
+
+
 def _process_frequencies(
     frequencies: pd.DataFrame,
 ) -> pd.DataFrame:
@@ -2125,6 +2532,8 @@ def process_gtfs_zip(
     zip_path: Path,
     output_dir: Path,
     projected_crs: str,
+    temporal_reconstruction_enabled: bool = True,
+    minimum_interval_s: int = 1,
 ) -> dict:
     """Processa um ZIP GTFS e retorna o resumo da versão processada"""
 
@@ -2306,6 +2715,22 @@ def process_gtfs_zip(
         stops=stops,
         shapes=shapes,
     )
+
+    if temporal_reconstruction_enabled:
+        stop_times = _regularize_interpolated_stop_times(
+            stop_times,
+            minimum_interval_s=minimum_interval_s,
+        )
+    else:
+        stop_times[
+            "time_regularized"
+        ] = False
+        stop_times[
+            "time_regularization_method"
+        ] = "disabled"
+        stop_times[
+            "temporal_regularization_feasible"
+        ] = True
 
     frequencies = (
         _process_frequencies(
@@ -2676,6 +3101,37 @@ def process_gtfs_zip(
                 "time_filled_from_pair"
             ].sum()
         ),
+        "stop_times_regularized": int(
+            stop_times[
+                "time_regularized"
+            ].sum()
+        ),
+        "stop_times_regularized_shape_geometry": int(
+            (
+                stop_times[
+                    "time_regularization_method"
+                ]
+                == "shape_geometry_positive"
+            ).sum()
+        ),
+        "stop_times_regularized_stop_sequence": int(
+            (
+                stop_times[
+                    "time_regularization_method"
+                ]
+                == "stop_sequence_positive"
+            ).sum()
+        ),
+        "trips_temporal_regularization_infeasible": int(
+            stop_times.loc[
+                ~stop_times[
+                    "temporal_regularization_feasible"
+                ].astype(
+                    bool
+                ),
+                "trip_id",
+            ].nunique()
+        ),
         "stop_times_missing_arrival_processed": int(
             stop_times[
                 "arrival_seconds"
@@ -2855,10 +3311,29 @@ def process_configured_gtfs() -> dict:
         f"{zip_path}"
     )
 
+    reconstruction_config = gtfs_config.get(
+        "temporal_reconstruction",
+        {}
+    )
+    reconstruction_enabled = bool(
+        reconstruction_config.get(
+            "enabled",
+            True,
+        )
+    )
+    minimum_interval_s = int(
+        reconstruction_config.get(
+            "minimum_interval_s",
+            1,
+        )
+    )
+
     summary = process_gtfs_zip(
         zip_path=zip_path,
         output_dir=data_dir,
         projected_crs=projected_crs,
+        temporal_reconstruction_enabled=reconstruction_enabled,
+        minimum_interval_s=minimum_interval_s,
     )
 
     service_start = pd.Timestamp(
@@ -2975,6 +3450,22 @@ def process_configured_gtfs() -> dict:
     print(
         "  Horários preenchidos pelo par chegada/partida: "
         f"{_format_int_pt(summary['stop_times_filled_from_pair'])} registros"
+    )
+    print(
+        "  Horários intermediários regularizados: "
+        f"{_format_int_pt(summary['stop_times_regularized'])} registros"
+    )
+    print(
+        "    pela geometria do shape com intervalo positivo: "
+        f"{_format_int_pt(summary['stop_times_regularized_shape_geometry'])} registros"
+    )
+    print(
+        "    por stop_sequence com intervalo positivo: "
+        f"{_format_int_pt(summary['stop_times_regularized_stop_sequence'])} registros"
+    )
+    print(
+        "  Viagens sem alocação temporal positiva possível: "
+        f"{_format_int_pt(summary['trips_temporal_regularization_infeasible'])} viagens"
     )
     print(
         "  Chegadas ausentes após processamento: "
