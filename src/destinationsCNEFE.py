@@ -13,7 +13,8 @@ Regras:
 - work inclui todos os estabelecimentos ativos;
 - shopping e leisure são inferidos por palavras-chave;
 - categorias não são mutuamente exclusivas;
-- destinos finais são agregados por nó da rede e categoria.
+- destinos finais são agregados pelo nó de referência da rede de carro e categoria;
+- cada destino final recebe nós específicos para carro, caminhada e bicicleta.
 """
 
 from __future__ import annotations
@@ -24,8 +25,12 @@ import unicodedata
 from pathlib import Path
 
 import geopandas as gpd
-import osmnx as ox
 import pandas as pd
+
+from src.network.multimodal import (
+    assign_modal_nodes,
+    load_mode_graphs,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -36,7 +41,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 INPUT_PATH = PROJECT_ROOT / "data" / "o-d" / "destinos_cnefe_porto_alegre.gpkg"
 INPUT_LAYER = "destinations_cnefe"
-GRAPH_PATH = PROJECT_ROOT / "data" / "graph" / "rede-poa.graphml"
+CONFIG_PATH = PROJECT_ROOT / "config" / "config.json"
 OUTPUT_PATH = (
     PROJECT_ROOT / "data" / "o-d" / "destinos_cnefe_classificados_porto_alegre.gpkg"
 )
@@ -237,28 +242,20 @@ def classify_establishments(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return result
 
 
-def load_network():
-    if not GRAPH_PATH.exists():
-        raise FileNotFoundError(f"GraphML não encontrado: {GRAPH_PATH}")
-    graph = ox.load_graphml(GRAPH_PATH)
-    if graph.graph.get("crs") is None:
-        raise ValueError("A rede não possui CRS registrado.")
-    if str(graph.graph["crs"]) != TARGET_CRS:
-        graph = ox.project_graph(graph, to_crs=TARGET_CRS)
-    return graph
+def load_project_config() -> dict:
+    if not CONFIG_PATH.exists():
+        raise FileNotFoundError(f"Configuração não encontrada: {CONFIG_PATH}")
+
+    with CONFIG_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def assign_nearest_nodes(gdf: gpd.GeoDataFrame, graph) -> gpd.GeoDataFrame:
-    result = gdf.copy()
-    if str(result.crs) != str(graph.graph["crs"]):
-        result = result.to_crs(graph.graph["crs"])
-
-    result["node"] = ox.distance.nearest_nodes(
-        graph,
-        X=result.geometry.x.to_numpy(),
-        Y=result.geometry.y.to_numpy(),
+def load_networks() -> dict[str, object]:
+    config = load_project_config()
+    return load_mode_graphs(
+        config=config,
+        project_root=PROJECT_ROOT,
     )
-    return result
 
 
 def to_long_format(establishments: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -271,7 +268,9 @@ def to_long_format(establishments: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             "DSC_ESTABELECIMENTO",
             "description_norm",
             "COD_ESPECIE",
-            "node",
+            "node_car",
+            "node_walk",
+            "node_bike",
             "geometry",
         ],
         value_vars=functions,
@@ -283,38 +282,82 @@ def to_long_format(establishments: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(long_df, geometry="geometry", crs=establishments.crs)
 
 
-def aggregate_destinations(long_destinations: gpd.GeoDataFrame, graph) -> gpd.GeoDataFrame:
+def aggregate_destinations(
+    long_destinations: gpd.GeoDataFrame,
+    graphs: dict[str, object],
+) -> gpd.GeoDataFrame:
+    """
+    Agrega destinos usando a rede de carro apenas como âncora espacial.
+
+    O nó de carro define a consolidação inicial dos estabelecimentos, mas não
+    é tratado como nó universal. Depois da agregação, o mesmo ponto recebe
+    `node_car`, `node_walk` e `node_bike` para roteamento modal.
+    """
+
+    if "car" not in graphs:
+        raise ValueError(
+            "A rede 'car' é necessária como âncora de agregação dos destinos."
+        )
+
     summary = (
         long_destinations
-        .groupby(["node", "category"], as_index=False)
+        .groupby(["node_car", "category"], as_index=False)
         .agg(
             destination_weight=("COD_UNICO_ENDERECO", "size"),
             n_addresses=("COD_UNICO_ENDERECO", "nunique"),
             n_subcategories=("description_norm", "nunique"),
             subcategories=("DSC_ESTABELECIMENTO", sample_descriptions),
+            geometry=("geometry", "first"),
         )
     )
 
-    nodes = ox.graph_to_gdfs(graph, nodes=True, edges=False)
-    summary["geometry"] = summary["node"].map(nodes.geometry.to_dict())
-
     if summary["geometry"].isna().any():
-        raise ValueError("Há destinos agregados sem geometria de nó.")
+        raise ValueError(
+            "Há destinos agregados sem geometria representativa."
+        )
 
-    summary = summary.sort_values(["category", "node"]).reset_index(drop=True)
-    summary["destination_id"] = [f"D_{i:07d}" for i in range(len(summary))]
+    # A geometria continua sendo derivada do CNEFE. O node_car é apenas
+    # a chave de consolidação para reduzir destinos muito próximos.
+    summary = gpd.GeoDataFrame(
+        summary,
+        geometry="geometry",
+        crs=long_destinations.crs,
+    )
+
+    summary = assign_modal_nodes(
+        summary,
+        graphs,
+    )
+
+    summary = (
+        summary
+        .sort_values(["category", "node_car"])
+        .reset_index(drop=True)
+    )
+
+    summary["destination_id"] = [
+        f"D_{i:07d}"
+        for i in range(len(summary))
+    ]
 
     cols = [
         "destination_id",
         "category",
-        "node",
+        "node_car",
+        "node_walk",
+        "node_bike",
         "destination_weight",
         "n_addresses",
         "n_subcategories",
         "subcategories",
         "geometry",
     ]
-    return gpd.GeoDataFrame(summary[cols], geometry="geometry", crs=nodes.crs)
+
+    return gpd.GeoDataFrame(
+        summary[cols],
+        geometry="geometry",
+        crs=summary.crs,
+    )
 
 
 def save_outputs(establishments: gpd.GeoDataFrame, destinations: gpd.GeoDataFrame) -> None:
@@ -348,7 +391,7 @@ def print_report(establishments: gpd.GeoDataFrame, destinations: gpd.GeoDataFram
     for category in ["work", "education", "health", "shopping", "leisure"]:
         print(f"  {category:10s}: {int(establishments[category].sum()):,}")
 
-    print("\nDestinos agregados por nó:")
+    print("\nDestinos agregados por nó de referência (car):")
     counts = destinations["category"].value_counts()
     for category in ["work", "education", "health", "shopping", "leisure"]:
         print(f"  {category:10s}: {int(counts.get(category, 0)):,}")
@@ -367,13 +410,19 @@ def build_destinations_cnefe() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     print("3/6 — Classificando funções...")
     establishments = classify_establishments(establishments)
 
-    print("4/6 — Associando estabelecimentos à rede...")
-    graph = load_network()
-    establishments = assign_nearest_nodes(establishments, graph)
+    print("4/6 — Associando estabelecimentos às redes modais...")
+    graphs = load_networks()
+    establishments = assign_modal_nodes(
+        establishments,
+        graphs,
+    )
 
-    print("5/6 — Agregando destinos por nó e finalidade...")
+    print("5/6 — Agregando destinos e atribuindo nós por modo...")
     long_destinations = to_long_format(establishments)
-    destinations = aggregate_destinations(long_destinations, graph)
+    destinations = aggregate_destinations(
+        long_destinations,
+        graphs,
+    )
 
     print("6/6 — Salvando GeoPackage...")
     save_outputs(establishments, destinations)

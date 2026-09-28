@@ -8,28 +8,31 @@
             "Farroupilha",
             "Santana",
             "Centro Histórico"
-        ]
+        ],
+        "network_types": {
+            "car": "drive",
+            "walk": "walk",
+            "bike": "bike"
+        }
     },
     "study_area_code": "4314902",
     "uf": "RS",
     "income_variable": "V06004",
     "income_weight": "V06001",
     "residents_variable": "V06002",
-
     "basic_population_variable": "v0001",
     "basic_avg_household_size_variable": "v0005",
     "basic_households_variable": "v0007",
-
     "paths": {
-         "data": "data",
-
+        "data": "data",
         "graphs": "data/graph",
         "graph_file": "data/graph/rede-poa.graphml",
+        "graph_car": "data/graph/rede-poa-car.graphml",
+        "graph_walk": "data/graph/rede-poa-walk.graphml",
+        "graph_bike": "data/graph/rede-poa-bike.graphml",
         "graph_bomfim": "data/graph/rede-bomFim.graphml",
-
         "nodes": "data/01-nodes.gpkg",
         "edges": "data/01-edges.gpkg",
-
         "od": "data/o-d",
         "origins": "data/o-d/origens_porto_alegre.gpkg",
         "origins_bomfim": "data/o-d/origens_bomfim.gpkg",
@@ -38,36 +41,38 @@
         "od_pairs": "data/o-d/od_pairs.gpkg",
         "origins_income": "data/o-d/origens_porto_alegre_income.gpkg"
     },
-
+    "routing": {
+        "implemented_modes": [
+            "walk",
+            "bike",
+            "car"
+        ],
+        "node_column_prefix": "node_",
+        "transit_status": "planned_gtfs"
+    },
     "analysis": {
         "entropy_base": 2,
         "buffer": 500,
         "max_trip_distance": 30000
     },
-
-    
     "income": {
         "variable": "renda_media_responsavel",
-
         "groups": {
             "low": {
                 "min": null,
-                "max": 1913.0,
+                "max": 1913,
                 "share": 0.20997644
             },
-
             "middle": {
-                "min": 1913.0,
-                "max": 8245.0,
+                "min": 1913,
+                "max": 8245,
                 "share": 0.61144735
             },
-
             "high": {
-                "min": 8245.0,
+                "min": 8245,
                 "max": null,
                 "share": 0.17857621
             }
-        
         }
     }
 }

@@ -4,15 +4,14 @@
       "agent_id",
       "income_group",
       "origin_id",
-      "origin_node",
       "population_shares",
       "origin_assignment_rule",
       "destination_pool",
-      "network",
+      "network_set",
       "seed"
     ],
     "baseline": {
-      "description": "Mantém a estrutura residencial por renda, mas aplica as mesmas regras comportamentais de propósito, destino e modo aos três grupos.",
+      "description": "Mantém a estrutura residencial por renda, mas aplica as mesmas regras comportamentais de propósito, destino e modo aos três grupos. O nó efetivo de roteamento pode variar porque depende do modo escolhido.",
       "parameter_rule": "Os parâmetros comuns do baseline são derivados por média ponderada do cenário differentiated usando as participações populacionais."
     },
     "differentiated": {
@@ -23,22 +22,22 @@
     "low": {
       "work": 0.45,
       "education": 0.15,
-      "shopping": 0.20,
-      "health": 0.10,
-      "leisure": 0.10
+      "shopping": 0.2,
+      "health": 0.1,
+      "leisure": 0.1
     },
     "middle": {
       "work": 0.35,
       "education": 0.15,
-      "shopping": 0.20,
-      "health": 0.10,
-      "leisure": 0.20
+      "shopping": 0.2,
+      "health": 0.1,
+      "leisure": 0.2
     },
     "high": {
-      "work": 0.30,
+      "work": 0.3,
       "education": 0.15,
-      "shopping": 0.20,
-      "health": 0.10,
+      "shopping": 0.2,
+      "health": 0.1,
       "leisure": 0.25
     }
   },
@@ -48,59 +47,59 @@
         "walk": 0.162069,
         "bike": 0.130572,
         "transit": 0.316779,
-        "car": 0.390580
+        "car": 0.39058
       },
       "middle": {
         "walk": 0.162069,
         "bike": 0.130572,
         "transit": 0.316779,
-        "car": 0.390580
+        "car": 0.39058
       },
       "high": {
         "walk": 0.162069,
         "bike": 0.130572,
         "transit": 0.316779,
-        "car": 0.390580
+        "car": 0.39058
       }
     },
     "differentiated": {
       "low": {
         "walk": 0.25,
-        "bike": 0.10,
+        "bike": 0.1,
         "transit": 0.55,
-        "car": 0.10
+        "car": 0.1
       },
       "middle": {
         "walk": 0.15,
         "bike": 0.15,
-        "transit": 0.30,
-        "car": 0.40
+        "transit": 0.3,
+        "car": 0.4
       },
       "high": {
-        "walk": 0.10,
-        "bike": 0.10,
-        "transit": 0.10,
-        "car": 0.70
+        "walk": 0.1,
+        "bike": 0.1,
+        "transit": 0.1,
+        "car": 0.7
       }
     }
   },
   "destination_choice": {
-    "attractiveness_exponent": 1.0,
+    "attractiveness_exponent": 1,
     "distance_decay_per_km": {
       "work": {
-        "low": 0.10,
+        "low": 0.1,
         "middle": 0.09,
         "high": 0.08
       },
       "education": {
         "low": 0.18,
         "middle": 0.14,
-        "high": 0.10
+        "high": 0.1
       },
       "health": {
         "low": 0.16,
         "middle": 0.13,
-        "high": 0.10
+        "high": 0.1
       },
       "shopping": {
         "low": 0.25,
@@ -114,11 +113,21 @@
       }
     },
     "purpose_categories": {
-      "work": ["work"],
-      "education": ["education"],
-      "health": ["health"],
-      "shopping": ["shopping"],
-      "leisure": ["leisure"]
+      "work": [
+        "work"
+      ],
+      "education": [
+        "education"
+      ],
+      "health": [
+        "health"
+      ],
+      "shopping": [
+        "shopping"
+      ],
+      "leisure": [
+        "leisure"
+      ]
     }
   }
 }

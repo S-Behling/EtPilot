@@ -106,40 +106,69 @@ Additional libraries will be incorporated as the project evolves.
 
 The project is organized as a sequential research pipeline:
 
-1. Download street network
-2. Characterize road infrastructure
-3. Generate origins (population)
-4. Generate destinations (amenities)
-5. Build OD matrix
-6. Compute routes
-7. Build trajectories
-5. Compute urban metrics
-6. Calculate Trajectory Entropy (ET)
-7. Visualize and analyze results
+1. Download mode-specific OSM networks (car, walk, bike)
+2. Generate socioeconomic origins and associate modal nodes
+3. Generate/classify CNEFE destinations and associate modal nodes
+4. Generate synthetic agents
+5. Assign origins, purposes, destinations and travel modes
+6. Select the routing network according to the chosen mode
+7. Compute routes and edge usage
+8. Compute segment statistics and Trajectory Entropy (ET)
+9. Compare experimental scenarios and visualize results
 
 ---
+
+## Multimodal network
+
+The first routing implementation uses three OSM networks:
+
+- `car` → OSMnx `network_type="drive"`
+- `walk` → OSMnx `network_type="walk"`
+- `bike` → OSMnx `network_type="bike"`
+
+Origins and destinations are spatial entities independent of a single graph.
+Each point stores a mode-specific nearest node:
+
+- `node_car`
+- `node_walk`
+- `node_bike`
+
+After the agent chooses a travel mode, the corresponding origin and
+destination nodes are selected for routing. Transit is deliberately excluded
+from this first routing stage and is planned as a GTFS-based network.
+
+To prepare the multimodal data:
+
+```bash
+# 1. Run notebooks/01_download_network.ipynb
+# 2. Then update origins and rebuild CNEFE destinations:
+python -m src.network.prepare_multimodal_data
+```
 
 ## Current Status
 
 Current implementation:
 
-- ✔ Street network download
-- ✔ Road classification
-- ✔ Network visualization
-- ✔ Build origins
-
+- ✔ Separate car, walk and bike network download
+- ✔ Socioeconomic origin generation
+- ✔ CNEFE destination classification
+- ✔ Synthetic agent population
+- ✔ Experimental baseline/differentiated scenarios
+- ✔ Purpose, destination and mode choice
+- ✔ Mode-specific origin/destination node resolution
 
 In progress:
-- Network Cleaning
+
 - Routing
-- Trajectory generation
+- Edge usage
+- Segment statistics
 - Trajectory Entropy (ET)
 
 Future work:
 
+- GTFS public transport routing
 - Segregation indicators
 - Accessibility analysis
-- Agent-Based Modeling
 - Machine Learning
 - Space-time analysis
 

@@ -67,14 +67,13 @@ def _assign_modes(
     agents,
     mode_config: dict,
     seed: int,
+    implemented_modes: list[str] | tuple[str, ...],
 ) -> None:
     rng = np.random.default_rng(seed)
 
     available_modes = {
-        TravelMode.WALK,
-        TravelMode.BIKE,
-        TravelMode.TRANSIT,
-        TravelMode.CAR,
+        TravelMode(mode)
+        for mode in implemented_modes
     }
 
     for agent in agents:
@@ -84,6 +83,8 @@ def _assign_modes(
             rng=rng,
             available_modes=available_modes,
         )
+
+        agent.resolve_routing_nodes()
 
 
 def _validate_agents(agents) -> dict[str, int]:
@@ -179,7 +180,6 @@ def _validate_fixed_population(
         "agent_id",
         "income_group",
         "origin_id",
-        "origin_node",
     ]
 
     reference = (
@@ -233,6 +233,14 @@ def main() -> None:
     config = load_json(CONFIG_PATH)
     config_agents = load_json(CONFIG_AGENTS_PATH)
 
+    implemented_modes = list(
+        config["routing"]["implemented_modes"]
+    )
+    node_prefix = config["routing"].get(
+        "node_column_prefix",
+        "node_",
+    )
+
     origins_path = (
         PROJECT_ROOT
         / config["paths"]["origins_income"]
@@ -274,6 +282,8 @@ def main() -> None:
         origins=origins,
         population_column="POP",
         seed=SEED,
+        modes=implemented_modes,
+        node_prefix=node_prefix,
     )
 
     print(
@@ -323,6 +333,8 @@ def main() -> None:
             max_trip_distance_m=(
                 config["analysis"]["max_trip_distance"]
             ),
+            modes=implemented_modes,
+            node_prefix=node_prefix,
         )
 
         _assign_modes(
@@ -331,6 +343,7 @@ def main() -> None:
                 scenario_config["mode_choice"]
             ),
             seed=SEED,
+            implemented_modes=implemented_modes,
         )
 
         missing = _validate_agents(agents)
@@ -366,6 +379,11 @@ def main() -> None:
     print(
         "As diferenças entre cenários são introduzidas apenas "
         "nas regras de propósito, destino e modo."
+    )
+    print(
+        "Modos roteáveis nesta etapa: "
+        + ", ".join(implemented_modes)
+        + ". Transit permanece planejado para GTFS."
     )
     print(f"Resultados salvos em: {OUTPUT_DIR.resolve()}")
 
