@@ -195,6 +195,51 @@ class ModeChoiceTests(unittest.TestCase):
             selections,
         )
 
+    def test_transit_probability_is_preserved_when_transit_is_available(self):
+        # Mantém transit no conjunto de escolha em vez de redistribuir sua massa aos modos OSM
+        agent = self._agent(
+            5000.0
+        )
+
+        modes, probabilities = (
+            calculate_mode_probabilities(
+                agent=agent,
+                config=self._base_config(),
+                available_modes={
+                    TravelMode.WALK,
+                    TravelMode.BIKE,
+                    TravelMode.CAR,
+                    TravelMode.TRANSIT,
+                },
+                distance_config={
+                    "enabled": False,
+                },
+            )
+        )
+
+        result = {
+            mode.value: probability
+            for mode, probability
+            in zip(
+                modes,
+                probabilities,
+                strict=True,
+            )
+        }
+
+        self.assertAlmostEqual(
+            result[
+                "transit"
+            ],
+            0.55,
+        )
+        self.assertAlmostEqual(
+            sum(
+                result.values()
+            ),
+            1.0,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
