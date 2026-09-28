@@ -89,6 +89,9 @@ N_AGENTS = 100
 SEED = 42
 SKIP_MAPS = False
 SKIP_METADATA = False
+DESTINATION_DECAY_MULTIPLIER = 1.0
+MODE_DECAY_MULTIPLIER = 1.0
+HOMOGENIZE_DIFFERENTIATED_MODE = False
 SCENARIOS = ("baseline", "differentiated")
 
 
@@ -124,6 +127,32 @@ def _parse_cli_args():
         "--skip-metadata",
         action="store_true",
     )
+    parser.add_argument(
+        "--destination-decay-multiplier",
+        type=float,
+        default=DESTINATION_DECAY_MULTIPLIER,
+        help=(
+            "Multiplica todos os betas de decaimento da escolha de destino "
+            "sem alterar suas diferenças relativas."
+        ),
+    )
+    parser.add_argument(
+        "--mode-decay-multiplier",
+        type=float,
+        default=MODE_DECAY_MULTIPLIER,
+        help=(
+            "Multiplica os coeficientes de resposta modal à distância "
+            "sem alterar as probabilidades modais de referência."
+        ),
+    )
+    parser.add_argument(
+        "--homogenize-differentiated-mode",
+        action="store_true",
+        help=(
+            "Iguala as probabilidades modais do cenário differentiated "
+            "entre grupos, preservando propósito e destino diferenciados."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -136,6 +165,9 @@ def _apply_cli_args(args) -> None:
     global OUTPUT_DIR
     global SKIP_MAPS
     global SKIP_METADATA
+    global DESTINATION_DECAY_MULTIPLIER
+    global MODE_DECAY_MULTIPLIER
+    global HOMOGENIZE_DIFFERENTIATED_MODE
 
     if args.n_agents <= 0:
         raise ValueError(
@@ -155,6 +187,26 @@ def _apply_cli_args(args) -> None:
         args.skip_metadata
     )
 
+    if args.destination_decay_multiplier <= 0:
+        raise ValueError(
+            "--destination-decay-multiplier precisa ser maior que zero"
+        )
+
+    if args.mode_decay_multiplier <= 0:
+        raise ValueError(
+            "--mode-decay-multiplier precisa ser maior que zero"
+        )
+
+    DESTINATION_DECAY_MULTIPLIER = float(
+        args.destination_decay_multiplier
+    )
+    MODE_DECAY_MULTIPLIER = float(
+        args.mode_decay_multiplier
+    )
+    HOMOGENIZE_DIFFERENTIATED_MODE = bool(
+        args.homogenize_differentiated_mode
+    )
+
     if args.output_dir:
         output_path = Path(
             args.output_dir
@@ -172,6 +224,117 @@ def _apply_cli_args(args) -> None:
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _apply_sensitivity_overrides(
+    config_agents: dict,
+    income_shares: dict,
+) -> dict:
+    """Aplica perturbações locais usadas apenas na bateria final de sensibilidade."""
+
+    adjusted = deepcopy(
+        config_agents
+    )
+
+    destination_decay = adjusted[
+        "destination_choice"
+    ][
+        "distance_decay_per_km"
+    ]
+
+    for values_by_group in destination_decay.values():
+        for group_name, value in values_by_group.items():
+            values_by_group[group_name] = (
+                float(value)
+                * DESTINATION_DECAY_MULTIPLIER
+            )
+
+    mode_decay = adjusted[
+        "mode_choice"
+    ][
+        "distance_adjustment"
+    ][
+        "decay_per_km"
+    ]
+
+    for mode_name, value in mode_decay.items():
+        if value is None:
+            continue
+        mode_decay[mode_name] = (
+            float(value)
+            * MODE_DECAY_MULTIPLIER
+        )
+
+    if HOMOGENIZE_DIFFERENTIATED_MODE:
+        probabilities = adjusted[
+            "mode_choice"
+        ][
+            "differentiated"
+        ]
+
+        shares = {
+            (
+                group.value
+                if hasattr(group, "value")
+                else str(group)
+            ): float(share)
+            for group, share in income_shares.items()
+        }
+
+        total_share = sum(
+            shares.values()
+        )
+
+        if total_share <= 0:
+            raise ValueError(
+                "As participações populacionais precisam somar valor positivo"
+            )
+
+        shares = {
+            group_name: share / total_share
+            for group_name, share in shares.items()
+        }
+
+        categories = list(
+            next(
+                iter(
+                    probabilities.values()
+                )
+            ).keys()
+        )
+
+        average = {
+            category: sum(
+                shares[group_name]
+                * float(
+                    probabilities[
+                        group_name
+                    ][
+                        category
+                    ]
+                )
+                for group_name in shares
+            )
+            for category in categories
+        }
+
+        total_probability = sum(
+            average.values()
+        )
+
+        average = {
+            category: value / total_probability
+            for category, value in average.items()
+        }
+
+        for group_name in probabilities:
+            probabilities[
+                group_name
+            ] = dict(
+                average
+            )
+
+    return adjusted
 
 
 def _format_int_pt(
@@ -1220,6 +1383,11 @@ def main() -> None:
         in config["income"]["groups"].items()
     }
 
+    config_agents = _apply_sensitivity_overrides(
+        config_agents=config_agents,
+        income_shares=income_shares,
+    )
+
     base_agents = generate_population(
         n_agents=N_AGENTS,
         income_shares=income_shares,
@@ -2127,6 +2295,15 @@ def main() -> None:
         ),
         "metadata_updated": bool(
             not SKIP_METADATA
+        ),
+        "destination_decay_multiplier": float(
+            DESTINATION_DECAY_MULTIPLIER
+        ),
+        "mode_decay_multiplier": float(
+            MODE_DECAY_MULTIPLIER
+        ),
+        "homogenize_differentiated_mode": bool(
+            HOMOGENIZE_DIFFERENTIATED_MODE
         ),
     }
 
