@@ -216,23 +216,45 @@ def apply_paired_transit_outlier_filter(
         }
 
     eligible[
-        "direct_outlier"
+        "outlier_route_distance"
     ] = (
-        enough_sample
-        & (
-            eligible[
-                "travel_distance_m"
-            ]
-            > distance_stats[
-                "upper_fence"
-            ]
-        )
-        & (
+        eligible[
+            "travel_distance_m"
+        ]
+        > distance_stats[
+            "upper_fence"
+        ]
+    )
+    eligible[
+        "outlier_route_to_od_ratio"
+    ] = (
+        (
             eligible[
                 "route_to_od_ratio"
             ]
             > circuity_stats[
                 "upper_fence"
+            ]
+        )
+        & (
+            eligible[
+                "travel_distance_m"
+            ]
+            > distance_stats[
+                "q3"
+            ]
+        )
+    )
+    eligible[
+        "direct_outlier"
+    ] = (
+        enough_sample
+        & (
+            eligible[
+                "outlier_route_distance"
+            ]
+            | eligible[
+                "outlier_route_to_od_ratio"
             ]
         )
     )
