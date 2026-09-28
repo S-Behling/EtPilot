@@ -660,6 +660,13 @@ def build_analysis_segments(
         if mode == reference_mode:
             continue
 
+        # Congele os segmentos já disponíveis antes de processar o modo.
+        segments_snapshot = gpd.GeoDataFrame(
+            segments_rows,
+            geometry="geometry",
+            crs=modal_edges.crs,
+        )
+
         mode_edges = (
             modal_edges[
                 modal_edges[
@@ -672,15 +679,117 @@ def build_analysis_segments(
             )
         )
 
-        for _, edge in mode_edges.iterrows():
-            modal_edge_id = edge[
-                "modal_edge_id"
+        # Agrupe direções e duplicatas físicas antes de procurar equivalências.
+        physical_groups = (
+            mode_edges
+            .groupby(
+                "strict_key",
+                sort=True,
+            )
+        )
+
+        for _, group in physical_groups:
+            edge = group.iloc[
+                0
             ]
 
-            if modal_edge_id in mapped_modal_edges:
-                continue
+            modal_edge_ids = (
+                group[
+                    "modal_edge_id"
+                ]
+                .astype(str)
+                .tolist()
+            )
 
-            segments = gpd.GeoDataFrame(
+            exact = segments_snapshot[
+                segments_snapshot[
+                    "strict_key"
+                ]
+                == edge[
+                    "strict_key"
+                ]
+            ]
+
+            if not exact.empty:
+                targets = [
+                    (
+                        str(
+                            segment[
+                                "analysis_segment_id"
+                            ]
+                        ),
+                        "osm_exact",
+                        1.0,
+                    )
+                    for _, segment
+                    in exact.iterrows()
+                ]
+            else:
+                geometry_matches = (
+                    _find_geometry_matches(
+                        edge,
+                        segments_snapshot,
+                        tolerance_m=tolerance_m,
+                        min_coverage=min_coverage,
+                    )
+                )
+
+                if geometry_matches:
+                    targets = [
+                        (
+                            segment_id,
+                            "geometry",
+                            quality,
+                        )
+                        for (
+                            segment_id,
+                            quality,
+                        ) in geometry_matches
+                    ]
+                else:
+                    segment_id = append_segment(
+                        edge,
+                        mode,
+                    )
+
+                    targets = [
+                        (
+                            segment_id,
+                            "exclusive",
+                            1.0,
+                        )
+                    ]
+
+            # Aplique o mesmo mapeamento às direções da mesma aresta física.
+            for modal_edge_id in modal_edge_ids:
+                for (
+                    segment_id,
+                    method,
+                    quality,
+                ) in targets:
+                    mapping_rows.append(
+                        {
+                            "modal_edge_id": (
+                                modal_edge_id
+                            ),
+                            "mode": mode,
+                            "analysis_segment_id": (
+                                segment_id
+                            ),
+                            "match_method": (
+                                method
+                            ),
+                            "match_quality": (
+                                quality
+                            ),
+                        }
+                    )
+
+                mapped_modal_edges.add(
+                    modal_edge_id
+                )
+
+    segments = gpd.GeoDataFrame(
                 segments_rows,
                 geometry="geometry",
                 crs=modal_edges.crs,
