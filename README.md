@@ -503,6 +503,28 @@ python -m src.network.prepare_multimodal_data
 ```
 
 
+## Transit trip outlier control
+
+The pilot preserves every routed agent in the scenario tables while allowing
+technically extreme transit trajectories to be excluded from the spatial
+analysis before edge usage, segment statistics and H_soc are calculated.
+
+The current provisional rule pools successful transit trips from baseline and
+differentiated so both scenarios use the same thresholds. It evaluates both
+`travel_distance_m` and `route_to_od_ratio = travel_distance_m / od_distance_m`
+with the upper Tukey outer fence `Q3 + 3 × IQR`.
+
+A trip is flagged only when it exceeds both upper fences. With paired
+exclusion enabled, the same `agent_id` is excluded from trajectory analysis
+in both scenarios when either scenario contains a direct outlier.
+
+The routed records remain in the agent tables with `analysis_included=False`
+and an explicit exclusion reason. The audit files are:
+
+```text
+outputs/pilot/outlier_exclusions.csv
+outputs/pilot/outlier_filter_summary.csv
+```
 ## Segment statistics and H_soc
 
 Aggregate the harmonized edge usage by `analysis_segment_id`. Keep passage
