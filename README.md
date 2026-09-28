@@ -234,15 +234,24 @@ The service-day profile counts scheduled trips by date. The current strategy
 selects the date with the largest number of scheduled trips as the
 representative service date for later routing diagnostics.
 
-## Pilot metadata XML
+## Pilot metadata documentation
 
-Export consolidated methodological documentation to:
+Export the consolidated methodological documentation in two complementary
+formats:
 
 ```text
-outputs/metadados_piloto.xml
+outputs/metadados_piloto.xlsx
+outputs/metadados_piloto.html
 ```
 
-The XML contains Portuguese descriptions for:
+The XLSX workbook separates the documentation into Portuguese worksheets for
+the summary, main variables, configuration parameters, analysis methods,
+statistics, cleaning methods, and generated files.
+
+The HTML report presents the same content as a navigable document with section
+links and tabular summaries.
+
+Both outputs contain Portuguese descriptions for:
 
 - main variables and their units;
 - current configuration parameters;
@@ -251,12 +260,15 @@ The XML contains Portuguese descriptions for:
 - cleaning and validation methods;
 - generated files and their purpose.
 
-The XML is refreshed by `src.transit.buildTransitNetwork` and by the main
-pilot simulation. It can also be generated directly with:
+The metadata files are refreshed by `src.transit.buildTransitNetwork` and by
+the main pilot simulation. They can also be generated directly with:
 
 ```bash
 python -m src.reporting.exportPilotMetadata
 ```
+
+The exporter removes the former `outputs/metadados_piloto.xml` file when it
+exists so that XLSX and HTML remain the canonical metadata formats.
 
 ## Multimodal network
 
@@ -499,7 +511,7 @@ Current implementation:
 - ✔ Validation of the downloaded EPTC GTFS feed
 - ✔ Stop-to-walking-network association code
 - ✔ Scheduled GTFS connection-table construction
-- ✔ Pilot metadata XML export
+- ✔ Pilot metadata export in XLSX and HTML
 
 In progress:
 
