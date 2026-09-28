@@ -658,7 +658,7 @@ Use the current pilot parameters as provisional constraints:
 walk    beta=0.55 /km   maximum OD distance=6 km
 bike    beta=0.12 /km   maximum OD distance=20 km
 car     beta=0.00 /km   no maximum
-transit beta=0.03 /km   no maximum, reserved for the future GTFS stage
+transit beta=0.03 /km   no maximum, routed with the integrated GTFS network
 ```
 
 Treat these values as technical pilot parameters rather than empirically
