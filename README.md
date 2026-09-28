@@ -270,6 +270,57 @@ python -m src.reporting.exportPilotMetadata
 The exporter removes the former `outputs/metadados_piloto.xml` file when it
 exists so that XLSX and HTML remain the canonical metadata formats.
 
+## GTFS temporal reconstruction for routing
+
+The temporal diagnostics show that most EPTC trips contain only a small number
+of original timepoints. The processing pipeline therefore keeps the published
+timepoints as anchors and regularizes only the intermediate estimated times.
+
+For each span between two original timepoints, the processor:
+
+```text
+preserves the original start and end times
+        ↓
+uses strictly increasing shape position when available
+        ↓
+falls back to stop_sequence when shape progress is not strictly increasing
+        ↓
+distributes integer seconds across the intermediate connections
+        ↓
+keeps at least the configured minimum interval when mathematically feasible
+```
+
+The current technical minimum is defined in `config/config.json` as
+`transit.gtfs.temporal_reconstruction.minimum_interval_s`.
+
+Trips for which the published anchor interval is too short to assign the
+minimum positive interval to every consecutive stop are not modified
+artificially. They are flagged with
+`temporal_regularization_feasible=False`.
+
+The network preparation preserves two separate connection products:
+
+```text
+data/gtfs/transit_connections_processed.parquet
+data/gtfs/transit_connections_routable_processed.parquet
+```
+
+The first keeps the complete processed feed for auditing and diagnostics. The
+second is the table used by the timetable router and applies the configurable
+technical quality filter. The current filter removes trips with missing
+temporal summaries, nonpositive scheduled duration, infeasible positive-time
+regularization, or an implied shape speed above the provisional technical
+ceiling.
+
+The quality decision for every `trip_id` is stored in:
+
+```text
+data/gtfs/transit_trip_quality_processed.csv
+```
+
+The implied-speed ceiling is a conservative technical anomaly filter for the
+pilot rather than an empirical estimate of normal bus operating speed.
+
 ## GTFS temporal quality diagnostics
 
 The EPTC feed contains a large share of interpolated stop times. Before
@@ -613,12 +664,13 @@ Current implementation:
 - ✔ Same-stop transfer logic with configurable transfer time
 - ✔ Real-data transit routing diagnostic
 - ✔ GTFS trip-level temporal quality diagnostic
+- ✔ Positive-interval reconstruction between published GTFS timepoints
+- ✔ Separate complete and quality-filtered routable GTFS connection tables
 - ✔ Pilot metadata export in XLSX and HTML
 
 In progress:
 
-- Local validation of GTFS trip-level temporal quality
-- Decision on temporal reconstruction for trips with implausibly short or zero-duration connections
+- Local validation of the reconstructed GTFS times and routable connection subset
 - Integration of transit into the main agent simulation
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
@@ -628,8 +680,8 @@ In progress:
 
 Complete the pilot in this order:
 
-1. validate trip-level GTFS temporal quality and define how to handle
-   zero-duration or implausibly fast scheduled connections;
+1. reprocess the GTFS with positive-interval temporal reconstruction and
+   validate the quality-filtered routable connection table;
 2. integrate transit into the main agent simulation without redistributing the
    transit probability to car, bicycle or walking;
 3. validate the provisional distance-sensitive mode rule against routed
