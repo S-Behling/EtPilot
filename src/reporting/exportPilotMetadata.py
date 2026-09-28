@@ -473,6 +473,12 @@ VARIABLES = [
         "descricao": "Quantidade de trocas de viagem GTFS ao longo do itinerário",
     },
     {
+        "nome": "mean_in_vehicle_time_per_connection_s",
+        "grupo": "diagnóstico de transporte coletivo",
+        "unidade": "s/conexão",
+        "descricao": "Tempo médio dentro do veículo por conexão GTFS usada na rota, empregado como diagnóstico de qualidade temporal",
+    },
+    {
         "nome": "egress_walk_distance_m",
         "grupo": "roteamento de transporte coletivo",
         "unidade": "m",
@@ -622,6 +628,11 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "run_diagnostics",
         "descricao": "Seleciona pares origem-destino reprodutíveis das bases do piloto e resume cobertura, tempos, caminhada de acesso e egresso e transferências",
     },
+    {
+        "nome": "Validação de continuidade do itinerário de transporte coletivo",
+        "funcao_codigo": "TransitRouter.route",
+        "descricao": "Exige continuidade entre a parada de destino de uma conexão e a parada de origem da conexão seguinte e preserva a ordem numérica de stop_sequence em empates temporais",
+    },
 ]
 
 STATISTICS = [
@@ -684,6 +695,14 @@ STATISTICS = [
     {
         "nome": "Qualidade média de harmonização",
         "descricao": "Resume a qualidade das correspondências geométricas entre arestas modais e segmentos físicos",
+    },
+    {
+        "nome": "Contagem de conexões com duração zero",
+        "descricao": "Quantifica conexões GTFS cujo tempo entre partida e chegada é igual a zero para diagnosticar limitações do preenchimento temporal",
+    },
+    {
+        "nome": "Tempo médio por conexão veicular",
+        "descricao": "Divide o tempo dentro do veículo pelo número de conexões GTFS usadas na rota para identificar itinerários temporalmente suspeitos",
     },
 ]
 
@@ -759,6 +778,14 @@ CLEANING_METHODS = [
     {
         "nome": "Deduplicação agente × segmento",
         "descricao": "Usa apenas uma observação por agente e segmento para composição socioeconômica e evita inflar pesos por repetição de passagem",
+    },
+    {
+        "nome": "Ordenação numérica de stop_sequence em empates temporais",
+        "descricao": "Ordena conexões com o mesmo horário usando a sequência numérica da parada e evita a ordenação lexicográfica de identificadores como 19 antes de 2",
+    },
+    {
+        "nome": "Validação de continuidade entre conexões GTFS",
+        "descricao": "Confere se cada conexão do itinerário começa na parada onde a conexão anterior terminou antes de aceitar o resultado do roteamento",
     },
 ]
 
