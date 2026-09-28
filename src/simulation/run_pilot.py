@@ -7,16 +7,17 @@ preserva diferenças de propósito, destino e modo no differentiated
 
 O fluxo:
 1. carrega configurações e dados
-2. carrega as redes de carro, caminhada e bicicleta
-3. gera a população sintética e atribui origens
-4. constrói os cenários comportamentais
-5. atribui propósito, destino e modo
-6. calcula a rota na rede correspondente ao modo
-7. harmoniza as arestas modais em segmentos físicos comuns
+2. carrega as redes OSM e a rede temporal GTFS roteável
+3. gera a população sintética
+4. atribui origens residenciais
+5. constrói os cenários comportamentais
+6. atribui propósito, destino e modo e roteia walk, bike, car e transit
+7. harmoniza redes OSM e trechos GTFS usados em segmentos físicos comuns
 8. calcula volume, composição social e H_soc por segmento
 9. compara baseline e differentiated de forma pareada por segmento
 10. gera mapas comparáveis de H_soc e delta_H_soc
 11. valida, resume e salva os resultados
+12. atualiza a documentação metodológica XLSX e HTML
 
 A execução ocorre com:
     python -m src.simulation.run_pilot
@@ -1084,7 +1085,10 @@ def main() -> None:
         seed=SEED,
     )
 
-    print(f"Agentes gerados: {len(base_agents)}")
+    print(
+        "Agentes gerados: "
+        f"{_format_int_pt(len(base_agents))} agentes"
+    )
 
     print("4/12 - Atribuindo origens residenciais...")
 
@@ -1097,12 +1101,15 @@ def main() -> None:
         node_prefix=node_prefix,
     )
 
+    agents_with_origin = sum(
+        agent.origin_id is not None
+        for agent in base_agents
+    )
+
     print(
-        "Agentes com origem:",
-        sum(
-            agent.origin_id is not None
-            for agent in base_agents
-        ),
+        "Agentes com origem: "
+        f"{_format_int_pt(agents_with_origin)} agentes "
+        f"({_format_percentage_pt(agents_with_origin, len(base_agents))})"
     )
 
     print("5/12 - Construindo cenários experimentais...")
