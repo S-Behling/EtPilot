@@ -47,6 +47,7 @@ class TransitRouteResult:
     access_walk_time_s: float | None = None
     initial_wait_time_s: float | None = None
 
+    in_vehicle_distance_m: float | None = None
     in_vehicle_time_s: float | None = None
     transfer_and_dwell_time_s: float | None = None
     n_boardings: int = 0
@@ -1121,6 +1122,23 @@ class TransitRouter:
             ).sum()
         )
 
+        in_vehicle_distance = float(
+            pd.to_numeric(
+                path_rows.get(
+                    "shape_segment_distance_m",
+                    pd.Series(
+                        0.0,
+                        index=path_rows.index,
+                    ),
+                ),
+                errors="coerce",
+            )
+            .fillna(
+                0.0
+            )
+            .sum()
+        )
+
         transit_elapsed = (
             last_arrival
             - first_departure
@@ -1184,6 +1202,7 @@ class TransitRouter:
             access_walk_distance_m=access_distance,
             access_walk_time_s=access_walk_time,
             initial_wait_time_s=initial_wait_time,
+            in_vehicle_distance_m=in_vehicle_distance,
             in_vehicle_time_s=in_vehicle_time,
             transfer_and_dwell_time_s=transfer_and_dwell_time,
             n_boardings=n_boardings,
