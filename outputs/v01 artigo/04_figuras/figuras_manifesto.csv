@@ -1,0 +1,10 @@
+figure,type,message
+fig01_mapa_H_soc_baseline.png,map,H_soc mediana — baseline
+fig02_mapa_H_soc_differentiated.png,map,H_soc mediana — differentiated
+fig03_mapa_delta_H_soc.png,map,ΔH_soc mediano entre seeds
+fig04_H_soc_pareado_por_seed.png,chart,Comparação pareada do H_soc agregado em cada seed.
+fig05_delta_H_soc_seeds_bootstrap.png,chart,Resultado principal com bootstrap hierárquico de seeds e trajetórias completas dos agentes.
+fig06_extensao_espacial_delta.png,chart,Proporção do comprimento da rede por direção da mudança.
+fig07_contribuicoes_entropia_renda.png,chart,Decomposição aditiva exata de ΔH_soc pelos termos -p log(p) de cada grupo de renda.
+fig08_mecanismos_comportamentais_renda.png,chart,"Mudanças de propósito, destino e modo entre cenários."
+fig09_sobreposicao_trajetorias_renda.png,chart,Sobreposição espacial das rotas por grupo de renda.

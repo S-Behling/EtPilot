@@ -1,0 +1,18 @@
+{
+  "version": "v01 artigo",
+  "operational_question": "Em que medida regras de mobilidade socioeconomicamente diferenciadas alteram a diversidade socioeconomica observada nas trajetorias ao longo da rede urbana, em comparacao com um cenario comportamental homogeneo?",
+  "main_outcome": "length_weighted_mean_delta_H_soc",
+  "primary_flow_threshold": 5,
+  "consensus_min_seeds": 3,
+  "delta_h_practical_threshold": 0.05,
+  "bootstrap_reps": 1000,
+  "bootstrap_seed": 20260928,
+  "nominal_seeds": [
+    11,
+    23,
+    42,
+    73,
+    101
+  ],
+  "inference": "Hierarchical bootstrap of seeds and paired complete agent trajectories. Segments are descriptive spatial units, not independent statistical observations."
+}

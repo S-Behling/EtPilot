@@ -1,0 +1,4 @@
+metric,point_estimate_seed_median,bootstrap_median,ci95_low,ci95_high,seed_sign_consistency,bootstrap_reps_valid,inference_unit,segments_treated_as_independent
+contrib_delta_H_low_length_weighted,0.07934465762997156,0.03060533701397007,-0.029876713635912003,0.08880889120777642,0.8,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+contrib_delta_H_middle_length_weighted,0.041317446148414906,0.014618464292071531,-0.027494616375341847,0.06896480399136916,0.8,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+contrib_delta_H_high_length_weighted,-0.09588022714924359,-0.022373799717112768,-0.09223325417907433,0.02943667446322891,0.8,1000,hierarchical bootstrap: seed + complete agent trajectory,False

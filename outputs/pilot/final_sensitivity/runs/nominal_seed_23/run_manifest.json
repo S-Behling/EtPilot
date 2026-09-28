@@ -1,0 +1,10 @@
+{
+  "n_agents": 100,
+  "seed": 23,
+  "output_dir": "C:\\Users\\simon\\Documents\\GitHub\\EtPilot\\outputs\\pilot\\final_sensitivity\\runs\\nominal_seed_23",
+  "maps_generated": false,
+  "metadata_updated": false,
+  "destination_decay_multiplier": 1.0,
+  "mode_decay_multiplier": 1.0,
+  "homogenize_differentiated_mode": false
+}
