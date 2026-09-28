@@ -64,29 +64,45 @@
         "transit": 0.10,
         "car": 0.70
       }
-    },
-    "destination_choice": {
-      "attractiveness_exponent": 1.0,
+    }
+  },
+  "destination_choice": {
+    "attractiveness_exponent": 1.0,
 
-      "distance_decay_per_km": {
+    "distance_decay_per_km": {
+      "work": {
+        "low": 0.10,
+        "middle": 0.09,
+        "high": 0.08
+      },
+      "education": {
+        "low": 0.18,
+        "middle": 0.14,
+        "high": 0.10
+      },
+      "health": {
+        "low": 0.16,
+        "middle": 0.13,
+        "high": 0.10
+      },
+      "shopping": {
         "low": 0.25,
         "middle": 0.15,
         "high": 0.08
       },
-
-      "diversity_temperature": {
-        "low": 0.80,
-        "middle": 1.00,
-        "high": 1.25
-      },
-
-      "purpose_categories": {
-        "education": ["education"],
-        "health": ["health"],
-        "shopping": ["shopping"],
-        "leisure": ["leisure"],
-        "work": []
+      "leisure": {
+        "low": 0.28,
+        "middle": 0.16,
+        "high": 0.08
       }
+    },
+
+    "purpose_categories": {
+      "work": ["work"],
+      "education": ["education"],
+      "health": ["health"],
+      "shopping": ["shopping"],
+      "leisure": ["leisure"]
     }
   }
 }

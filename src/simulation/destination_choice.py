@@ -1,3 +1,30 @@
+"""
+Escolha de destinos para os agentes sintéticos do EtPilot.
+
+A probabilidade de um agente escolher um destino j é proporcional a:
+
+    P_ij ∝ A_j^alpha * exp(-beta_gp * d_ij)
+
+onde:
+- A_j é a atratividade do destino (`destination_weight`);
+- alpha controla a importância da atratividade;
+- d_ij é a distância euclidiana origem-destino, em quilômetros;
+- beta_gp é a sensibilidade à distância para o grupo de renda g
+  e o propósito de viagem p.
+
+Nesta primeira versão, diferenças socioeconômicas na diversidade espacial
+dos destinos são representadas por beta:
+- beta maior -> distribuição espacial mais localizada;
+- beta menor -> destinos distantes sofrem menor penalização.
+
+Os valores de beta devem ser tratados como parâmetros de calibração do piloto,
+não como coeficientes empíricos definitivos.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+
 import numpy as np
 import pandas as pd
 
@@ -5,155 +32,242 @@ from src.domain.agent import Agent
 from src.domain.enums import IncomeGroup
 
 
+def _enum_value(value) -> str:
+    """Retorna `.value` para Enum ou a própria representação textual."""
+    return value.value if hasattr(value, "value") else str(value)
+
+
 def _calculate_destination_probabilities(
     distances_km,
     attractiveness,
-    beta,
-    temperature,
-    attractiveness_exponent=1.0,
-):
+    beta: float,
+    attractiveness_exponent: float = 1.0,
+) -> np.ndarray:
     """
-    Calcula a probabilidade de escolha de cada destino.
-
-    A escolha combina:
-
-    1. atratividade do destino;
-    2. penalização pela distância;
-    3. diversidade de escolha do grupo socioeconômico.
+    Calcula probabilidades de escolha de destino.
 
     Parameters
     ----------
-    distances_km : array-like
-        Distâncias entre a origem e os destinos, em quilômetros.
-
-    attractiveness : array-like
-        Atratividade relativa dos destinos.
-
-    beta : float
-        Sensibilidade à distância.
-
-        Valores maiores tornam destinos distantes
-        progressivamente menos prováveis.
-
-    temperature : float
-        Controla a dispersão da distribuição de escolha.
-
-        temperature < 1:
-            distribuição mais concentrada.
-
-        temperature = 1:
-            mantém a distribuição original.
-
-        temperature > 1:
-            distribuição mais dispersa.
-
-    attractiveness_exponent : float, default=1.0
-        Controla o peso relativo da atratividade.
+    distances_km
+        Distâncias origem-destino em quilômetros.
+    attractiveness
+        Pesos de atratividade dos destinos.
+    beta
+        Coeficiente de decaimento da distância, em 1/km.
+    attractiveness_exponent
+        Expoente aplicado à atratividade.
 
     Returns
     -------
     np.ndarray
-        Probabilidade de escolha de cada destino.
+        Vetor de probabilidades somando 1.
     """
 
-    distances_km = np.asarray(
-        distances_km,
-        dtype=float,
-    )
+    distances_km = np.asarray(distances_km, dtype=float)
+    attractiveness = np.asarray(attractiveness, dtype=float)
 
-    attractiveness = np.asarray(
-        attractiveness,
-        dtype=float,
-    )
+    if distances_km.ndim != 1 or attractiveness.ndim != 1:
+        raise ValueError(
+            "Distâncias e atratividades devem ser vetores unidimensionais."
+        )
 
     if len(distances_km) == 0:
-        raise ValueError(
-            "Nenhum destino disponível para escolha."
-        )
+        raise ValueError("Nenhum destino disponível para escolha.")
 
     if len(distances_km) != len(attractiveness):
         raise ValueError(
-            "Distâncias e atratividades devem possuir "
-            "o mesmo número de elementos."
+            "Distâncias e atratividades devem possuir o mesmo número "
+            "de elementos."
         )
+
+    if np.any(~np.isfinite(distances_km)):
+        raise ValueError("Há distâncias inválidas na escolha de destinos.")
+
+    if np.any(distances_km < 0):
+        raise ValueError("Distâncias não podem ser negativas.")
 
     if beta < 0:
-        raise ValueError(
-            "beta não pode ser negativo."
-        )
-
-    if temperature <= 0:
-        raise ValueError(
-            "temperature deve ser maior que zero."
-        )
+        raise ValueError("beta não pode ser negativo.")
 
     if attractiveness_exponent < 0:
         raise ValueError(
             "attractiveness_exponent não pode ser negativo."
         )
 
-    # Evita log(0).
-    attractiveness = np.maximum(
+    attractiveness = np.where(
+        np.isfinite(attractiveness) & (attractiveness > 0),
         attractiveness,
-        1e-12,
+        0.0,
     )
 
-    # ---------------------------------------------------------
-    # Função de utilidade em espaço logarítmico
-    #
-    # log(W) =
-    #
-    # alpha * log(A)
-    # -
-    # beta * distância
-    #
-    # ---------------------------------------------------------
+    if attractiveness.sum() <= 0:
+        raise ValueError(
+            "Todos os destinos candidatos possuem atratividade inválida."
+        )
 
-    log_weights = (
+    log_weights = np.full(
+        len(attractiveness),
+        -np.inf,
+        dtype=float,
+    )
+
+    valid = attractiveness > 0
+
+    log_weights[valid] = (
         attractiveness_exponent
-        * np.log(attractiveness)
-        -
-        beta
-        * distances_km
+        * np.log(attractiveness[valid])
+        - beta * distances_km[valid]
     )
 
-    # ---------------------------------------------------------
-    # Temperature
-    #
-    # valores menores que 1 concentram escolhas
-    # valores maiores que 1 aumentam diversidade
-    # ---------------------------------------------------------
+    max_log_weight = np.max(log_weights[valid])
 
-    logits = (
-        log_weights
-        / temperature
+    weights = np.zeros(
+        len(log_weights),
+        dtype=float,
     )
 
-    # Estabilidade numérica
-    logits = (
-        logits
-        - np.max(logits)
-    )
-
-    weights = np.exp(
-        logits
+    weights[valid] = np.exp(
+        log_weights[valid] - max_log_weight
     )
 
     total = weights.sum()
 
-    if (
-        not np.isfinite(total)
-        or total <= 0
-    ):
-        return (
-            np.ones(len(weights))
-            / len(weights)
+    if not np.isfinite(total) or total <= 0:
+        raise ValueError(
+            "Não foi possível construir uma distribuição válida "
+            "de probabilidades."
         )
 
-    return (
-        weights
-        / total
+    return weights / total
+
+
+def _validate_choice_config(
+    choice_config: Mapping,
+    purposes_used: set[str],
+) -> None:
+    """Valida a estrutura de `destination_choice` do config_agents.json."""
+
+    required_keys = {
+        "distance_decay_per_km",
+        "purpose_categories",
+    }
+
+    missing = required_keys - set(choice_config)
+
+    if missing:
+        raise ValueError(
+            "Chaves ausentes em destination_choice: "
+            f"{sorted(missing)}"
+        )
+
+    beta_config = choice_config["distance_decay_per_km"]
+    purpose_categories = choice_config["purpose_categories"]
+
+    income_groups = {
+        income_group.value
+        for income_group in IncomeGroup
+    }
+
+    for purpose_name in purposes_used:
+        if purpose_name not in purpose_categories:
+            raise ValueError(
+                "purpose_categories não possui configuração para "
+                f"'{purpose_name}'."
+            )
+
+        categories = purpose_categories[purpose_name]
+
+        if not categories:
+            raise ValueError(
+                f"Nenhuma categoria foi definida para '{purpose_name}'."
+            )
+
+        if purpose_name not in beta_config:
+            raise ValueError(
+                "distance_decay_per_km não possui configuração para "
+                f"'{purpose_name}'."
+            )
+
+        purpose_betas = beta_config[purpose_name]
+
+        missing_groups = (
+            income_groups
+            - set(purpose_betas)
+        )
+
+        if missing_groups:
+            raise ValueError(
+                f"Betas ausentes para '{purpose_name}': "
+                f"{sorted(missing_groups)}"
+            )
+
+        for group_name, beta in purpose_betas.items():
+            try:
+                beta_value = float(beta)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Beta inválido para {purpose_name}/{group_name}: {beta}"
+                ) from exc
+
+            if beta_value < 0:
+                raise ValueError(
+                    f"Beta negativo para {purpose_name}/{group_name}: "
+                    f"{beta_value}"
+                )
+
+
+def _prepare_destinations(destinations):
+    """Valida e prepara a base final de destinos CNEFE."""
+
+    required_columns = {
+        "destination_id",
+        "category",
+        "node",
+        "destination_weight",
+        "geometry",
+    }
+
+    missing = required_columns - set(destinations.columns)
+
+    if missing:
+        raise ValueError(
+            "Colunas ausentes nos destinos: "
+            f"{sorted(missing)}"
+        )
+
+    result = destinations.copy()
+
+    result["category"] = (
+        result["category"]
+        .astype("string")
+        .str.strip()
+        .str.lower()
     )
+
+    result["destination_weight"] = pd.to_numeric(
+        result["destination_weight"],
+        errors="coerce",
+    )
+
+    result["node"] = pd.to_numeric(
+        result["node"],
+        errors="coerce",
+    )
+
+    result = result[
+        result["geometry"].notna()
+        & result["category"].notna()
+        & result["node"].notna()
+        & result["destination_weight"].notna()
+        & (result["destination_weight"] > 0)
+    ].copy()
+
+    if result.empty:
+        raise ValueError(
+            "Nenhum destino válido permaneceu após a preparação."
+        )
+
+    return result
 
 
 def assign_destinations(
@@ -162,74 +276,46 @@ def assign_destinations(
     destinations,
     choice_config: dict,
     seed: int = 42,
+    max_trip_distance_m: float | None = None,
 ) -> list[Agent]:
     """
-    Atribui destinos aos agentes sintéticos.
-
-    A escolha depende de:
-
-    - motivo da viagem;
-    - localização da origem;
-    - atratividade do destino;
-    - distância origem-destino;
-    - grupo socioeconômico.
-
-    Grupos socioeconômicos podem apresentar diferentes
-    sensibilidades à distância e diferentes níveis de
-    diversidade de escolha.
+    Atribui um destino a cada agente.
 
     Parameters
     ----------
-    agents : list[Agent]
-        Agentes com origem e propósito já atribuídos.
-
-    origins : GeoDataFrame
-        Origens contendo pelo menos:
-
-        origin_id
-        geometry
-
-    destinations : GeoDataFrame
-        Destinos contendo pelo menos:
-
-        destination_id
-        category
-        node
-        destination_weight
-        geometry
-
-    choice_config : dict
-        Configuração da escolha de destinos.
-
-    seed : int, default=42
-        Semente para garantir reprodutibilidade.
+    agents
+        Agentes com `origin_id`, `income_group` e `purpose` já atribuídos.
+    origins
+        GeoDataFrame com, no mínimo, `origin_id` e `geometry`.
+    destinations
+        GeoDataFrame final produzido por destinationsCNEFE.py.
+    choice_config
+        Conteúdo de `config_agents["destination_choice"]`.
+    seed
+        Semente para reprodutibilidade.
+    max_trip_distance_m
+        Distância euclidiana máxima opcional para os candidatos, em metros.
+        Pode receber diretamente `config["analysis"]["max_trip_distance"]`.
+        Se None, não aplica limite máximo.
 
     Returns
     -------
     list[Agent]
-        Lista de agentes com destination_id
-        e destination_node atribuídos.
+        Os próprios agentes, com `destination_id` e `destination_node`
+        preenchidos.
+
+    Notes
+    -----
+    A distância usada nesta etapa é euclidiana no CRS projetado.
+    A distância real da viagem deve ser calculada posteriormente pelo
+    módulo de roteamento e não é gravada em `agent.travel_distance`.
     """
 
-    # ---------------------------------------------------------
-    # 1. Validações
-    # ---------------------------------------------------------
-
     if not agents:
-        raise ValueError(
-            "A lista de agentes está vazia."
-        )
+        raise ValueError("A lista de agentes está vazia.")
 
     required_origin_columns = {
         "origin_id",
-        "geometry",
-    }
-
-    required_destination_columns = {
-        "destination_id",
-        "category",
-        "node",
-        "destination_weight",
         "geometry",
     }
 
@@ -244,257 +330,136 @@ def assign_destinations(
             f"{sorted(missing_origins)}"
         )
 
-    missing_destinations = (
-        required_destination_columns
-        - set(destinations.columns)
-    )
-
-    if missing_destinations:
+    if origins.crs is None or destinations.crs is None:
         raise ValueError(
-            "Colunas ausentes nos destinos: "
-            f"{sorted(missing_destinations)}"
+        "Origens e destinos precisam possuir CRS."
         )
 
-    if (
-        origins.crs is None
-        or destinations.crs is None
-    ):
-        raise ValueError(
-            "Origens e destinos precisam possuir CRS."
-        )
-
+    # Padroniza as origens no mesmo CRS dos destinos.
+    # A base CNEFE final utiliza EPSG:31982
     if origins.crs != destinations.crs:
-        raise ValueError(
-            "Origens e destinos devem possuir o mesmo CRS."
-        )
+        origins = origins.to_crs(destinations.crs)
 
-    if not origins.crs.is_projected:
+    if not destinations.crs.is_projected:
         raise ValueError(
             "O cálculo de distância requer um CRS projetado."
         )
 
-    # ---------------------------------------------------------
-    # 2. Configuração
-    # ---------------------------------------------------------
+    if max_trip_distance_m is not None:
+        max_trip_distance_m = float(max_trip_distance_m)
 
-    beta_config = (
-        choice_config[
-            "distance_decay_per_km"
-        ]
+        if max_trip_distance_m <= 0:
+            raise ValueError(
+                "max_trip_distance_m deve ser maior que zero."
+            )
+
+    destinations = _prepare_destinations(
+        destinations
     )
 
-    temperature_config = (
-        choice_config[
-            "diversity_temperature"
-        ]
-    )
-
-    attractiveness_exponent = (
+    attractiveness_exponent = float(
         choice_config.get(
             "attractiveness_exponent",
             1.0,
         )
     )
 
-    purpose_categories = (
-        choice_config.get(
-            "purpose_categories",
-            {},
-        )
-    )
-
-    for income_group in IncomeGroup:
-
-        group_name = (
-            income_group.value
-        )
-
-        if group_name not in beta_config:
-            raise ValueError(
-                "Parâmetro de distância ausente "
-                f"para '{group_name}'."
-            )
-
-        if group_name not in temperature_config:
-            raise ValueError(
-                "Parâmetro de diversidade ausente "
-                f"para '{group_name}'."
-            )
-
-    # ---------------------------------------------------------
-    # 3. Prepara destinos
-    # ---------------------------------------------------------
-
-    destinations = (
-        destinations.copy()
-    )
-
-    destinations["category"] = (
-        destinations["category"]
-        .astype("string")
-        .str.strip()
-        .str.lower()
-    )
-
-    destinations["destination_weight"] = (
-        pd.to_numeric(
-            destinations[
-                "destination_weight"
-            ],
-            errors="coerce",
-        )
-    )
-
-    destinations["node"] = (
-        pd.to_numeric(
-            destinations["node"],
-            errors="coerce",
-        )
-    )
-
-    destinations = destinations[
-        destinations["geometry"].notna()
-        & destinations["node"].notna()
-        & destinations[
-            "destination_weight"
-        ].notna()
-        & (
-            destinations[
-                "destination_weight"
-            ]
-            > 0
-        )
-    ].copy()
-
-    if destinations.empty:
+    if attractiveness_exponent < 0:
         raise ValueError(
-            "Nenhum destino válido disponível."
+            "attractiveness_exponent não pode ser negativo."
         )
 
-    # ---------------------------------------------------------
-    # 4. Índice das origens
-    # ---------------------------------------------------------
+    beta_config = (
+        choice_config["distance_decay_per_km"]
+    )
+
+    purpose_categories = (
+        choice_config["purpose_categories"]
+    )
+
+    purposes_used: set[str] = set()
 
     origin_geometry = (
         origins
         .drop_duplicates(
-            subset="origin_id"
+            subset="origin_id",
+            keep="first",
         )
         .set_index("origin_id")
         .geometry
         .to_dict()
     )
 
-    # ---------------------------------------------------------
-    # 5. Verifica agentes
-    # ---------------------------------------------------------
-
     for agent in agents:
-
         if agent.origin_id is None:
             raise ValueError(
-                f"Agente {agent.agent_id} "
-                "não possui origem."
+                f"Agente {agent.agent_id} não possui origem."
             )
 
         if agent.purpose is None:
             raise ValueError(
-                f"Agente {agent.agent_id} "
-                "não possui motivo de viagem."
+                f"Agente {agent.agent_id} não possui motivo de viagem."
             )
 
-        if (
-            agent.origin_id
-            not in origin_geometry
-        ):
+        if agent.income_group is None:
             raise ValueError(
-                "Origem não encontrada para "
-                f"o agente {agent.agent_id}: "
-                f"{agent.origin_id}"
+                f"Agente {agent.agent_id} não possui grupo de renda."
             )
 
-    # ---------------------------------------------------------
-    # 6. Constrói pools por motivo
-    # ---------------------------------------------------------
+        if agent.origin_id not in origin_geometry:
+            raise ValueError(
+                f"Origem {agent.origin_id} do agente "
+                f"{agent.agent_id} não foi encontrada."
+            )
 
-    destination_pools = {}
+        purposes_used.add(
+            _enum_value(agent.purpose)
+        )
 
-    purposes_used = {
-        agent.purpose.value
-        for agent in agents
-    }
+    _validate_choice_config(
+        choice_config,
+        purposes_used,
+    )
+
+    destination_pools: dict[str, pd.DataFrame] = {}
 
     for purpose_name in purposes_used:
-
-        categories = (
-            purpose_categories.get(
-                purpose_name,
-                [purpose_name],
-            )
-        )
-
-        if not categories:
-            raise ValueError(
-                "Nenhuma categoria de destino "
-                f"foi definida para o motivo "
-                f"'{purpose_name}'."
-            )
+        categories = [
+            str(category).strip().lower()
+            for category
+            in purpose_categories[purpose_name]
+        ]
 
         pool = destinations[
-            destinations[
-                "category"
-            ].isin(categories)
-        ].reset_index(
-            drop=True
-        )
+            destinations["category"].isin(
+                categories
+            )
+        ].reset_index(drop=True)
 
         if pool.empty:
             raise ValueError(
-                "Nenhum destino disponível para "
-                f"o motivo '{purpose_name}'. "
-                f"Categorias procuradas: "
-                f"{categories}"
+                f"Nenhum destino disponível para '{purpose_name}'. "
+                f"Categorias procuradas: {categories}"
             )
 
         destination_pools[
             purpose_name
         ] = pool
 
-    # ---------------------------------------------------------
-    # 7. Gerador aleatório
-    # ---------------------------------------------------------
+    rng = np.random.default_rng(seed)
 
-    rng = np.random.default_rng(
-        seed
-    )
-
-    # ---------------------------------------------------------
-    # 8. Cache
-    #
-    # Agentes com mesma:
-    #
-    # origem
-    # renda
-    # propósito
-    #
-    # possuem a mesma distribuição de probabilidades.
-    #
-    # ---------------------------------------------------------
-
-    probability_cache = {}
-
-    # ---------------------------------------------------------
-    # 9. Escolha dos destinos
-    # ---------------------------------------------------------
+    probability_cache: dict[
+        tuple[object, str, str],
+        tuple[pd.DataFrame, np.ndarray],
+    ] = {}
 
     for agent in agents:
-
-        group_name = (
-            agent.income_group.value
+        group_name = _enum_value(
+            agent.income_group
         )
 
-        purpose_name = (
-            agent.purpose.value
+        purpose_name = _enum_value(
+            agent.purpose
         )
 
         cache_key = (
@@ -503,12 +468,8 @@ def assign_destinations(
             purpose_name,
         )
 
-        if (
-            cache_key
-            not in probability_cache
-        ):
-
-            candidates = (
+        if cache_key not in probability_cache:
+            full_pool = (
                 destination_pools[
                     purpose_name
                 ]
@@ -520,35 +481,78 @@ def assign_destinations(
                 ]
             )
 
-            # EPSG:31982 -> distância em metros
-            distances_km = (
-                candidates.geometry
+            distances_m = (
+                full_pool.geometry
                 .distance(origin_geom)
-                .to_numpy()
-                / 1000.0
+                .to_numpy(dtype=float)
+            )
+
+            if max_trip_distance_m is not None:
+                within_limit = (
+                    distances_m
+                    <= max_trip_distance_m
+                )
+
+                if not np.any(within_limit):
+                    nearest_distance = float(
+                        np.min(distances_m)
+                    )
+
+                    raise ValueError(
+                        "Nenhum destino dentro do limite de distância "
+                        f"para o agente {agent.agent_id}: "
+                        f"origem={agent.origin_id}, "
+                        f"purpose={purpose_name}, "
+                        f"limite={max_trip_distance_m:.0f} m, "
+                        f"destino mais próximo={nearest_distance:.0f} m."
+                    )
+
+                candidates = (
+                    full_pool.loc[
+                        within_limit
+                    ]
+                    .reset_index(drop=True)
+                )
+
+                distances_m = (
+                    distances_m[
+                        within_limit
+                    ]
+                )
+            else:
+                candidates = full_pool
+
+            distances_km = (
+                distances_m / 1000.0
             )
 
             attractiveness = (
                 candidates[
                     "destination_weight"
                 ]
-                .to_numpy(
-                    dtype=float
-                )
+                .to_numpy(dtype=float)
             )
+
+            try:
+                beta = float(
+                    beta_config[
+                        purpose_name
+                    ][
+                        group_name
+                    ]
+                )
+            except KeyError as exc:
+                raise ValueError(
+                    "Parâmetro beta ausente para "
+                    f"purpose='{purpose_name}', "
+                    f"income_group='{group_name}'."
+                ) from exc
 
             probabilities = (
                 _calculate_destination_probabilities(
                     distances_km=distances_km,
                     attractiveness=attractiveness,
-                    beta=beta_config[
-                        group_name
-                    ],
-                    temperature=(
-                        temperature_config[
-                            group_name
-                        ]
-                    ),
+                    beta=beta,
                     attractiveness_exponent=(
                         attractiveness_exponent
                     ),
@@ -568,15 +572,15 @@ def assign_destinations(
             ]
         )
 
-        position = rng.choice(
-            len(candidates),
-            p=probabilities,
+        position = int(
+            rng.choice(
+                len(candidates),
+                p=probabilities,
+            )
         )
 
         selected_destination = (
-            candidates.iloc[
-                position
-            ]
+            candidates.iloc[position]
         )
 
         agent.destination_id = (
@@ -592,3 +596,44 @@ def assign_destinations(
         )
 
     return agents
+
+
+def destination_choice_summary(
+    agents: list[Agent],
+) -> pd.DataFrame:
+    """
+    Retorna um resumo simples das escolhas realizadas.
+    """
+
+    rows = []
+
+    for agent in agents:
+        rows.append(
+            {
+                "agent_id": agent.agent_id,
+                "income_group": _enum_value(
+                    agent.income_group
+                ),
+                "purpose": (
+                    _enum_value(agent.purpose)
+                    if agent.purpose is not None
+                    else None
+                ),
+                "origin_id": agent.origin_id,
+                "destination_id": (
+                    agent.destination_id
+                ),
+                "destination_node": (
+                    agent.destination_node
+                ),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+if __name__ == "__main__":
+    print(
+        "destination_choice.py é um módulo da simulação. "
+        "Execute o pipeline principal e chame assign_destinations(...)."
+    )

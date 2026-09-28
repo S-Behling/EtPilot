@@ -33,7 +33,8 @@
         "od": "data/o-d",
         "origins": "data/o-d/origens_porto_alegre.gpkg",
         "origins_bomfim": "data/o-d/origens_bomfim.gpkg",
-        "destinations": "data/o-d/destinos_porto_alegre.gpkg",
+        "destinations": "data/o-d/destinos_cnefe_classificados_porto_alegre.gpkg",
+        "destinationsIBGE": "data/o-d/destinos_porto_alegre.gpkg",
         "od_pairs": "data/o-d/od_pairs.gpkg",
         "origins_income": "data/o-d/origens_porto_alegre_income.gpkg"
     },
