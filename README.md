@@ -514,9 +514,14 @@ differentiated so both scenarios use the same thresholds. It evaluates both
 `travel_distance_m` and `route_to_od_ratio = travel_distance_m / od_distance_m`
 with the upper Tukey outer fence `Q3 + 3 × IQR`.
 
-A trip is flagged only when it exceeds both upper fences. With paired
-exclusion enabled, the same `agent_id` is excluded from trajectory analysis
-in both scenarios when either scenario contains a direct outlier.
+A trip is flagged when routed distance exceeds its upper outer fence, or when
+the route-to-OD ratio exceeds its upper outer fence while routed distance is
+also above the third quartile. This keeps the filter conservative for short
+trips with very small OD distances.
+
+With paired exclusion enabled, the same `agent_id` is excluded from
+trajectory analysis in both scenarios when either scenario contains a direct
+outlier.
 
 The routed records remain in the agent tables with `analysis_included=False`
 and an explicit exclusion reason. The audit files are:
