@@ -209,9 +209,9 @@ network and create the scheduled stop-to-stop connection table with:
 python -m src.transit.buildTransitNetwork
 ```
 
-This stage does not build a fully time-expanded graph. It keeps a compact
-connection table that can support a timetable routing algorithm in the next
-stage.
+This stage does not build a fully time-expanded graph. It keeps compact
+temporal connection tables and also constructs the stable physical GTFS layer
+used by the integrated timetable router and H_soc pipeline.
 
 The generated products remain under `data/gtfs/`:
 
@@ -219,6 +219,11 @@ The generated products remain under `data/gtfs/`:
 stops_walk_connected_processed.gpkg
 transit_stop_walk_connectors_processed.parquet
 transit_connections_processed.parquet
+transit_connections_routable_processed.parquet
+transit_connections_spatial_routable_processed.parquet
+transit_physical_edges_processed.gpkg
+transit_physical_edge_diagnostics_processed.csv
+transit_connection_to_physical_edge_processed.parquet
 transit_topology_processed.parquet
 transit_service_day_profile_processed.csv
 transit_network_summary.csv
@@ -298,19 +303,20 @@ minimum positive interval to every consecutive stop are not modified
 artificially. They are flagged with
 `temporal_regularization_feasible=False`.
 
-The network preparation preserves two separate connection products:
+The network preparation preserves three separate connection products:
 
 ```text
 data/gtfs/transit_connections_processed.parquet
 data/gtfs/transit_connections_routable_processed.parquet
+data/gtfs/transit_connections_spatial_routable_processed.parquet
 ```
 
 The first keeps the complete processed feed for auditing and diagnostics. The
-second is the table used by the timetable router and applies the configurable
-technical quality filter. The current filter removes trips with missing
-temporal summaries, nonpositive scheduled duration, infeasible positive-time
-regularization, or an implied shape speed above the provisional technical
-ceiling.
+second applies the temporal quality filter. The third keeps only temporally
+valid connections that also belong to a valid physical GTFS edge and is the
+table used by the integrated timetable router. Invalid physical geometries
+remain documented in the physical-edge diagnostics rather than entering the
+spatial analysis silently.
 
 The quality decision for every `trip_id` is stored in:
 
@@ -742,10 +748,12 @@ Current implementation:
 - ✔ Real-data transit routing diagnostic
 - ✔ GTFS trip-level temporal quality diagnostic
 - ✔ Positive-interval reconstruction between published GTFS timepoints
-- ✔ Separate complete and quality-filtered routable GTFS connection tables
+- ✔ Separate complete, temporal-routable and spatial-routable GTFS connection tables
+- ✔ Stable full GTFS physical-edge layer independent of N, seed and scenario
 - ✔ Transit included in the main agent mode choice and routing pipeline
 - ✔ Transit access and egress represented on the walk network
-- ✔ Used GTFS shape segments mapped to the common physical analysis network
+- ✔ Full GTFS physical network integrated into the common analysis layer
+- ✔ Unmatched valid GTFS edges preserved as exclusive transit segments
 - ✔ Transit included in segment-level modal counts and H_soc trajectory usage
 - ✔ Pilot metadata export in XLSX and HTML
 
@@ -761,8 +769,9 @@ In progress:
 
 Complete the pilot in this order:
 
-1. run the integrated N=100 pilot and validate GTFS-to-segment spatial
-   matching coverage and transit routing success;
+1. rebuild the transit network products and run the integrated N=100 pilot to
+   validate the full GTFS physical network, exclusive transit segments, and
+   transit routing success;
 2. run sensitivity checks for the provisional transit spatial-matching
    tolerance, minimum coverage, and angular compatibility;
 3. validate the provisional distance-sensitive mode rule against routed
