@@ -756,7 +756,7 @@ ANALYSIS_METHODS = [
     {
         "nome": "Mapeamento geométrico de transit para segmentos físicos",
         "funcao_codigo": "map_transit_connections_to_analysis_segments",
-        "descricao": "Associa trechos GTFS usados à camada física comum por proximidade, cobertura do segmento e compatibilidade de orientação",
+        "descricao": "Associa trechos GTFS usados aos segmentos físicos com suporte da rede car usando proximidade, cobertura do segmento e compatibilidade da orientação local do shape",
     },
 ]
 
