@@ -131,6 +131,18 @@ VARIABLES = [
         "descricao": "Identificador estável de uma aresta dentro de uma rede modal ou de uma conexão GTFS usada na trajetória",
     },
     {
+        "nome": "transit_physical_edge_id",
+        "grupo": "rede física de transporte coletivo",
+        "unidade": "identificador",
+        "descricao": "Identificador estável de um trecho físico GTFS compartilhado por conexões temporais equivalentes",
+    },
+    {
+        "nome": "spatial_geometry_valid",
+        "grupo": "rede física de transporte coletivo",
+        "unidade": "booleano",
+        "descricao": "Indica se a conexão temporal possui trecho físico GTFS com geometria válida para roteamento e análise espacial",
+    },
+    {
         "nome": "mapping_mode",
         "grupo": "harmonização",
         "unidade": "categoria",
@@ -787,7 +799,12 @@ ANALYSIS_METHODS = [
     {
         "nome": "Extração parcial do shape GTFS",
         "funcao_codigo": "build_used_transit_connection_geometries",
-        "descricao": "Recorta a geometria do shape somente entre as posições das paradas consecutivas efetivamente usadas pelas conexões selecionadas",
+        "descricao": "Recorta a geometria do shape entre posições consecutivas de parada e também é reutilizado na construção da rede física GTFS completa",
+    },
+    {
+        "nome": "Construção da rede física GTFS completa",
+        "funcao_codigo": "build_transit_physical_network",
+        "descricao": "Agrupa conexões temporais repetidas em trechos físicos estáveis independentes de horário, viagem, cenário, seed e tamanho da população sintética",
     },
     {
         "nome": "Mapeamento geométrico de transit para segmentos físicos",
@@ -797,7 +814,12 @@ ANALYSIS_METHODS = [
     {
         "nome": "Mapeamento espacial hierárquico do transporte coletivo",
         "funcao_codigo": "map_transit_connections_hierarchically",
-        "descricao": "Procura primeiro correspondência em segmentos com suporte da rede car e aplica uma segunda etapa na rede física completa somente às conexões ainda não mapeadas",
+        "descricao": "Procura primeiro correspondência em segmentos com suporte da rede car e aplica uma segunda etapa na rede física completa aos trechos GTFS ainda não associados",
+    },
+    {
+        "nome": "Integração da rede física GTFS à camada comum",
+        "funcao_codigo": "integrate_transit_physical_network",
+        "descricao": "Integra todos os trechos físicos GTFS válidos à camada comum e cria analysis_segment_id exclusivos para trechos que não possuem correspondência segura nas redes OSM",
     },
     {
         "nome": "Recuperação ordenada da posição de paradas no shape",
@@ -808,11 +830,6 @@ ANALYSIS_METHODS = [
         "nome": "Filtro pareado de outliers de trajetórias transit",
         "funcao_codigo": "apply_paired_transit_outlier_filter",
         "descricao": "Calcula limites robustos com os dois cenários combinados, identifica distância extrema ou circuity extrema acompanhada de rota longa e propaga a exclusão ao mesmo agent_id nos dois cenários",
-    },
-    {
-        "nome": "Exclusão pareada por falha de espacialização transit",
-        "funcao_codigo": "apply_paired_transit_spatial_exclusions",
-        "descricao": "Identifica agentes cujas conexões GTFS usadas não possuem correspondência na camada física comum e retira o mesmo agent_id da análise espacial nos dois cenários quando o pareamento está habilitado",
     },
 ]
 
@@ -898,8 +915,8 @@ STATISTICS = [
         "descricao": "Mede o percentual do trecho GTFS usado que fica coberto pelos segmentos físicos associados dentro da tolerância espacial",
     },
     {
-        "nome": "Taxa de sucesso do mapeamento espacial transit",
-        "descricao": "Calcula a proporção das conexões GTFS usadas que possuem geometria válida e correspondência com pelo menos um analysis_segment_id",
+        "nome": "Cobertura da rede física transit",
+        "descricao": "Quantifica trechos físicos GTFS associados na etapa primária, na etapa de fallback e incorporados como segmentos exclusivos transit",
     },
     {
         "nome": "Cerca externa superior de Tukey",
@@ -1029,8 +1046,8 @@ CLEANING_METHODS = [
         "descricao": "Exclui distância roteada acima da cerca externa ou circuity acima da cerca externa quando a rota também está acima do terceiro quartil, evitando excluir viagens curtas apenas por apresentarem razão elevada",
     },
     {
-        "nome": "Exclusão pareada de falhas de espacialização transit",
-        "descricao": "Retira da análise de H_soc toda a trajetória do agente quando ao menos uma conexão GTFS usada não pode ser associada a analysis_segment_id e aplica a mesma retirada ao agent_id correspondente no outro cenário",
+        "nome": "Incorporação de trechos transit exclusivos",
+        "descricao": "Preserva a trajetória do agente ao criar um analysis_segment_id exclusivo para trechos físicos GTFS válidos que não possuem correspondência segura nas redes OSM",
     },
 ]
 
@@ -1063,6 +1080,10 @@ FILES = [
     ("data/gtfs/transit_stop_walk_connectors_processed.parquet", "Tabela tabular dos conectores entre paradas GTFS e nós da rede de caminhada", "rede de transporte coletivo", False),
     ("data/gtfs/transit_connections_processed.parquet", "Tabela temporal completa de conexões entre paradas consecutivas de todas as viagens GTFS processadas", "rede de transporte coletivo", False),
     ("data/gtfs/transit_connections_routable_processed.parquet", "Subconjunto das conexões GTFS cujas viagens atendem aos critérios técnicos de qualidade temporal usados pelo roteador", "rede de transporte coletivo", False),
+    ("data/gtfs/transit_connections_spatial_routable_processed.parquet", "Subconjunto das conexões temporalmente válidas que também possuem representação física GTFS válida e é usado pelo roteador integrado", "rede de transporte coletivo", False),
+    ("data/gtfs/transit_physical_edges_processed.gpkg", "Rede física completa de trechos GTFS stop a stop com identificadores estáveis independentes de cenário e população sintética", "rede física de transporte coletivo", False),
+    ("data/gtfs/transit_physical_edge_diagnostics_processed.csv", "Diagnóstico da extração geométrica de cada trecho físico GTFS, incluindo método de posição e distâncias de snap", "rede física de transporte coletivo", False),
+    ("data/gtfs/transit_connection_to_physical_edge_processed.parquet", "Correspondência entre cada connection_id temporal e seu transit_physical_edge_id estável", "rede física de transporte coletivo", False),
     ("data/gtfs/transit_trip_quality_processed.csv", "Diagnóstico por trip_id com critérios e motivos de inclusão ou exclusão da tabela de conexões roteáveis", "qualidade temporal do GTFS", False),
     ("data/gtfs/transit_topology_processed.parquet", "Resumo topológico das ligações entre pares direcionais de paradas por rota", "rede de transporte coletivo", False),
     ("data/gtfs/transit_service_day_profile_processed.csv", "Perfil diário do número de serviços e viagens programadas no período do GTFS", "rede de transporte coletivo", False),
@@ -1097,14 +1118,11 @@ FILES = [
     ("outputs/pilot/maps/map_manifest.csv", "Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português", "mapas", False),
     ("outputs/pilot/transit_routing_diagnostics.csv", "Amostra de consultas origem-destino usada para validar cobertura, tempos, acesso, egresso e transferências do roteador temporal de ônibus", "roteamento de transporte coletivo", False),
     ("outputs/pilot/gtfs_trip_temporal_quality.csv", "Diagnóstico por trip_id com duração programada, pontos temporais originais, conexões de duração zero e velocidade implícita pelo shape", "qualidade temporal do GTFS", False),
-    ("outputs/pilot/transit_connection_to_analysis_segment.csv", "Mapeamento das conexões GTFS usadas pelos agentes para os segmentos físicos comuns do piloto", "harmonização do transporte coletivo", False),
-    ("outputs/pilot/transit_connection_geometry_diagnostics.csv", "Diagnóstico da disponibilidade e validade da geometria parcial de cada conexão GTFS usada", "harmonização do transporte coletivo", False),
-    ("outputs/pilot/transit_connection_match_diagnostics.csv", "Diagnóstico de quantidade de segmentos associados e cobertura geométrica por conexão GTFS usada", "harmonização do transporte coletivo", False),
-    ("outputs/pilot/transit_spatial_match_report.csv", "Resumo da cobertura e do sucesso do mapeamento espacial das conexões GTFS usadas", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/transit_physical_edge_to_analysis_segment.csv", "Mapeamento da rede física GTFS completa para analysis_segment_id existentes ou exclusivos transit", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/transit_physical_match_diagnostics.csv", "Diagnóstico da etapa primária, fallback ou incorporação exclusiva aplicada a cada trecho físico GTFS", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/transit_physical_network_summary.csv", "Resumo quantitativo da integração da rede física GTFS completa à camada comum de análise", "harmonização do transporte coletivo", False),
     ("outputs/pilot/outlier_exclusions.csv", "Registro auditável de cada cenário e agente retirado da análise de trajetórias por outlier transit direto ou exclusão pareada", "controle de outliers", False),
     ("outputs/pilot/outlier_filter_summary.csv", "Resumo do método, quartis, cercas externas e quantidade de outliers identificados no piloto", "controle de outliers", False),
-    ("outputs/pilot/transit_spatial_exclusions.csv", "Registro por cenário e agente retirado da análise por conexões GTFS sem correspondência espacial, incluindo rotas e viagens afetadas", "controle de espacialização transit", False),
-    ("outputs/pilot/transit_spatial_exclusion_summary.csv", "Resumo da quantidade de conexões sem correspondência e de agentes afetados pela exclusão espacial pareada", "controle de espacialização transit", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
@@ -1512,7 +1530,7 @@ def _collect_config_parameters(
                 "unmatched_policy"
             ),
             "categoria",
-            "Política aplicada quando conexões GTFS usadas não encontram correspondência na camada física comum",
+            "Política aplicada quando um trecho físico GTFS válido não encontra correspondência segura nas redes OSM e precisa ser incorporado à camada comum",
         ),
         (
             "transit.spatial_mapping.paired_exclusion",
@@ -1523,7 +1541,7 @@ def _collect_config_parameters(
                 "paired_exclusion"
             ),
             "booleano",
-            "Indica se a falha espacial de um agente em um cenário também retira o mesmo agent_id da análise espacial no outro cenário",
+            "Parâmetro legado mantido como falso após a substituição da exclusão de agentes pela criação de segmentos exclusivos transit",
         ),
         (
             "transit.routing.diagnostics.sample_size",
