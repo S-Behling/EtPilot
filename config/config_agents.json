@@ -1,4 +1,24 @@
 {
+  "experimental_design": {
+    "fixed_between_scenarios": [
+      "agent_id",
+      "income_group",
+      "origin_id",
+      "origin_node",
+      "population_shares",
+      "origin_assignment_rule",
+      "destination_pool",
+      "network",
+      "seed"
+    ],
+    "baseline": {
+      "description": "Mantém a estrutura residencial por renda, mas aplica as mesmas regras comportamentais de propósito, destino e modo aos três grupos.",
+      "parameter_rule": "Os parâmetros comuns do baseline são derivados por média ponderada do cenário differentiated usando as participações populacionais."
+    },
+    "differentiated": {
+      "description": "Mantém diferenças por grupo de renda nas probabilidades de propósito, sensibilidade à distância na escolha de destino e escolha modal."
+    }
+  },
   "purpose_choice": {
     "low": {
       "work": 0.45,
@@ -22,29 +42,27 @@
       "leisure": 0.25
     }
   },
-
   "mode_choice": {
     "baseline": {
       "low": {
-        "walk": 0.25,
-        "bike": 0.20,
-        "transit": 0.30,
-        "car": 0.25
+        "walk": 0.162069,
+        "bike": 0.130572,
+        "transit": 0.316779,
+        "car": 0.390580
       },
       "middle": {
-        "walk": 0.25,
-        "bike": 0.20,
-        "transit": 0.30,
-        "car": 0.25
+        "walk": 0.162069,
+        "bike": 0.130572,
+        "transit": 0.316779,
+        "car": 0.390580
       },
       "high": {
-        "walk": 0.25,
-        "bike": 0.20,
-        "transit": 0.30,
-        "car": 0.25
+        "walk": 0.162069,
+        "bike": 0.130572,
+        "transit": 0.316779,
+        "car": 0.390580
       }
     },
-
     "differentiated": {
       "low": {
         "walk": 0.25,
@@ -68,7 +86,6 @@
   },
   "destination_choice": {
     "attractiveness_exponent": 1.0,
-
     "distance_decay_per_km": {
       "work": {
         "low": 0.10,
@@ -96,7 +113,6 @@
         "high": 0.08
       }
     },
-
     "purpose_categories": {
       "work": ["work"],
       "education": ["education"],
