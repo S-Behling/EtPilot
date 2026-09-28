@@ -435,9 +435,24 @@ def _build_scheduled_connections(
     ]
     connections[
         "from_stop_sequence"
-    ] = connections[
-        "stop_sequence"
-    ]
+    ] = pd.to_numeric(
+        connections[
+            "stop_sequence"
+        ],
+        errors="raise",
+    ).astype(
+        "Int64"
+    )
+    connections[
+        "to_stop_sequence"
+    ] = pd.to_numeric(
+        connections[
+            "to_stop_sequence"
+        ],
+        errors="raise",
+    ).astype(
+        "Int64"
+    )
     connections[
         "departure_seconds"
     ] = pd.to_numeric(
@@ -844,6 +859,17 @@ def build_transit_network() -> dict:
             "walk_speed_m_s"
         ]
     )
+    service_date_strategy = str(
+        network_config[
+            "service_date_strategy"
+        ]
+    )
+
+    if service_date_strategy != "max_scheduled_trips":
+        raise ValueError(
+            "service_date_strategy ainda suporta somente "
+            "'max_scheduled_trips'"
+        )
 
     walk_graph = load_mode_graphs(
         config=config,
@@ -1037,11 +1063,7 @@ def build_transit_network() -> dict:
                 "n_scheduled_trips"
             ]
         ),
-        "service_date_strategy": str(
-            network_config[
-                "service_date_strategy"
-            ]
-        ),
+        "service_date_strategy": service_date_strategy,
     }
 
     pd.DataFrame(
