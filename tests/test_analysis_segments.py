@@ -13,11 +13,11 @@ from src.network.analysis_segments import (
 
 class AnalysisSegmentsTests(unittest.TestCase):
     def _graph(self):
-        # Crie um grafo projetado simples para testar a harmonização.
+        # Cria um grafo projetado simples para testar a harmonização
         graph = nx.MultiDiGraph()
         graph.graph["crs"] = "EPSG:31982"
 
-        # Registre coordenadas suficientes para reconstruir geometrias.
+        # Registra coordenadas suficientes para reconstruir geometrias
         graph.add_node(1, x=0.0, y=0.0)
         graph.add_node(2, x=10.0, y=0.0)
         graph.add_node(3, x=20.0, y=0.0)
@@ -30,7 +30,7 @@ class AnalysisSegmentsTests(unittest.TestCase):
         walk = self._graph()
         car = self._graph()
 
-        # Divida a referência de caminhada em dois segmentos.
+        # Divide a referência de caminhada em dois segmentos
         walk.add_edge(
             1,
             2,
@@ -52,7 +52,7 @@ class AnalysisSegmentsTests(unittest.TestCase):
             ),
         )
 
-        # Represente no carro a mesma rua como uma única aresta longa.
+        # Representa no carro a mesma rua como uma única aresta longa
         car.add_edge(
             1,
             3,
@@ -159,7 +159,7 @@ class AnalysisSegmentsTests(unittest.TestCase):
         walk = self._graph()
         car = self._graph()
 
-        # Inclua na rede completa um trecho de caminhada que não apareça na amostra.
+        # Inclui na rede completa um trecho de caminhada que não apareça na amostra
         walk.add_edge(
             1,
             2,
@@ -171,7 +171,7 @@ class AnalysisSegmentsTests(unittest.TestCase):
             ),
         )
 
-        # Faça o carro usar exatamente o mesmo trecho físico.
+        # Faz o carro usar exatamente o mesmo trecho físico
         car.add_edge(
             1,
             2,
