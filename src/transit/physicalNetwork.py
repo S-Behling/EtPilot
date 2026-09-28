@@ -310,6 +310,11 @@ def build_transit_physical_network(
         how="left",
         validate="one_to_one",
     )
+    physical_edges = gpd.GeoDataFrame(
+        physical_edges,
+        geometry="geometry",
+        crs=shapes.crs,
+    )
 
     physical_edges[
         "modal_edge_id"
