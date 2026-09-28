@@ -1082,7 +1082,7 @@ def main() -> None:
             "arestas modais únicas"
         )
 
-    print("\n7/11 - Harmonizando segmentos físicos de análise...")
+    print("\n7/12 - Harmonizando segmentos físicos de análise...")
 
     edge_usage_all = pd.concat(
         edge_usages.values(),
@@ -1103,6 +1103,109 @@ def main() -> None:
             tolerance_m=segment_tolerance_m,
             min_coverage=segment_min_coverage,
         )
+    )
+
+    segment_mapping[
+        "mapping_scope"
+    ] = "full_road_active_network"
+
+    (
+        transit_connection_geometries,
+        transit_geometry_diagnostics,
+    ) = build_used_transit_connection_geometries(
+        edge_usage_all,
+        connections=transit_connections,
+        shapes=transit_shapes,
+    )
+
+    (
+        transit_mapping,
+        transit_match_diagnostics,
+    ) = map_transit_connections_to_analysis_segments(
+        transit_connection_geometries,
+        analysis_segments=analysis_segments,
+        tolerance_m=transit_tolerance_m,
+        min_segment_coverage=(
+            transit_min_segment_coverage
+        ),
+        max_angle_difference_deg=(
+            transit_max_angle_difference_deg
+        ),
+    )
+
+    transit_spatial_summary = (
+        summarize_transit_spatial_matching(
+            transit_geometry_diagnostics,
+            transit_match_diagnostics,
+        )
+    )
+
+    used_transit_modal_edges = set(
+        edge_usage_all.loc[
+            edge_usage_all[
+                "mapping_mode"
+            ]
+            == TravelMode.TRANSIT.value,
+            "modal_edge_id",
+        ]
+        .dropna()
+        .astype(
+            str
+        )
+    )
+    mapped_transit_modal_edges = set(
+        transit_mapping[
+            "modal_edge_id"
+        ].astype(
+            str
+        )
+    )
+
+    missing_transit_mapping = (
+        used_transit_modal_edges
+        - mapped_transit_modal_edges
+    )
+
+    if missing_transit_mapping:
+        raise RuntimeError(
+            "Existem conexões GTFS usadas pelos agentes sem correspondência "
+            "na camada física comum: "
+            f"{len(missing_transit_mapping)} conexões"
+        )
+
+    segment_mapping = pd.concat(
+        [
+            segment_mapping,
+            transit_mapping,
+        ],
+        ignore_index=True,
+        sort=False,
+    )
+
+    print(
+        "\nMapeamento espacial do transporte coletivo"
+    )
+    print(
+        "  Conexões GTFS usadas: "
+        f"{_format_int_pt(transit_spatial_summary['used_transit_connections'])} conexões"
+    )
+    print(
+        "  Conexões com geometria válida: "
+        f"{_format_int_pt(transit_spatial_summary['connections_with_valid_geometry'])} conexões "
+        f"({_format_percentage_pt(transit_spatial_summary['connections_with_valid_geometry'], max(transit_spatial_summary['used_transit_connections'], 1))})"
+    )
+    print(
+        "  Conexões associadas a segmentos físicos: "
+        f"{_format_int_pt(transit_spatial_summary['connections_with_segment_match'])} conexões "
+        f"({_format_percentage_pt(transit_spatial_summary['connections_with_segment_match'], max(transit_spatial_summary['used_transit_connections'], 1))})"
+    )
+    print(
+        "  Cobertura média do shape pelos segmentos associados: "
+        f"{_format_float_pt(transit_spatial_summary['mean_shape_coverage_pct'])}%"
+    )
+    print(
+        "  Cobertura mediana do shape pelos segmentos associados: "
+        f"{_format_float_pt(transit_spatial_summary['median_shape_coverage_pct'])}%"
     )
 
     harmonized_edge_usages: dict[
@@ -1185,7 +1288,7 @@ def main() -> None:
         .to_string(index=False)
     )
 
-    print("\n8/11 - Calculando estatísticas e entropia socioeconômica...")
+    print("\n8/12 - Calculando estatísticas e entropia socioeconômica...")
 
     segment_statistics: dict[
         str,
@@ -1270,7 +1373,7 @@ def main() -> None:
             )
         )
 
-    print("\n9/11 - Comparando cenários de forma pareada...")
+    print("\n9/12 - Comparando cenários de forma pareada...")
 
     statistics_all = pd.concat(
         segment_statistics.values(),
@@ -1350,7 +1453,7 @@ def main() -> None:
         )
     )
 
-    print("\n10/11 - Gerando mapas espaciais...")
+    print("\n10/12 - Gerando mapas espaciais...")
 
     if maps_enabled:
         try:
@@ -1398,7 +1501,7 @@ def main() -> None:
             "  Geração de mapas desativada em analysis.maps.enabled"
         )
 
-    print("\n11/11 - Validando e salvando resultados...")
+    print("\n11/12 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
     _save_outputs(
