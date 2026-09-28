@@ -183,11 +183,16 @@ projected line geometries from `shapes.txt` when the feed provides shapes.
 
 When intermediate `stop_times` records omit arrival and departure times, the
 processor preserves the original missing-value flags and creates explicit
-processed estimates between known temporal anchors. It uses
+processed estimates between known temporal anchors. It first uses
 `shape_dist_traveled` when that field is complete and monotonic within the
-trip and otherwise falls back to `stop_sequence`. The processed table records
-`time_interpolated` and `time_interpolation_method` so estimated schedule
-times remain distinguishable from values supplied by the GTFS producer.
+trip. When the feed does not provide usable stop-level shape distances, it
+projects the stops onto the processed `shapes.txt` geometry and refines the
+interpolation with distance along the shape whenever the projected sequence is
+monotonic. It falls back to `stop_sequence` only where neither distance-based
+method can be applied safely. The processed table records
+`time_interpolated`, `time_interpolation_method`, and `shape_position_m` so
+estimated schedule times remain distinguishable from values supplied by the
+GTFS producer.
 
 The current official EPTC GTFS source represents the Porto Alegre bus mode.
 Keep the internal `transit` label for the pilot while documenting this bus
