@@ -1,5 +1,7 @@
-Executar modulo pilot.py diretamente no terminal
+#Executar modulo pilot.py diretamente no terminal
 
 python -m src.simulation.run_pilot
 
-python -m src.network.prepare_multimodal_data
+# Verificar se x biblioteca esta instalada no ambiente
+
+python -c "import matplotlib; print(matplotlib.__version__)"
