@@ -40,6 +40,7 @@ class Agent:
 
     # Trajetória
     route_edges: list[tuple[int, int, int]] = field(default_factory=list)
+    route_status: str | None = None
 
     # Resultados da viagem
     travel_distance: float | None = None
