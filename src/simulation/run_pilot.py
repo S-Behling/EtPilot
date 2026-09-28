@@ -89,6 +89,78 @@ def load_json(path: Path) -> dict:
         return json.load(f)
 
 
+def _format_int_pt(
+    value,
+) -> str:
+    """Formata inteiros com separador de milhar brasileiro"""
+
+    return f"{int(value):,}".replace(
+        ",",
+        ".",
+    )
+
+
+def _format_float_pt(
+    value,
+    *,
+    decimals: int = 1,
+) -> str:
+    """Formata números decimais com vírgula"""
+
+    if value is None or pd.isna(
+        value
+    ):
+        return "não disponível"
+
+    formatted = f"{float(value):,.{decimals}f}"
+
+    return (
+        formatted
+        .replace(
+            ",",
+            "_",
+        )
+        .replace(
+            ".",
+            ",",
+        )
+        .replace(
+            "_",
+            ".",
+        )
+    )
+
+
+def _format_percentage_pt(
+    numerator,
+    denominator,
+) -> str:
+    """Formata uma razão como percentual"""
+
+    denominator_value = float(
+        denominator
+    )
+
+    if denominator_value <= 0:
+        return "0,0%"
+
+    value = (
+        100.0
+        * float(
+            numerator
+        )
+        / denominator_value
+    )
+
+    return (
+        f"{value:.1f}%"
+        .replace(
+            ".",
+            ",",
+        )
+    )
+
+
 def _assign_modes(
     agents,
     mode_config: dict,
