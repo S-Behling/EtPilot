@@ -430,6 +430,60 @@ VARIABLES = [
         "unidade": "m",
         "descricao": "Distância ao longo do shape entre duas paradas consecutivas quando a projeção geométrica é válida",
     },
+    {
+        "nome": "access_walk_distance_m",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "m",
+        "descricao": "Distância total percorrida a pé entre a origem e a parada de embarque",
+    },
+    {
+        "nome": "access_walk_time_s",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "s",
+        "descricao": "Tempo total de caminhada entre a origem e a parada de embarque",
+    },
+    {
+        "nome": "initial_wait_time_s",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "s",
+        "descricao": "Tempo entre a chegada à parada de embarque e a partida do primeiro ônibus",
+    },
+    {
+        "nome": "in_vehicle_time_s",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "s",
+        "descricao": "Soma do tempo programado dentro dos veículos usados na viagem",
+    },
+    {
+        "nome": "transfer_and_dwell_time_s",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "s",
+        "descricao": "Tempo acumulado entre conexões que não corresponde ao deslocamento dentro do veículo",
+    },
+    {
+        "nome": "n_boardings",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "embarques",
+        "descricao": "Quantidade de viagens GTFS distintas embarcadas ao longo do itinerário",
+    },
+    {
+        "nome": "n_transfers",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "transferências",
+        "descricao": "Quantidade de trocas de viagem GTFS ao longo do itinerário",
+    },
+    {
+        "nome": "egress_walk_distance_m",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "m",
+        "descricao": "Distância total percorrida a pé entre a parada de desembarque e o destino",
+    },
+    {
+        "nome": "egress_walk_time_s",
+        "grupo": "roteamento de transporte coletivo",
+        "unidade": "s",
+        "descricao": "Tempo total de caminhada entre a parada de desembarque e o destino",
+    },
 ]
 
 ANALYSIS_METHODS = [
@@ -547,6 +601,21 @@ ANALYSIS_METHODS = [
         "nome": "Perfil diário de oferta GTFS",
         "funcao_codigo": "_build_service_day_profile",
         "descricao": "Calcula o número de viagens programadas por data e identifica uma data de referência pela maior oferta do feed",
+    },
+    {
+        "nome": "Roteamento temporal por varredura de conexões",
+        "funcao_codigo": "TransitRouter.route",
+        "descricao": "Procura a chegada mais cedo percorrendo as conexões GTFS em ordem temporal e combinando acesso e egresso pela rede de caminhada",
+    },
+    {
+        "nome": "Busca de paradas acessíveis pela rede de caminhada",
+        "funcao_codigo": "TransitRouter._candidate_stops",
+        "descricao": "Usa Dijkstra limitado por distância para identificar múltiplas paradas alcançáveis a partir da origem ou do destino",
+    },
+    {
+        "nome": "Transferência entre viagens no mesmo stop_id",
+        "funcao_codigo": "TransitRouter.route",
+        "descricao": "Permite a troca entre viagens GTFS na mesma parada quando o intervalo disponível atende ao tempo mínimo de transferência configurado",
     },
 ]
 
@@ -933,6 +1002,50 @@ def _collect_config_parameters(
             ),
             "categoria",
             "Regra usada para selecionar uma data de serviço representativa do feed",
+        ),
+        (
+            "transit.routing.max_access_walk_m",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "max_access_walk_m"
+            ),
+            "m",
+            "Distância máxima de caminhada entre a origem e uma parada candidata de embarque",
+        ),
+        (
+            "transit.routing.max_egress_walk_m",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "max_egress_walk_m"
+            ),
+            "m",
+            "Distância máxima de caminhada entre uma parada candidata de desembarque e o destino",
+        ),
+        (
+            "transit.routing.minimum_transfer_time_s",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "minimum_transfer_time_s"
+            ),
+            "s",
+            "Tempo mínimo provisório exigido para realizar transferência entre viagens na mesma parada",
+        ),
+        (
+            "transit.routing.max_total_travel_time_s",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "max_total_travel_time_s"
+            ),
+            "s",
+            "Horizonte máximo provisório considerado em uma consulta de transporte coletivo",
         ),
     ]
 
