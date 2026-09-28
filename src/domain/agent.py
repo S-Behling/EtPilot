@@ -47,6 +47,50 @@ class Agent:
     travel_distance: float | None = None
     travel_time: float | None = None
 
+    # Resultados específicos do transporte coletivo
+    transit_service_date: str | None = None
+    transit_departure_time_s: int | None = None
+    transit_arrival_time_s: int | None = None
+    transit_access_stop_id: str | None = None
+    transit_egress_stop_id: str | None = None
+    transit_access_walk_distance_m: float | None = None
+    transit_access_walk_time_s: float | None = None
+    transit_initial_wait_time_s: float | None = None
+    transit_in_vehicle_distance_m: float | None = None
+    transit_in_vehicle_time_s: float | None = None
+    transit_transfer_and_dwell_time_s: float | None = None
+    transit_n_boardings: int = 0
+    transit_n_transfers: int = 0
+    transit_egress_walk_distance_m: float | None = None
+    transit_egress_walk_time_s: float | None = None
+    transit_access_walk_edges: list[
+        tuple[
+            int,
+            int,
+            int,
+        ]
+    ] = field(
+        default_factory=list
+    )
+    transit_egress_walk_edges: list[
+        tuple[
+            int,
+            int,
+            int,
+        ]
+    ] = field(
+        default_factory=list
+    )
+    transit_connection_ids: list[str] = field(
+        default_factory=list
+    )
+    transit_trip_ids: list[str] = field(
+        default_factory=list
+    )
+    transit_route_ids: list[str] = field(
+        default_factory=list
+    )
+
     def resolve_routing_nodes(self) -> None:
         """
         Define os nós de origem e destino correspondentes ao modo escolhido.
@@ -63,22 +107,31 @@ class Agent:
             )
 
         mode_name = self.mode.value
+        routing_mode_name = (
+            TravelMode.WALK.value
+            if self.mode is TravelMode.TRANSIT
+            else mode_name
+        )
 
-        if mode_name not in self.origin_nodes:
+        if routing_mode_name not in self.origin_nodes:
             raise ValueError(
                 f"Origem do agente {self.agent_id} não possui nó "
-                f"para o modo '{mode_name}'."
+                f"para o modo de roteamento '{routing_mode_name}'."
             )
 
-        if mode_name not in self.destination_nodes:
+        if routing_mode_name not in self.destination_nodes:
             raise ValueError(
                 f"Destino do agente {self.agent_id} não possui nó "
-                f"para o modo '{mode_name}'."
+                f"para o modo de roteamento '{routing_mode_name}'."
             )
 
         self.origin_node = int(
-            self.origin_nodes[mode_name]
+            self.origin_nodes[
+                routing_mode_name
+            ]
         )
         self.destination_node = int(
-            self.destination_nodes[mode_name]
+            self.destination_nodes[
+                routing_mode_name
+            ]
         )
