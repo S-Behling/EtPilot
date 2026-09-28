@@ -33,6 +33,9 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from src.analysis.trip_outliers import (
+    apply_paired_transit_outlier_filter,
+)
 from src.analysis.edge_statistics import (
     attach_statistics_to_segments,
     build_segment_statistics,
