@@ -651,9 +651,8 @@ def _save_outputs(
     scenario_comparison_geodata: gpd.GeoDataFrame,
     scenario_comparison_summary: dict,
     transit_mapping: pd.DataFrame,
-    transit_geometry_diagnostics: pd.DataFrame,
     transit_match_diagnostics: pd.DataFrame,
-    transit_spatial_summary: dict,
+    transit_physical_summary: dict,
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -734,32 +733,25 @@ def _save_outputs(
 
     transit_mapping.to_csv(
         OUTPUT_DIR
-        / "transit_connection_to_analysis_segment.csv",
-        index=False,
-        encoding="utf-8",
-    )
-
-    transit_geometry_diagnostics.to_csv(
-        OUTPUT_DIR
-        / "transit_connection_geometry_diagnostics.csv",
+        / "transit_physical_edge_to_analysis_segment.csv",
         index=False,
         encoding="utf-8",
     )
 
     transit_match_diagnostics.to_csv(
         OUTPUT_DIR
-        / "transit_connection_match_diagnostics.csv",
+        / "transit_physical_match_diagnostics.csv",
         index=False,
         encoding="utf-8",
     )
 
     pd.DataFrame(
         [
-            transit_spatial_summary,
+            transit_physical_summary,
         ]
     ).to_csv(
         OUTPUT_DIR
-        / "transit_spatial_match_report.csv",
+        / "transit_physical_network_summary.csv",
         index=False,
         encoding="utf-8",
     )
@@ -1913,13 +1905,12 @@ def main() -> None:
         scenario_comparison_geodata=paired_comparison_geodata,
         scenario_comparison_summary=paired_summary,
         transit_mapping=transit_mapping,
-        transit_geometry_diagnostics=(
-            transit_geometry_diagnostics
-        ),
         transit_match_diagnostics=(
             transit_match_diagnostics
         ),
-        transit_spatial_summary=transit_spatial_summary,
+        transit_physical_summary=(
+            transit_physical_summary
+        ),
     )
 
     print("\n=== TESTE FINAL ===")
