@@ -166,6 +166,26 @@
             "spatial_weight": "segment_length_m",
             "figure_dpi": 300,
             "statistics_note": "A incerteza deve ser estimada por reamostragem hierarquica de seeds e agentes, preservando trajetorias completas. Segmentos nao sao tratados como observacoes independentes."
+        },
+        "article_v02": {
+            "output_dir": "outputs/v02 artigo",
+            "sensitivity_root": "outputs/pilot/final_sensitivity",
+            "reference_seed": 42,
+            "min_nominal_seeds": 1,
+            "recommended_nominal_seeds_for_article": 5,
+            "figure_dpi": 300,
+            "temporal_scope": "daily_aggregate_proxy_one_trip_per_agent",
+            "temporal_note": "O piloto atual gera uma viagem por agente por realizacao. Os mapas agregam todo o conjunto de viagens simuladas e nao representam uma agenda horaria completa de 24 horas.",
+            "visual_priority": [
+                "individual_routes_by_income",
+                "all_income_routes",
+                "aggregated_flow_by_income",
+                "income_dominance",
+                "modal_behavior_baseline_vs_differentiated",
+                "behavior_change_rates",
+                "route_overlap_by_income",
+                "income_by_mode_atlas"
+            ]
         }
     },
     "income": {
