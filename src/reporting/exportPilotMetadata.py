@@ -128,7 +128,25 @@ VARIABLES = [
         "nome": "modal_edge_id",
         "grupo": "rede",
         "unidade": "identificador",
-        "descricao": "Identificador estável de uma aresta dentro de uma rede modal",
+        "descricao": "Identificador estável de uma aresta dentro de uma rede modal ou de uma conexão GTFS usada na trajetória",
+    },
+    {
+        "nome": "mapping_mode",
+        "grupo": "harmonização",
+        "unidade": "categoria",
+        "descricao": "Rede ou fonte geométrica usada para associar a passagem ao analysis_segment_id sem alterar o modo principal da viagem",
+    },
+    {
+        "nome": "leg_mode",
+        "grupo": "trajetória multimodal",
+        "unidade": "categoria",
+        "descricao": "Modo efetivamente usado no trecho da trajetória, distinguindo caminhada de acesso ou egresso e trecho embarcado",
+    },
+    {
+        "nome": "transit_leg",
+        "grupo": "trajetória multimodal",
+        "unidade": "categoria",
+        "descricao": "Classifica o trecho de uma viagem transit como access_walk, in_vehicle ou egress_walk",
     },
     {
         "nome": "edge_length_m",
@@ -532,6 +550,36 @@ VARIABLES = [
         "unidade": "s",
         "descricao": "Tempo total de caminhada entre a parada de desembarque e o destino",
     },
+    {
+        "nome": "transit_service_date",
+        "grupo": "agente",
+        "unidade": "data",
+        "descricao": "Data histórica de serviço GTFS usada para rotear o agente no piloto",
+    },
+    {
+        "nome": "transit_departure_time_s",
+        "grupo": "agente",
+        "unidade": "s desde o início do dia de serviço",
+        "descricao": "Horário fixo de partida usado no roteamento transit do piloto técnico",
+    },
+    {
+        "nome": "transit_in_vehicle_distance_m",
+        "grupo": "agente",
+        "unidade": "m",
+        "descricao": "Distância acumulada ao longo dos shapes das conexões GTFS embarcadas pelo agente",
+    },
+    {
+        "nome": "transit_connection_ids",
+        "grupo": "agente",
+        "unidade": "lista de identificadores",
+        "descricao": "Sequência de connection_id GTFS usada pela rota transit do agente",
+    },
+    {
+        "nome": "shape_coverage_pct",
+        "grupo": "harmonização do transporte coletivo",
+        "unidade": "%",
+        "descricao": "Percentual do trecho de shape de uma conexão GTFS coberto pelos buffers dos segmentos físicos associados",
+    },
 ]
 
 ANALYSIS_METHODS = [
@@ -690,6 +738,26 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "build_trip_temporal_quality",
         "descricao": "Resume por trip_id a quantidade de pontos temporais originais, a duração programada, a incidência de conexões de duração zero e a velocidade implícita pelo comprimento do shape",
     },
+    {
+        "nome": "Roteamento integrado do piloto",
+        "funcao_codigo": "route_pilot_agents",
+        "descricao": "Encaminha walk, bike e car para as redes OSM e transit para o roteador temporal GTFS preservando uma interface comum no agente",
+    },
+    {
+        "nome": "Representação multimodal da trajetória transit",
+        "funcao_codigo": "build_transit_edge_usage",
+        "descricao": "Decompõe uma viagem transit em caminhada de acesso, conexões embarcadas e caminhada de egresso preservando transit como modo principal da viagem",
+    },
+    {
+        "nome": "Extração parcial do shape GTFS",
+        "funcao_codigo": "build_used_transit_connection_geometries",
+        "descricao": "Recorta a geometria do shape somente entre as posições das paradas consecutivas efetivamente usadas pelas conexões selecionadas",
+    },
+    {
+        "nome": "Mapeamento geométrico de transit para segmentos físicos",
+        "funcao_codigo": "map_transit_connections_to_analysis_segments",
+        "descricao": "Associa trechos GTFS usados à camada física comum por proximidade, cobertura do segmento e compatibilidade de orientação",
+    },
 ]
 
 STATISTICS = [
@@ -768,6 +836,14 @@ STATISTICS = [
     {
         "nome": "Participação de conexões de duração zero por viagem",
         "descricao": "Mede a proporção de conexões consecutivas com tempo veicular igual a zero dentro de cada trip_id",
+    },
+    {
+        "nome": "Cobertura geométrica do shape",
+        "descricao": "Mede o percentual do trecho GTFS usado que fica coberto pelos segmentos físicos associados dentro da tolerância espacial",
+    },
+    {
+        "nome": "Taxa de sucesso do mapeamento espacial transit",
+        "descricao": "Calcula a proporção das conexões GTFS usadas que possuem geometria válida e correspondência com pelo menos um analysis_segment_id",
     },
 ]
 
@@ -864,6 +940,14 @@ CLEANING_METHODS = [
         "nome": "Separação entre conexões completas e conexões roteáveis",
         "descricao": "Preserva todas as conexões processadas para auditoria e cria um arquivo separado somente com viagens que atendem aos critérios técnicos de roteamento",
     },
+    {
+        "nome": "Separação entre modo da viagem e modo de harmonização",
+        "descricao": "Preserva transit como modo principal do agente enquanto usa walk para mapear os trechos pedonais de acesso e egresso à camada física comum",
+    },
+    {
+        "nome": "Validação de cobertura espacial das conexões GTFS usadas",
+        "descricao": "Interrompe o piloto quando uma conexão transit usada por agente não encontra correspondência na camada física comum e evita omissão silenciosa no H_soc",
+    },
 ]
 
 FILES = [
@@ -929,6 +1013,10 @@ FILES = [
     ("outputs/pilot/maps/map_manifest.csv", "Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português", "mapas", False),
     ("outputs/pilot/transit_routing_diagnostics.csv", "Amostra de consultas origem-destino usada para validar cobertura, tempos, acesso, egresso e transferências do roteador temporal de ônibus", "roteamento de transporte coletivo", False),
     ("outputs/pilot/gtfs_trip_temporal_quality.csv", "Diagnóstico por trip_id com duração programada, pontos temporais originais, conexões de duração zero e velocidade implícita pelo shape", "qualidade temporal do GTFS", False),
+    ("outputs/pilot/transit_connection_to_analysis_segment.csv", "Mapeamento das conexões GTFS usadas pelos agentes para os segmentos físicos comuns do piloto", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/transit_connection_geometry_diagnostics.csv", "Diagnóstico da disponibilidade e validade da geometria parcial de cada conexão GTFS usada", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/transit_connection_match_diagnostics.csv", "Diagnóstico de quantidade de segmentos associados e cobertura geométrica por conexão GTFS usada", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/transit_spatial_match_report.csv", "Resumo da cobertura e do sucesso do mapeamento espacial das conexões GTFS usadas", "harmonização do transporte coletivo", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
