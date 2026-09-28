@@ -8,7 +8,8 @@
       "origin_assignment_rule",
       "destination_pool",
       "network_set",
-      "seed"
+      "seed",
+      "mode_distance_adjustment"
     ],
     "baseline": {
       "description": "Mantém a estrutura residencial por renda, mas aplica as mesmas regras comportamentais de propósito, destino e modo aos três grupos. O nó efetivo de roteamento pode variar porque depende do modo escolhido.",
@@ -81,6 +82,24 @@
         "transit": 0.1,
         "car": 0.7
       }
+    },
+    "distance_adjustment": {
+      "enabled": true,
+      "method": "exponential_decay_with_optional_maximum",
+      "distance_source": "euclidean_od",
+      "decay_per_km": {
+        "walk": 0.55,
+        "bike": 0.12,
+        "transit": 0.03,
+        "car": 0
+      },
+      "max_distance_km": {
+        "walk": 8,
+        "bike": 25,
+        "transit": null,
+        "car": null
+      },
+      "calibration_status": "provisional_pilot"
     }
   },
   "destination_choice": {
