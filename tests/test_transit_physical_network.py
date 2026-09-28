@@ -357,7 +357,7 @@ class TransitPhysicalNetworkTests(unittest.TestCase):
             ][
                 "match_method"
             ],
-            "gtfs_exclusive",
+            "gtfs_exclusive_network",
         )
         self.assertEqual(
             transit_mapping.iloc[
