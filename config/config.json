@@ -141,6 +141,26 @@
             "reuse_legacy_seed42": true,
             "status": "pending_execution_for_final_freeze",
             "interpretation": "Resultados finais devem ser avaliados entre múltiplas seeds. O limiar principal de interpretação é n_agents >= 5; >=2, >=3 e >=10 são sensibilidades de suporte."
+        },
+        "article_v01": {
+            "output_dir": "outputs/v01 artigo",
+            "sensitivity_root": "outputs/pilot/final_sensitivity",
+            "operational_question": "Em que medida regras de mobilidade socioeconomicamente diferenciadas alteram a diversidade socioeconomica observada nas trajetorias ao longo da rede urbana, em comparacao com um cenario comportamental homogeneo?",
+            "primary_flow_threshold": 5,
+            "reported_flow_thresholds": [
+                2,
+                3,
+                5,
+                10
+            ],
+            "consensus_min_seeds": 3,
+            "delta_h_practical_threshold": 0.05,
+            "bootstrap_reps": 1000,
+            "bootstrap_seed": 20260928,
+            "main_outcome": "length_weighted_mean_delta_H_soc",
+            "spatial_weight": "segment_length_m",
+            "figure_dpi": 300,
+            "statistics_note": "A incerteza deve ser estimada por reamostragem hierarquica de seeds e agentes, preservando trajetorias completas. Segmentos nao sao tratados como observacoes independentes."
         }
     },
     "income": {
