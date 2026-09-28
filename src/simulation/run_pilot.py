@@ -168,9 +168,89 @@ def _build_summary(
         for agent in agents
     ]
 
-    # Persiste as arestas da rota para inspecionar e reconstruir o uso da rede
+    summary["travel_time_s"] = [
+        agent.travel_time
+        for agent in agents
+    ]
+
+    summary["transit_service_date"] = [
+        agent.transit_service_date
+        for agent in agents
+    ]
+    summary["transit_departure_time_s"] = [
+        agent.transit_departure_time_s
+        for agent in agents
+    ]
+    summary["transit_arrival_time_s"] = [
+        agent.transit_arrival_time_s
+        for agent in agents
+    ]
+    summary["transit_access_stop_id"] = [
+        agent.transit_access_stop_id
+        for agent in agents
+    ]
+    summary["transit_egress_stop_id"] = [
+        agent.transit_egress_stop_id
+        for agent in agents
+    ]
+    summary["transit_access_walk_distance_m"] = [
+        agent.transit_access_walk_distance_m
+        for agent in agents
+    ]
+    summary["transit_initial_wait_time_s"] = [
+        agent.transit_initial_wait_time_s
+        for agent in agents
+    ]
+    summary["transit_in_vehicle_distance_m"] = [
+        agent.transit_in_vehicle_distance_m
+        for agent in agents
+    ]
+    summary["transit_in_vehicle_time_s"] = [
+        agent.transit_in_vehicle_time_s
+        for agent in agents
+    ]
+    summary["transit_n_boardings"] = [
+        agent.transit_n_boardings
+        for agent in agents
+    ]
+    summary["transit_n_transfers"] = [
+        agent.transit_n_transfers
+        for agent in agents
+    ]
+    summary["transit_egress_walk_distance_m"] = [
+        agent.transit_egress_walk_distance_m
+        for agent in agents
+    ]
+    summary["n_transit_connections"] = [
+        len(
+            agent.transit_connection_ids
+        )
+        for agent in agents
+    ]
+
+    # Persiste as arestas e conexões para inspecionar e reconstruir o uso da rede
     summary["route_edges"] = [
-        json.dumps(agent.route_edges)
+        json.dumps(
+            agent.route_edges
+        )
+        for agent in agents
+    ]
+    summary["transit_connection_ids"] = [
+        json.dumps(
+            agent.transit_connection_ids
+        )
+        for agent in agents
+    ]
+    summary["transit_trip_ids"] = [
+        json.dumps(
+            agent.transit_trip_ids
+        )
+        for agent in agents
+    ]
+    summary["transit_route_ids"] = [
+        json.dumps(
+            agent.transit_route_ids
+        )
         for agent in agents
     ]
 
