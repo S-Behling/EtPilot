@@ -617,6 +617,11 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "TransitRouter.route",
         "descricao": "Permite a troca entre viagens GTFS na mesma parada quando o intervalo disponível atende ao tempo mínimo de transferência configurado",
     },
+    {
+        "nome": "Diagnóstico amostral do roteamento temporal",
+        "funcao_codigo": "run_diagnostics",
+        "descricao": "Seleciona pares origem-destino reprodutíveis das bases do piloto e resume cobertura, tempos, caminhada de acesso e egresso e transferências",
+    },
 ]
 
 STATISTICS = [
@@ -816,6 +821,7 @@ FILES = [
     ("outputs/pilot/maps/delta_h_soc_all.png", "Mapa da diferença pareada de H_soc para todos os segmentos comparáveis", "mapas", False),
     ("outputs/pilot/maps/delta_h_soc_supported.png", "Mapa da diferença pareada de H_soc restrito aos segmentos com fluxo suficiente nos dois cenários", "mapas", False),
     ("outputs/pilot/maps/map_manifest.csv", "Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português", "mapas", False),
+    ("outputs/pilot/transit_routing_diagnostics.csv", "Amostra de consultas origem-destino usada para validar cobertura, tempos, acesso, egresso e transferências do roteador temporal de ônibus", "roteamento de transporte coletivo", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
@@ -1046,6 +1052,48 @@ def _collect_config_parameters(
             ),
             "s",
             "Horizonte máximo provisório considerado em uma consulta de transporte coletivo",
+        ),
+        (
+            "transit.routing.diagnostics.sample_size",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "diagnostics",
+                {},
+            ).get(
+                "sample_size"
+            ),
+            "viagens OD",
+            "Quantidade de pares origem-destino usada no diagnóstico técnico do roteador temporal",
+        ),
+        (
+            "transit.routing.diagnostics.departure_time_s",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "diagnostics",
+                {},
+            ).get(
+                "departure_time_s"
+            ),
+            "s desde o início do dia de serviço",
+            "Horário de partida comum usado nas consultas do diagnóstico técnico",
+        ),
+        (
+            "transit.routing.diagnostics.seed",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "diagnostics",
+                {},
+            ).get(
+                "seed"
+            ),
+            "inteiro",
+            "Semente pseudoaleatória usada para selecionar os pares origem-destino do diagnóstico",
         ),
     ]
 
