@@ -733,7 +733,11 @@ def build_used_transit_connection_geometries(
             pd.DataFrame(
                 columns=[
                     "connection_id",
+                    "shape_id",
                     "geometry_status",
+                    "position_method",
+                    "from_snap_distance_m",
+                    "to_snap_distance_m",
                     "geometry_length_m",
                 ]
             ),
@@ -872,7 +876,7 @@ def build_used_transit_connection_geometries(
 
         status = "ok"
         geometry = None
-        position_method = "processed_shape_position"
+        position_method = None
         from_snap_distance_m = np.nan
         to_snap_distance_m = np.nan
 
@@ -904,6 +908,7 @@ def build_used_transit_connection_geometries(
                 )
 
                 if valid_processed_positions:
+                    position_method = "processed_shape_position"
                     start_clamped = min(
                         max(
                             float(
