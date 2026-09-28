@@ -134,11 +134,11 @@ code {
 <header>
     <h1>Metadados do piloto EtPilot</h1>
     <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
-    <p>Documento gerado em UTC: 2026-09-28T08:30:55.189767+00:00</p>
+    <p>Documento gerado em UTC: 2026-09-28T12:46:33.726833+00:00</p>
 </header>
 <nav><a href="#variaveis">Variáveis principais</a><a href="#parametros">Parâmetros de configuração</a><a href="#metodos">Métodos de análise</a><a href="#estatisticas">Estatísticas</a><a href="#limpeza">Métodos de limpeza e validação</a><a href="#arquivos">Arquivos gerados</a></nav>
 <main>
-    <div class="cards"><div class="card"><span class="card-number">86</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">31</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">19</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">23</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">64</span><span class="card-label">arquivos catalogados</span></div></div>
+    <div class="cards"><div class="card"><span class="card-number">100</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">39</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">23</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">30</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">72</span><span class="card-label">arquivos catalogados</span></div></div>
     <section id="variaveis"><h2>Variáveis principais</h2><p>Variáveis centrais usadas na simulação, no roteamento, na harmonização, nas métricas e no processamento do GTFS</p><table class="dataframe metadata-table">
   <thead>
     <tr style="text-align: right;">
@@ -261,7 +261,25 @@ code {
       <td>modal_edge_id</td>
       <td>rede</td>
       <td>identificador</td>
-      <td>Identificador estável de uma aresta dentro de uma rede modal</td>
+      <td>Identificador estável de uma aresta dentro de uma rede modal ou de uma conexão GTFS usada na trajetória</td>
+    </tr>
+    <tr>
+      <td>mapping_mode</td>
+      <td>harmonização</td>
+      <td>categoria</td>
+      <td>Rede ou fonte geométrica usada para associar a passagem ao analysis_segment_id sem alterar o modo principal da viagem</td>
+    </tr>
+    <tr>
+      <td>leg_mode</td>
+      <td>trajetória multimodal</td>
+      <td>categoria</td>
+      <td>Modo efetivamente usado no trecho da trajetória, distinguindo caminhada de acesso ou egresso e trecho embarcado</td>
+    </tr>
+    <tr>
+      <td>transit_leg</td>
+      <td>trajetória multimodal</td>
+      <td>categoria</td>
+      <td>Classifica o trecho de uma viagem transit como access_walk, in_vehicle ou egress_walk</td>
     </tr>
     <tr>
       <td>edge_length_m</td>
@@ -418,6 +436,42 @@ code {
       <td>comparação de cenários</td>
       <td>passagens</td>
       <td>Diferença no número de passagens entre differentiated e baseline</td>
+    </tr>
+    <tr>
+      <td>route_to_od_ratio</td>
+      <td>controle de outliers</td>
+      <td>razão adimensional</td>
+      <td>Razão entre a distância roteada e a distância euclidiana origem-destino usada para diagnosticar trajetórias excessivamente circuitosas</td>
+    </tr>
+    <tr>
+      <td>direct_outlier</td>
+      <td>controle de outliers</td>
+      <td>booleano</td>
+      <td>Indica que a viagem transit excede a cerca externa da distância roteada ou combina circuity extrema com distância roteada acima do terceiro quartil</td>
+    </tr>
+    <tr>
+      <td>analysis_included</td>
+      <td>controle de outliers</td>
+      <td>booleano</td>
+      <td>Indica se o agente permanece na análise de trajetórias e H_soc após o controle pareado de outliers</td>
+    </tr>
+    <tr>
+      <td>analysis_exclusion_reason</td>
+      <td>controle analítico</td>
+      <td>categoria</td>
+      <td>Registra os motivos cumulativos pelos quais o agente é retirado da análise de trajetórias, incluindo outlier e falha de espacialização transit</td>
+    </tr>
+    <tr>
+      <td>direct_spatial_mapping_failure</td>
+      <td>controle de espacialização transit</td>
+      <td>booleano</td>
+      <td>Indica que o agente usa ao menos uma conexão GTFS sem correspondência válida na camada física comum</td>
+    </tr>
+    <tr>
+      <td>analysis_excluded_spatial_mapping</td>
+      <td>controle de espacialização transit</td>
+      <td>booleano</td>
+      <td>Indica que o agente foi retirado da análise espacial por falha direta de espacialização ou para preservar a exclusão pareada entre cenários</td>
     </tr>
     <tr>
       <td>sufficient_flow_both</td>
@@ -665,6 +719,36 @@ code {
       <td>s</td>
       <td>Tempo total de caminhada entre a parada de desembarque e o destino</td>
     </tr>
+    <tr>
+      <td>transit_service_date</td>
+      <td>agente</td>
+      <td>data</td>
+      <td>Data histórica de serviço GTFS usada para rotear o agente no piloto</td>
+    </tr>
+    <tr>
+      <td>transit_departure_time_s</td>
+      <td>agente</td>
+      <td>s desde o início do dia de serviço</td>
+      <td>Horário fixo de partida usado no roteamento transit do piloto técnico</td>
+    </tr>
+    <tr>
+      <td>transit_in_vehicle_distance_m</td>
+      <td>agente</td>
+      <td>m</td>
+      <td>Distância acumulada ao longo dos shapes das conexões GTFS embarcadas pelo agente</td>
+    </tr>
+    <tr>
+      <td>transit_connection_ids</td>
+      <td>agente</td>
+      <td>lista de identificadores</td>
+      <td>Sequência de connection_id GTFS usada pela rota transit do agente</td>
+    </tr>
+    <tr>
+      <td>shape_coverage_pct</td>
+      <td>harmonização do transporte coletivo</td>
+      <td>%</td>
+      <td>Percentual do trecho de shape de uma conexão GTFS coberto pelos buffers dos segmentos físicos associados</td>
+    </tr>
   </tbody>
 </table></section><section id="parametros"><h2>Parâmetros de configuração</h2><p>Parâmetros que controlam a população sintética, as escolhas comportamentais, a análise espacial e a preparação do transporte coletivo</p><table class="dataframe metadata-table">
   <thead>
@@ -734,10 +818,38 @@ code {
       <td>config/config.json</td>
     </tr>
     <tr>
+      <td>analysis.trip_outliers.iqr_multiplier</td>
+      <td>3</td>
+      <td>multiplicador do IQR</td>
+      <td>Multiplicador usado na cerca externa superior de Tukey aplicada às métricas de distância e circuity</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.trip_outliers.min_sample_size</td>
+      <td>20</td>
+      <td>viagens transit</td>
+      <td>Quantidade mínima de viagens elegíveis nos dois cenários combinados para ativar o filtro de outliers</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>analysis.trip_outliers.paired_exclusion</td>
+      <td>True</td>
+      <td>booleano</td>
+      <td>Indica se um agent_id identificado como outlier em um cenário também é retirado da análise espacial no outro cenário</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
       <td>routing.implemented_modes</td>
       <td>walk | bike | car</td>
       <td>categorias</td>
-      <td>Modos com roteamento viário atualmente integrado ao run_pilot</td>
+      <td>Modos com grafo OSM carregado diretamente no run_pilot</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>routing.choice_modes</td>
+      <td>walk | bike | car | transit</td>
+      <td>categorias</td>
+      <td>Modos disponíveis para a escolha modal dos agentes no piloto integrado</td>
       <td>config/config.json</td>
     </tr>
     <tr>
@@ -794,6 +906,69 @@ code {
       <td>14400</td>
       <td>s</td>
       <td>Horizonte máximo provisório considerado em uma consulta de transporte coletivo</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.pilot_departure_time_s</td>
+      <td>28800</td>
+      <td>s desde o início do dia de serviço</td>
+      <td>Horário fixo adotado para o roteamento transit dos agentes no piloto técnico</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.primary.tolerance_m</td>
+      <td>20</td>
+      <td>m</td>
+      <td>Tolerância da etapa primária usada para associar trechos GTFS aos segmentos físicos com suporte da rede car</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.primary.min_coverage</td>
+      <td>0.5</td>
+      <td>proporção de 0 a 1</td>
+      <td>Cobertura mínima por segmento ou por trecho de shape exigida na etapa primária do mapeamento GTFS</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.primary.max_angle_difference_deg</td>
+      <td>45</td>
+      <td>graus</td>
+      <td>Diferença angular local máxima permitida na etapa primária do mapeamento GTFS</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.fallback.tolerance_m</td>
+      <td>30</td>
+      <td>m</td>
+      <td>Tolerância espacial da etapa de fallback aplicada somente às conexões ainda não mapeadas</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.fallback.min_coverage</td>
+      <td>0.35</td>
+      <td>proporção de 0 a 1</td>
+      <td>Cobertura mínima por segmento ou por trecho de shape na etapa de fallback da rede física completa</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.fallback.max_angle_difference_deg</td>
+      <td>60</td>
+      <td>graus</td>
+      <td>Diferença angular local máxima permitida na etapa de fallback</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.unmatched_policy</td>
+      <td>exclude_agent_paired</td>
+      <td>categoria</td>
+      <td>Política aplicada quando conexões GTFS usadas não encontram correspondência na camada física comum</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.spatial_mapping.paired_exclusion</td>
+      <td>True</td>
+      <td>booleano</td>
+      <td>Indica se a falha espacial de um agente em um cenário também retira o mesmo agent_id da análise espacial no outro cenário</td>
       <td>config/config.json</td>
     </tr>
     <tr>
@@ -1395,6 +1570,46 @@ code {
       <td>build_trip_temporal_quality</td>
       <td>Resume por trip_id a quantidade de pontos temporais originais, a duração programada, a incidência de conexões de duração zero e a velocidade implícita pelo comprimento do shape</td>
     </tr>
+    <tr>
+      <td>Roteamento integrado do piloto</td>
+      <td>route_pilot_agents</td>
+      <td>Encaminha walk, bike e car para as redes OSM e transit para o roteador temporal GTFS preservando uma interface comum no agente</td>
+    </tr>
+    <tr>
+      <td>Representação multimodal da trajetória transit</td>
+      <td>build_transit_edge_usage</td>
+      <td>Decompõe uma viagem transit em caminhada de acesso, conexões embarcadas e caminhada de egresso preservando transit como modo principal da viagem</td>
+    </tr>
+    <tr>
+      <td>Extração parcial do shape GTFS</td>
+      <td>build_used_transit_connection_geometries</td>
+      <td>Recorta a geometria do shape somente entre as posições das paradas consecutivas efetivamente usadas pelas conexões selecionadas</td>
+    </tr>
+    <tr>
+      <td>Mapeamento geométrico de transit para segmentos físicos</td>
+      <td>map_transit_connections_to_analysis_segments</td>
+      <td>Associa trechos GTFS usados aos segmentos físicos usando proximidade, cobertura do segmento ou do shape e compatibilidade da orientação local</td>
+    </tr>
+    <tr>
+      <td>Mapeamento espacial hierárquico do transporte coletivo</td>
+      <td>map_transit_connections_hierarchically</td>
+      <td>Procura primeiro correspondência em segmentos com suporte da rede car e aplica uma segunda etapa na rede física completa somente às conexões ainda não mapeadas</td>
+    </tr>
+    <tr>
+      <td>Recuperação ordenada da posição de paradas no shape</td>
+      <td>_forward_stop_positions</td>
+      <td>Seleciona projeções sucessivas das paradas ao longo do shape quando as posições processadas estão ausentes, iguais ou decrescentes, preservando a ordem do deslocamento</td>
+    </tr>
+    <tr>
+      <td>Filtro pareado de outliers de trajetórias transit</td>
+      <td>apply_paired_transit_outlier_filter</td>
+      <td>Calcula limites robustos com os dois cenários combinados, identifica distância extrema ou circuity extrema acompanhada de rota longa e propaga a exclusão ao mesmo agent_id nos dois cenários</td>
+    </tr>
+    <tr>
+      <td>Exclusão pareada por falha de espacialização transit</td>
+      <td>apply_paired_transit_spatial_exclusions</td>
+      <td>Identifica agentes cujas conexões GTFS usadas não possuem correspondência na camada física comum e retira o mesmo agent_id da análise espacial nos dois cenários quando o pareamento está habilitado</td>
+    </tr>
   </tbody>
 </table></section><section id="estatisticas"><h2>Estatísticas</h2><p>Estatísticas e medidas resumidas usadas nos diagnósticos e comparações</p><table class="dataframe metadata-table">
   <thead>
@@ -1479,6 +1694,22 @@ code {
     <tr>
       <td>Participação de conexões de duração zero por viagem</td>
       <td>Mede a proporção de conexões consecutivas com tempo veicular igual a zero dentro de cada trip_id</td>
+    </tr>
+    <tr>
+      <td>Cobertura geométrica do shape</td>
+      <td>Mede o percentual do trecho GTFS usado que fica coberto pelos segmentos físicos associados dentro da tolerância espacial</td>
+    </tr>
+    <tr>
+      <td>Taxa de sucesso do mapeamento espacial transit</td>
+      <td>Calcula a proporção das conexões GTFS usadas que possuem geometria válida e correspondência com pelo menos um analysis_segment_id</td>
+    </tr>
+    <tr>
+      <td>Cerca externa superior de Tukey</td>
+      <td>Calcula Q3 mais três vezes o intervalo interquartil por padrão para identificar valores extremos sem depender da média ou do desvio padrão</td>
+    </tr>
+    <tr>
+      <td>Circuity da viagem</td>
+      <td>Relaciona a distância roteada à distância euclidiana origem-destino para distinguir rotas longas de trajetórias desproporcionalmente circuitosas</td>
     </tr>
   </tbody>
 </table></section><section id="limpeza"><h2>Métodos de limpeza e validação</h2><p>Operações de limpeza, validação, padronização e controle de consistência aplicadas às bases</p><table class="dataframe metadata-table">
@@ -1580,6 +1811,34 @@ code {
     <tr>
       <td>Separação entre conexões completas e conexões roteáveis</td>
       <td>Preserva todas as conexões processadas para auditoria e cria um arquivo separado somente com viagens que atendem aos critérios técnicos de roteamento</td>
+    </tr>
+    <tr>
+      <td>Separação entre modo da viagem e modo de harmonização</td>
+      <td>Preserva transit como modo principal do agente enquanto usa walk para mapear os trechos pedonais de acesso e egresso à camada física comum</td>
+    </tr>
+    <tr>
+      <td>Validação de cobertura espacial das conexões GTFS usadas</td>
+      <td>Interrompe o piloto quando uma conexão transit usada por agente não encontra correspondência na camada física comum após as etapas primária e de fallback e evita omissão silenciosa no H_soc</td>
+    </tr>
+    <tr>
+      <td>Fallback de projeção ordenada das paradas no shape</td>
+      <td>Recupera trechos GTFS com progresso geométrico não positivo por meio de projeções sucessivas das paradas e registra explicitamente position_method e distâncias de snap</td>
+    </tr>
+    <tr>
+      <td>Cobertura bidirecional no mapeamento GTFS</td>
+      <td>Aceita uma correspondência quando o segmento físico ou o trecho de shape atinge a cobertura mínima configurada, reduzindo rejeições artificiais de conexões curtas contidas em segmentos mais longos</td>
+    </tr>
+    <tr>
+      <td>Exclusão pareada de outliers de trajetória</td>
+      <td>Remove a trajetória do cálculo espacial sem apagar o registro original do agente e aplica a mesma exclusão ao agent_id correspondente no outro cenário para preservar comparabilidade</td>
+    </tr>
+    <tr>
+      <td>Critério conservador de distância e circuity</td>
+      <td>Exclui distância roteada acima da cerca externa ou circuity acima da cerca externa quando a rota também está acima do terceiro quartil, evitando excluir viagens curtas apenas por apresentarem razão elevada</td>
+    </tr>
+    <tr>
+      <td>Exclusão pareada de falhas de espacialização transit</td>
+      <td>Retira da análise de H_soc toda a trajetória do agente quando ao menos uma conexão GTFS usada não pode ser associada a analysis_segment_id e aplica a mesma retirada ao agent_id correspondente no outro cenário</td>
     </tr>
   </tbody>
 </table></section><section id="arquivos"><h2>Arquivos gerados</h2><p>Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto</p><table class="dataframe metadata-table">
@@ -1890,7 +2149,7 @@ code {
       <td>Agentes e resultados de viagem do cenário baseline</td>
       <td>não</td>
       <td>sim</td>
-      <td>227102</td>
+      <td>223269</td>
     </tr>
     <tr>
       <td>agents_differentiated.csv</td>
@@ -1899,7 +2158,7 @@ code {
       <td>Agentes e resultados de viagem do cenário differentiated</td>
       <td>não</td>
       <td>sim</td>
-      <td>224907</td>
+      <td>213318</td>
     </tr>
     <tr>
       <td>agents_all_scenarios.csv</td>
@@ -1908,7 +2167,7 @@ code {
       <td>Agentes dos dois cenários reunidos em uma única tabela</td>
       <td>não</td>
       <td>sim</td>
-      <td>451839</td>
+      <td>435794</td>
     </tr>
     <tr>
       <td>edge_usage_baseline.csv</td>
@@ -1917,7 +2176,7 @@ code {
       <td>Registros agente × aresta modal do cenário baseline</td>
       <td>não</td>
       <td>sim</td>
-      <td>1288420</td>
+      <td>814048</td>
     </tr>
     <tr>
       <td>edge_usage_differentiated.csv</td>
@@ -1926,7 +2185,7 @@ code {
       <td>Registros agente × aresta modal do cenário differentiated</td>
       <td>não</td>
       <td>sim</td>
-      <td>1314652</td>
+      <td>816589</td>
     </tr>
     <tr>
       <td>edge_usage_all_scenarios.csv</td>
@@ -1935,7 +2194,7 @@ code {
       <td>Registros agente × aresta modal dos dois cenários</td>
       <td>não</td>
       <td>sim</td>
-      <td>2602915</td>
+      <td>1630308</td>
     </tr>
     <tr>
       <td>edge_usage_analysis_baseline.csv</td>
@@ -1944,7 +2203,7 @@ code {
       <td>Uso das arestas do baseline associado aos segmentos físicos comuns</td>
       <td>não</td>
       <td>sim</td>
-      <td>2109747</td>
+      <td>1584576</td>
     </tr>
     <tr>
       <td>edge_usage_analysis_differentiated.csv</td>
@@ -1953,7 +2212,7 @@ code {
       <td>Uso das arestas do differentiated associado aos segmentos físicos comuns</td>
       <td>não</td>
       <td>sim</td>
-      <td>2106524</td>
+      <td>1544916</td>
     </tr>
     <tr>
       <td>edge_usage_analysis_all_scenarios.csv</td>
@@ -1962,7 +2221,7 @@ code {
       <td>Uso harmonizado dos segmentos físicos nos dois cenários</td>
       <td>não</td>
       <td>sim</td>
-      <td>4216067</td>
+      <td>3129025</td>
     </tr>
     <tr>
       <td>modal_edge_to_analysis_segment.csv</td>
@@ -1971,7 +2230,7 @@ code {
       <td>Mapeamento de cada aresta modal para um ou mais segmentos físicos de análise</td>
       <td>não</td>
       <td>sim</td>
-      <td>15617568</td>
+      <td>24490252</td>
     </tr>
     <tr>
       <td>analysis_segment_match_report.csv</td>
@@ -1980,7 +2239,7 @@ code {
       <td>Resumo dos métodos e da qualidade de harmonização nas redes completas</td>
       <td>não</td>
       <td>sim</td>
-      <td>556</td>
+      <td>741</td>
     </tr>
     <tr>
       <td>analysis_segment_used_match_report.csv</td>
@@ -1989,7 +2248,7 @@ code {
       <td>Resumo dos métodos e da qualidade de harmonização restrito às arestas usadas pelos agentes</td>
       <td>não</td>
       <td>sim</td>
-      <td>525</td>
+      <td>659</td>
     </tr>
     <tr>
       <td>analysis_segments.gpkg</td>
@@ -2007,7 +2266,7 @@ code {
       <td>Estatísticas de fluxo, composição socioeconômica e H_soc do cenário baseline</td>
       <td>não</td>
       <td>sim</td>
-      <td>714918</td>
+      <td>490620</td>
     </tr>
     <tr>
       <td>segment_statistics_differentiated.csv</td>
@@ -2016,7 +2275,7 @@ code {
       <td>Estatísticas de fluxo, composição socioeconômica e H_soc do cenário differentiated</td>
       <td>não</td>
       <td>sim</td>
-      <td>745255</td>
+      <td>502297</td>
     </tr>
     <tr>
       <td>segment_statistics_all_scenarios.csv</td>
@@ -2025,7 +2284,7 @@ code {
       <td>Estatísticas de segmentos dos dois cenários reunidas</td>
       <td>não</td>
       <td>sim</td>
-      <td>1459825</td>
+      <td>992554</td>
     </tr>
     <tr>
       <td>segment_metrics_baseline.gpkg</td>
@@ -2034,7 +2293,7 @@ code {
       <td>Camada espacial dos segmentos físicos com métricas do cenário baseline</td>
       <td>não</td>
       <td>sim</td>
-      <td>20062208</td>
+      <td>20082688</td>
     </tr>
     <tr>
       <td>segment_metrics_differentiated.gpkg</td>
@@ -2043,7 +2302,7 @@ code {
       <td>Camada espacial dos segmentos físicos com métricas do cenário differentiated</td>
       <td>não</td>
       <td>sim</td>
-      <td>20447232</td>
+      <td>20459520</td>
     </tr>
     <tr>
       <td>segment_scenario_comparison.csv</td>
@@ -2052,7 +2311,7 @@ code {
       <td>Comparação pareada de baseline e differentiated por analysis_segment_id</td>
       <td>não</td>
       <td>sim</td>
-      <td>2492663</td>
+      <td>1725265</td>
     </tr>
     <tr>
       <td>segment_scenario_comparison_summary.csv</td>
@@ -2061,7 +2320,7 @@ code {
       <td>Resumo quantitativo da comparação pareada entre os cenários</td>
       <td>não</td>
       <td>sim</td>
-      <td>704</td>
+      <td>620</td>
     </tr>
     <tr>
       <td>segment_scenario_comparison.gpkg</td>
@@ -2070,7 +2329,7 @@ code {
       <td>Camada espacial com métricas pareadas e delta_H_soc</td>
       <td>não</td>
       <td>sim</td>
-      <td>23400448</td>
+      <td>23285760</td>
     </tr>
     <tr>
       <td>h_soc_baseline_all.png</td>
@@ -2079,7 +2338,7 @@ code {
       <td>Mapa de H_soc do baseline para todos os segmentos observados</td>
       <td>não</td>
       <td>sim</td>
-      <td>1094788</td>
+      <td>1013075</td>
     </tr>
     <tr>
       <td>h_soc_baseline_supported.png</td>
@@ -2088,7 +2347,7 @@ code {
       <td>Mapa de H_soc do baseline restrito aos segmentos com fluxo suficiente</td>
       <td>não</td>
       <td>sim</td>
-      <td>870164</td>
+      <td>817454</td>
     </tr>
     <tr>
       <td>h_soc_differentiated_all.png</td>
@@ -2097,7 +2356,7 @@ code {
       <td>Mapa de H_soc do differentiated para todos os segmentos observados</td>
       <td>não</td>
       <td>sim</td>
-      <td>1095579</td>
+      <td>1021573</td>
     </tr>
     <tr>
       <td>h_soc_differentiated_supported.png</td>
@@ -2106,7 +2365,7 @@ code {
       <td>Mapa de H_soc do differentiated restrito aos segmentos com fluxo suficiente</td>
       <td>não</td>
       <td>sim</td>
-      <td>877549</td>
+      <td>826169</td>
     </tr>
     <tr>
       <td>delta_h_soc_all.png</td>
@@ -2115,7 +2374,7 @@ code {
       <td>Mapa da diferença pareada de H_soc para todos os segmentos comparáveis</td>
       <td>não</td>
       <td>sim</td>
-      <td>940952</td>
+      <td>874744</td>
     </tr>
     <tr>
       <td>delta_h_soc_supported.png</td>
@@ -2124,7 +2383,7 @@ code {
       <td>Mapa da diferença pareada de H_soc restrito aos segmentos com fluxo suficiente nos dois cenários</td>
       <td>não</td>
       <td>sim</td>
-      <td>854357</td>
+      <td>793852</td>
     </tr>
     <tr>
       <td>map_manifest.csv</td>
@@ -2133,7 +2392,7 @@ code {
       <td>Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português</td>
       <td>não</td>
       <td>sim</td>
-      <td>542</td>
+      <td>1307</td>
     </tr>
     <tr>
       <td>transit_routing_diagnostics.csv</td>
@@ -2154,13 +2413,85 @@ code {
       <td>6348715</td>
     </tr>
     <tr>
+      <td>transit_connection_to_analysis_segment.csv</td>
+      <td>outputs/pilot/transit_connection_to_analysis_segment.csv</td>
+      <td>harmonização do transporte coletivo</td>
+      <td>Mapeamento das conexões GTFS usadas pelos agentes para os segmentos físicos comuns do piloto</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>779051</td>
+    </tr>
+    <tr>
+      <td>transit_connection_geometry_diagnostics.csv</td>
+      <td>outputs/pilot/transit_connection_geometry_diagnostics.csv</td>
+      <td>harmonização do transporte coletivo</td>
+      <td>Diagnóstico da disponibilidade e validade da geometria parcial de cada conexão GTFS usada</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>106524</td>
+    </tr>
+    <tr>
+      <td>transit_connection_match_diagnostics.csv</td>
+      <td>outputs/pilot/transit_connection_match_diagnostics.csv</td>
+      <td>harmonização do transporte coletivo</td>
+      <td>Diagnóstico de quantidade de segmentos associados e cobertura geométrica por conexão GTFS usada</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>108069</td>
+    </tr>
+    <tr>
+      <td>transit_spatial_match_report.csv</td>
+      <td>outputs/pilot/transit_spatial_match_report.csv</td>
+      <td>harmonização do transporte coletivo</td>
+      <td>Resumo da cobertura e do sucesso do mapeamento espacial das conexões GTFS usadas</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>231</td>
+    </tr>
+    <tr>
+      <td>outlier_exclusions.csv</td>
+      <td>outputs/pilot/outlier_exclusions.csv</td>
+      <td>controle de outliers</td>
+      <td>Registro auditável de cada cenário e agente retirado da análise de trajetórias por outlier transit direto ou exclusão pareada</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>2172</td>
+    </tr>
+    <tr>
+      <td>outlier_filter_summary.csv</td>
+      <td>outputs/pilot/outlier_filter_summary.csv</td>
+      <td>controle de outliers</td>
+      <td>Resumo do método, quartis, cercas externas e quantidade de outliers identificados no piloto</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>591</td>
+    </tr>
+    <tr>
+      <td>transit_spatial_exclusions.csv</td>
+      <td>outputs/pilot/transit_spatial_exclusions.csv</td>
+      <td>controle de espacialização transit</td>
+      <td>Registro por cenário e agente retirado da análise por conexões GTFS sem correspondência espacial, incluindo rotas e viagens afetadas</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>13621</td>
+    </tr>
+    <tr>
+      <td>transit_spatial_exclusion_summary.csv</td>
+      <td>outputs/pilot/transit_spatial_exclusion_summary.csv</td>
+      <td>controle de espacialização transit</td>
+      <td>Resumo da quantidade de conexões sem correspondência e de agentes afetados pela exclusão espacial pareada</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>127</td>
+    </tr>
+    <tr>
       <td>metadados_piloto.xlsx</td>
       <td>outputs/metadados_piloto.xlsx</td>
       <td>documentação</td>
       <td>Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td>28579</td>
+      <td>28580</td>
     </tr>
     <tr>
       <td>metadados_piloto.html</td>
