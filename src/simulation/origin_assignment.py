@@ -9,76 +9,38 @@ def assign_origins(
     origins,
     population_column: str = "POP",
     seed: int = 42,
+    modes: tuple[str, ...] | list[str] = ("walk", "bike", "car"),
+    node_prefix: str = "node_",
 ) -> list[Agent]:
     """
-    Atribui uma origem residencial a cada agente sintético
+    Atribui uma origem residencial a cada agente sintético.
 
-    A origem é selecionada somente entre pontos pertencentes
-    ao mesmo grupo socioeconômico do agente. A probabilidade
-    de seleção de cada origem é proporcional à população
-    associada ao ponto.
+    A origem é selecionada somente entre pontos pertencentes ao mesmo grupo
+    socioeconômico do agente. A probabilidade de seleção é proporcional à
+    população associada ao ponto.
 
-    Parameters
-    ----------
-    agents : list[Agent]
-        Lista de agentes sintéticos.
-
-    origins
-        GeoDataFrame contendo as origens disponíveis.
-
-    population_column : str, default="POP"
-        Coluna utilizada como peso populacional.
-
-    seed : int, default=42
-        Semente aleatória para garantir reprodutibilidade.
-
-    Returns
-    -------
-    list[Agent]
-        Lista de agentes com origin_id e origin_node atribuídos.
-
-    -------
-    
-    Agent
-    │
-    ├── income_group = LOW
-    │
-    ▼
-    filtra origens:
-    income_group == "low"
-    │
-    ▼
-    remove:
-    POP <= 0
-    node ausente
-    grupo ausente
-    │
-    ▼
-    calcula peso
-    POP da origem / POP total do grupo
-    │
-    ▼
-    sorteio
-    │
-    ▼
-    origin_id
-    origin_node
+    Os nós não são mais tratados como universais. Cada origem deve possuir
+    uma coluna por modo, por exemplo: ``node_car``, ``node_walk`` e
+    ``node_bike``. Esses valores são armazenados em
+    ``agent.origin_nodes``. O ``agent.origin_node`` só é definido
+    posteriormente, depois da escolha do modo.
     """
-
-    # ---------------------------------------------------------
-    # 1. Validações básicas
-    # ---------------------------------------------------------
 
     if not agents:
         raise ValueError(
             "A lista de agentes está vazia."
         )
 
+    node_columns = {
+        mode: f"{node_prefix}{mode}"
+        for mode in modes
+    }
+
     required_columns = {
         "origin_id",
-        "node",
         "income_group",
         population_column,
+        *node_columns.values(),
     }
 
     missing_columns = (
@@ -89,16 +51,11 @@ def assign_origins(
     if missing_columns:
         raise ValueError(
             "Colunas ausentes na base de origens: "
-            f"{sorted(missing_columns)}"
+            f"{sorted(missing_columns)}. "
+            "Recalcule os nós multimodais antes de executar o piloto."
         )
 
-    # Trabalhamos sobre uma cópia para não alterar
-    # o GeoDataFrame original.
     origins = origins.copy()
-
-    # ---------------------------------------------------------
-    # 2. Padroniza os dados
-    # ---------------------------------------------------------
 
     origins["income_group"] = (
         origins["income_group"]
@@ -112,20 +69,23 @@ def assign_origins(
         errors="coerce",
     )
 
-    origins["node"] = pd.to_numeric(
-        origins["node"],
-        errors="coerce",
-    )
+    for column in node_columns.values():
+        origins[column] = pd.to_numeric(
+            origins[column],
+            errors="coerce",
+        )
 
-    # ---------------------------------------------------------
-    # 3. Remove origens que não podem participar do sorteio
-    # ---------------------------------------------------------
-
-    valid_origins = origins[
+    valid_mask = (
         origins["income_group"].notna()
-        & origins["node"].notna()
         & origins[population_column].notna()
         & (origins[population_column] > 0)
+    )
+
+    for column in node_columns.values():
+        valid_mask &= origins[column].notna()
+
+    valid_origins = origins[
+        valid_mask
     ].copy()
 
     if valid_origins.empty:
@@ -133,33 +93,19 @@ def assign_origins(
             "Nenhuma origem válida disponível."
         )
 
-    # ---------------------------------------------------------
-    # 4. Gerador aleatório reproduzível
-    # ---------------------------------------------------------
-
     rng = np.random.default_rng(seed)
 
-    # ---------------------------------------------------------
-    # 5. Separa os agentes por grupo de renda
-    # ---------------------------------------------------------
-
-    agents_by_group = {}
+    agents_by_group: dict[str, list[Agent]] = {}
 
     for agent in agents:
-
         group = agent.income_group.value
 
         agents_by_group.setdefault(
             group,
-            []
+            [],
         ).append(agent)
 
-    # ---------------------------------------------------------
-    # 6. Sorteia as origens de cada grupo
-    # ---------------------------------------------------------
-
     for group, group_agents in agents_by_group.items():
-
         group_origins = valid_origins[
             valid_origins["income_group"]
             == group
@@ -171,7 +117,6 @@ def assign_origins(
                 f"para o grupo '{group}'."
             )
 
-        # Peso relativo de cada origem dentro do grupo.
         weights = (
             group_origins[population_column]
             / group_origins[population_column].sum()
@@ -184,15 +129,10 @@ def assign_origins(
             p=weights.to_numpy(),
         )
 
-        # -----------------------------------------------------
-        # 7. Atualiza os agentes
-        # -----------------------------------------------------
-
         for agent, position in zip(
             group_agents,
             selected_positions,
         ):
-
             selected_origin = (
                 group_origins.iloc[position]
             )
@@ -201,9 +141,15 @@ def assign_origins(
                 selected_origin["origin_id"]
             )
 
-            agent.origin_node = int(
-                selected_origin["node"]
-            )
+            agent.origin_nodes = {
+                mode: int(
+                    selected_origin[column]
+                )
+                for mode, column
+                in node_columns.items()
+            }
+
+            # Só será definido após a escolha modal.
+            agent.origin_node = None
 
     return agents
-
