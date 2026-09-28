@@ -333,6 +333,26 @@ class ValidateGTFSTemporalQualityTests(unittest.TestCase):
                 ]
             )
         )
+        self.assertTrue(
+            missing_row[
+                "missing_stop_time_summary"
+            ]
+        )
+        self.assertTrue(
+            missing_row[
+                "missing_connection_summary"
+            ]
+        )
+        self.assertFalse(
+            missing_row[
+                "nonpositive_scheduled_duration"
+            ]
+        )
+        self.assertFalse(
+            missing_row[
+                "two_or_fewer_raw_timepoints"
+            ]
+        )
 
 
 if __name__ == "__main__":
