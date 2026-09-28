@@ -645,7 +645,7 @@ def build_analysis_segments(
         edge: pd.Series,
         source_mode: str,
     ) -> str:
-        """Adiciona um segmento físico e devolva seu identificador"""
+        """Adiciona um segmento físico e devolve seu identificador"""
 
         nonlocal next_segment_index
 
