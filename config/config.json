@@ -1,6 +1,5 @@
 {
     "study_area": {
-        "network_type": "drive",
         "crs": "EPSG:31982",
         "place": "Porto Alegre, Rio Grande do Sul, Brasil",
         "districts": [
@@ -8,7 +7,12 @@
             "Farroupilha",
             "Santana",
             "Centro Histórico"
-        ]
+        ],
+        "network_types": {
+            "car": "drive",
+            "walk": "walk",
+            "bike": "bike"
+        }
     },
     "study_area_code": "4314902",
     "uf": "RS",
@@ -21,10 +25,13 @@
     "basic_households_variable": "v0007",
 
     "paths": {
-         "data": "data",
+        "data": "data",
 
         "graphs": "data/graph",
         "graph_file": "data/graph/rede-poa.graphml",
+        "graph_car": "data/graph/rede-poa-car.graphml",
+        "graph_walk": "data/graph/rede-poa-walk.graphml",
+        "graph_bike": "data/graph/rede-poa-bike.graphml",
         "graph_bomfim": "data/graph/rede-bomFim.graphml",
 
         "nodes": "data/01-nodes.gpkg",
@@ -39,13 +46,22 @@
         "origins_income": "data/o-d/origens_porto_alegre_income.gpkg"
     },
 
+    "routing": {
+        "implemented_modes": [
+            "walk",
+            "bike",
+            "car"
+        ],
+        "node_column_prefix": "node_",
+        "transit_status": "planned_gtfs"
+    },
+
     "analysis": {
         "entropy_base": 2,
         "buffer": 500,
         "max_trip_distance": 30000
     },
 
-    
     "income": {
         "variable": "renda_media_responsavel",
 
@@ -67,7 +83,6 @@
                 "max": null,
                 "share": 0.17857621
             }
-        
         }
     }
 }
