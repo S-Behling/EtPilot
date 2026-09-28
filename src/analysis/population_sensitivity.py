@@ -223,10 +223,6 @@ def _run_pilot(
         / "run.log"
     )
 
-    relative_output = run_dir.relative_to(
-        PROJECT_ROOT
-    )
-
     command = [
         sys.executable,
         "-m",
@@ -241,7 +237,7 @@ def _run_pilot(
         ),
         "--output-dir",
         str(
-            relative_output
+            run_dir
         ),
         "--skip-maps",
         "--skip-metadata",
