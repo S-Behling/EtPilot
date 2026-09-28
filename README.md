@@ -250,6 +250,7 @@ Write:
 ```text
 outputs/pilot/
 ├── segment_scenario_comparison.csv
+├── segment_scenario_comparison_summary.csv
 └── segment_scenario_comparison.gpkg
 ```
 
