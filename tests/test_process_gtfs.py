@@ -27,7 +27,8 @@ class ProcessGTFSTests(unittest.TestCase):
             "stops.txt": (
                 "stop_id,stop_name,stop_lat,stop_lon\n"
                 "S1,Parada 1,-30.0300,-51.2300\n"
-                "S2,Parada 2,-30.0200,-51.2200\n"
+                "S2,Parada 2,-30.0250,-51.2250\n"
+                "S3,Parada 3,-30.0200,-51.2200\n"
             ),
             "routes.txt": (
                 "route_id,agency_id,route_short_name,route_type\n"
@@ -38,15 +39,18 @@ class ProcessGTFSTests(unittest.TestCase):
                 "R1,WK,T1,SH1\n"
             ),
             "stop_times.txt": (
-                "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
-                "T1,23:50:00,23:50:00,S1,1\n"
+                "trip_id,arrival_time,departure_time,stop_id,stop_sequence,"
+                "shape_dist_traveled\n"
+                "T1,23:50:00,23:50:00,S1,1,0\n"
+                "T1,,,S2,2,5\n"
                 f"T1,25:10:00,25:10:00,"
-                f"{'SX' if invalid_stop_reference else 'S2'},2\n"
+                f"{'SX' if invalid_stop_reference else 'S3'},3,10\n"
             ),
             "shapes.txt": (
                 "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
                 "SH1,-30.0300,-51.2300,1\n"
-                "SH1,-30.0200,-51.2200,2\n"
+                "SH1,-30.0250,-51.2250,2\n"
+                "SH1,-30.0200,-51.2200,3\n"
             ),
         }
 
@@ -119,7 +123,7 @@ class ProcessGTFSTests(unittest.TestCase):
                 layer="stops_processed",
             )
 
-            second_stop = stop_times.loc[
+            middle_stop = stop_times.loc[
                 stop_times[
                     "stop_sequence"
                 ]
@@ -127,9 +131,37 @@ class ProcessGTFSTests(unittest.TestCase):
             ].iloc[
                 0
             ]
+            last_stop = stop_times.loc[
+                stop_times[
+                    "stop_sequence"
+                ]
+                == 3
+            ].iloc[
+                0
+            ]
 
             self.assertEqual(
-                second_stop[
+                middle_stop[
+                    "arrival_seconds"
+                ],
+                24
+                * 3600
+                + 30
+                * 60,
+            )
+            self.assertTrue(
+                middle_stop[
+                    "time_interpolated"
+                ]
+            )
+            self.assertEqual(
+                middle_stop[
+                    "time_interpolation_method"
+                ],
+                "shape_dist_traveled",
+            )
+            self.assertEqual(
+                last_stop[
                     "arrival_seconds"
                 ],
                 25
@@ -141,7 +173,13 @@ class ProcessGTFSTests(unittest.TestCase):
                 summary[
                     "n_stops"
                 ],
-                2,
+                3,
+            )
+            self.assertEqual(
+                summary[
+                    "stop_times_interpolated"
+                ],
+                1,
             )
             self.assertEqual(
                 summary[
