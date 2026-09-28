@@ -31,6 +31,7 @@ Thumbs.db
 # =========================
 data/ibge/
 data/censo_2022
+data/cnefe
 
 # =========================
 # Outputs gerados
