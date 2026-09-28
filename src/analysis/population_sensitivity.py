@@ -308,7 +308,60 @@ def _run_pilot(
             f"Consulte {log_path}"
         )
 
+    with (
+        run_dir
+        / "sensitivity_run_meta.json"
+    ).open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            {
+                "n_agents": int(
+                    n_agents
+                ),
+                "seed": int(
+                    seed
+                ),
+                "runtime_s": float(
+                    elapsed_s
+                ),
+            },
+            file,
+            ensure_ascii=False,
+            indent=2,
+        )
+
     return elapsed_s
+
+
+def _boolean_series(
+    values: pd.Series,
+) -> pd.Series:
+    """Normaliza valores booleanos lidos de CSV"""
+
+    if pd.api.types.is_bool_dtype(
+        values
+    ):
+        return values.fillna(
+            False
+        )
+
+    return (
+        values.astype(
+            "string"
+        )
+        .str.strip()
+        .str.lower()
+        .isin(
+            [
+                "true",
+                "1",
+                "yes",
+                "sim",
+            ]
+        )
+    )
 
 
 def _scenario_metrics(
@@ -327,10 +380,10 @@ def _scenario_metrics(
     )
 
     included = (
-        agents[
-            "analysis_included"
-        ].astype(
-            bool
+        _boolean_series(
+            agents[
+                "analysis_included"
+            ]
         )
         if "analysis_included"
         in agents.columns
@@ -341,10 +394,10 @@ def _scenario_metrics(
     )
 
     sufficient = statistics.loc[
-        statistics[
-            "sufficient_flow"
-        ].astype(
-            bool
+        _boolean_series(
+            statistics[
+                "sufficient_flow"
+            ]
         )
     ]
 
@@ -401,13 +454,11 @@ def _scenario_metrics(
             f"flow_ge_{threshold}_{scenario_name}"
         ] = (
             int(
-                statistics[
-                    column
-                ]
-                .astype(
-                    bool
-                )
-                .sum()
+                _boolean_series(
+                    statistics[
+                        column
+                    ]
+                ).sum()
             )
             if column in statistics.columns
             else 0
@@ -941,7 +992,27 @@ def main() -> None:
                 seed=args.seed,
             )
         ):
-            runtime_s = np.nan
+            runtime_meta_path = (
+                run_dir
+                / "sensitivity_run_meta.json"
+            )
+
+            if runtime_meta_path.exists():
+                with runtime_meta_path.open(
+                    "r",
+                    encoding="utf-8",
+                ) as file:
+                    runtime_s = float(
+                        json.load(
+                            file
+                        ).get(
+                            "runtime_s",
+                            np.nan,
+                        )
+                    )
+            else:
+                runtime_s = np.nan
+
             print(
                 f"  N={n_agents}: reutiliza execução existente"
             )
