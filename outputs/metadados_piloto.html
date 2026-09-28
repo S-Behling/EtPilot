@@ -134,11 +134,11 @@ code {
 <header>
     <h1>Metadados do piloto EtPilot</h1>
     <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
-    <p>Documento gerado em UTC: 2026-09-28T07:19:24.330882+00:00</p>
+    <p>Documento gerado em UTC: 2026-09-28T07:41:40.727776+00:00</p>
 </header>
 <nav><a href="#variaveis">Variáveis principais</a><a href="#parametros">Parâmetros de configuração</a><a href="#metodos">Métodos de análise</a><a href="#estatisticas">Estatísticas</a><a href="#limpeza">Métodos de limpeza e validação</a><a href="#arquivos">Arquivos gerados</a></nav>
 <main>
-    <div class="cards"><div class="card"><span class="card-number">69</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">23</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">15</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">18</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">60</span><span class="card-label">arquivos catalogados</span></div></div>
+    <div class="cards"><div class="card"><span class="card-number">79</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">28</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">17</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">20</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">61</span><span class="card-label">arquivos catalogados</span></div></div>
     <section id="variaveis"><h2>Variáveis principais</h2><p>Variáveis centrais usadas na simulação, no roteamento, na harmonização, nas métricas e no processamento do GTFS</p><table class="dataframe metadata-table">
   <thead>
     <tr style="text-align: right;">
@@ -563,6 +563,66 @@ code {
       <td>m</td>
       <td>Distância ao longo do shape entre duas paradas consecutivas quando a projeção geométrica é válida</td>
     </tr>
+    <tr>
+      <td>access_walk_distance_m</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>m</td>
+      <td>Distância total percorrida a pé entre a origem e a parada de embarque</td>
+    </tr>
+    <tr>
+      <td>access_walk_time_s</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>s</td>
+      <td>Tempo total de caminhada entre a origem e a parada de embarque</td>
+    </tr>
+    <tr>
+      <td>initial_wait_time_s</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>s</td>
+      <td>Tempo entre a chegada à parada de embarque e a partida do primeiro ônibus</td>
+    </tr>
+    <tr>
+      <td>in_vehicle_time_s</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>s</td>
+      <td>Soma do tempo programado dentro dos veículos usados na viagem</td>
+    </tr>
+    <tr>
+      <td>transfer_and_dwell_time_s</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>s</td>
+      <td>Tempo acumulado entre conexões que não corresponde ao deslocamento dentro do veículo</td>
+    </tr>
+    <tr>
+      <td>n_boardings</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>embarques</td>
+      <td>Quantidade de viagens GTFS distintas embarcadas ao longo do itinerário</td>
+    </tr>
+    <tr>
+      <td>n_transfers</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>transferências</td>
+      <td>Quantidade de trocas de viagem GTFS ao longo do itinerário</td>
+    </tr>
+    <tr>
+      <td>mean_in_vehicle_time_per_connection_s</td>
+      <td>diagnóstico de transporte coletivo</td>
+      <td>s/conexão</td>
+      <td>Tempo médio dentro do veículo por conexão GTFS usada na rota, empregado como diagnóstico de qualidade temporal</td>
+    </tr>
+    <tr>
+      <td>egress_walk_distance_m</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>m</td>
+      <td>Distância total percorrida a pé entre a parada de desembarque e o destino</td>
+    </tr>
+    <tr>
+      <td>egress_walk_time_s</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>s</td>
+      <td>Tempo total de caminhada entre a parada de desembarque e o destino</td>
+    </tr>
   </tbody>
 </table></section><section id="parametros"><h2>Parâmetros de configuração</h2><p>Parâmetros que controlam a população sintética, as escolhas comportamentais, a análise espacial e a preparação do transporte coletivo</p><table class="dataframe metadata-table">
   <thead>
@@ -650,6 +710,55 @@ code {
       <td>max_scheduled_trips</td>
       <td>categoria</td>
       <td>Regra usada para selecionar uma data de serviço representativa do feed</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.max_access_walk_m</td>
+      <td>1500</td>
+      <td>m</td>
+      <td>Distância máxima de caminhada entre a origem e uma parada candidata de embarque</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.max_egress_walk_m</td>
+      <td>1500</td>
+      <td>m</td>
+      <td>Distância máxima de caminhada entre uma parada candidata de desembarque e o destino</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.minimum_transfer_time_s</td>
+      <td>60</td>
+      <td>s</td>
+      <td>Tempo mínimo provisório exigido para realizar transferência entre viagens na mesma parada</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.max_total_travel_time_s</td>
+      <td>14400</td>
+      <td>s</td>
+      <td>Horizonte máximo provisório considerado em uma consulta de transporte coletivo</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.diagnostics.sample_size</td>
+      <td>10</td>
+      <td>viagens OD</td>
+      <td>Quantidade de pares origem-destino usada no diagnóstico técnico do roteador temporal</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.diagnostics.departure_time_s</td>
+      <td>28800</td>
+      <td>s desde o início do dia de serviço</td>
+      <td>Horário de partida comum usado nas consultas do diagnóstico técnico</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.diagnostics.seed</td>
+      <td>42</td>
+      <td>inteiro</td>
+      <td>Semente pseudoaleatória usada para selecionar os pares origem-destino do diagnóstico</td>
       <td>config/config.json</td>
     </tr>
     <tr>
@@ -1190,6 +1299,31 @@ code {
       <td>_build_service_day_profile</td>
       <td>Calcula o número de viagens programadas por data e identifica uma data de referência pela maior oferta do feed</td>
     </tr>
+    <tr>
+      <td>Roteamento temporal por varredura de conexões</td>
+      <td>TransitRouter.route</td>
+      <td>Procura a chegada mais cedo percorrendo as conexões GTFS em ordem temporal e combinando acesso e egresso pela rede de caminhada</td>
+    </tr>
+    <tr>
+      <td>Busca de paradas acessíveis pela rede de caminhada</td>
+      <td>TransitRouter._candidate_stops</td>
+      <td>Usa Dijkstra limitado por distância para identificar múltiplas paradas alcançáveis a partir da origem ou do destino</td>
+    </tr>
+    <tr>
+      <td>Transferência entre viagens no mesmo stop_id</td>
+      <td>TransitRouter.route</td>
+      <td>Permite a troca entre viagens GTFS na mesma parada quando o intervalo disponível atende ao tempo mínimo de transferência configurado</td>
+    </tr>
+    <tr>
+      <td>Diagnóstico amostral do roteamento temporal</td>
+      <td>run_diagnostics</td>
+      <td>Seleciona pares origem-destino reprodutíveis das bases do piloto e resume cobertura, tempos, caminhada de acesso e egresso e transferências</td>
+    </tr>
+    <tr>
+      <td>Validação de continuidade do itinerário de transporte coletivo</td>
+      <td>TransitRouter.route</td>
+      <td>Exige continuidade entre a parada de destino de uma conexão e a parada de origem da conexão seguinte e preserva a ordem numérica de stop_sequence em empates temporais</td>
+    </tr>
   </tbody>
 </table></section><section id="estatisticas"><h2>Estatísticas</h2><p>Estatísticas e medidas resumidas usadas nos diagnósticos e comparações</p><table class="dataframe metadata-table">
   <thead>
@@ -1258,6 +1392,14 @@ code {
     <tr>
       <td>Qualidade média de harmonização</td>
       <td>Resume a qualidade das correspondências geométricas entre arestas modais e segmentos físicos</td>
+    </tr>
+    <tr>
+      <td>Contagem de conexões com duração zero</td>
+      <td>Quantifica conexões GTFS cujo tempo entre partida e chegada é igual a zero para diagnosticar limitações do preenchimento temporal</td>
+    </tr>
+    <tr>
+      <td>Tempo médio por conexão veicular</td>
+      <td>Divide o tempo dentro do veículo pelo número de conexões GTFS usadas na rota para identificar itinerários temporalmente suspeitos</td>
     </tr>
   </tbody>
 </table></section><section id="limpeza"><h2>Métodos de limpeza e validação</h2><p>Operações de limpeza, validação, padronização e controle de consistência aplicadas às bases</p><table class="dataframe metadata-table">
@@ -1339,6 +1481,14 @@ code {
     <tr>
       <td>Deduplicação agente × segmento</td>
       <td>Usa apenas uma observação por agente e segmento para composição socioeconômica e evita inflar pesos por repetição de passagem</td>
+    </tr>
+    <tr>
+      <td>Ordenação numérica de stop_sequence em empates temporais</td>
+      <td>Ordena conexões com o mesmo horário usando a sequência numérica da parada e evita a ordenação lexicográfica de identificadores como 19 antes de 2</td>
+    </tr>
+    <tr>
+      <td>Validação de continuidade entre conexões GTFS</td>
+      <td>Confere se cada conexão do itinerário começa na parada onde a conexão anterior terminou antes de aceitar o resultado do roteamento</td>
     </tr>
   </tbody>
 </table></section><section id="arquivos"><h2>Arquivos gerados</h2><p>Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto</p><table class="dataframe metadata-table">
@@ -1622,7 +1772,7 @@ code {
       <td>Resumo diagnóstico da associação das paradas à caminhada e da tabela temporal de ônibus</td>
       <td>não</td>
       <td>sim</td>
-      <td>683</td>
+      <td>840</td>
     </tr>
     <tr>
       <td>agents_baseline.csv</td>
@@ -1877,13 +2027,22 @@ code {
       <td>542</td>
     </tr>
     <tr>
+      <td>transit_routing_diagnostics.csv</td>
+      <td>outputs/pilot/transit_routing_diagnostics.csv</td>
+      <td>roteamento de transporte coletivo</td>
+      <td>Amostra de consultas origem-destino usada para validar cobertura, tempos, acesso, egresso e transferências do roteador temporal de ônibus</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>28018</td>
+    </tr>
+    <tr>
       <td>metadados_piloto.xlsx</td>
       <td>outputs/metadados_piloto.xlsx</td>
       <td>documentação</td>
       <td>Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td></td>
+      <td>27141</td>
     </tr>
     <tr>
       <td>metadados_piloto.html</td>
@@ -1892,7 +2051,7 @@ code {
       <td>Relatório HTML navegável com a documentação metodológica consolidada do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td></td>
+      <td>74339</td>
     </tr>
   </tbody>
 </table></section>
