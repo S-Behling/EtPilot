@@ -765,6 +765,57 @@ def _orientation_deg(
     )
 
 
+def _local_orientation_deg(
+    geometry,
+    reference_point,
+    *,
+    half_window_m: float = 25.0,
+) -> float | None:
+    """Calcula a orientação local da linha próxima ao segmento candidato"""
+
+    if (
+        geometry is None
+        or geometry.is_empty
+        or geometry.length <= 0
+    ):
+        return None
+
+    projected = float(
+        geometry.project(
+            reference_point
+        )
+    )
+
+    start = max(
+        0.0,
+        projected
+        - half_window_m,
+    )
+    end = min(
+        float(
+            geometry.length
+        ),
+        projected
+        + half_window_m,
+    )
+
+    if end <= start:
+        return _orientation_deg(
+            geometry
+        )
+
+    local_geometry = substring(
+        geometry,
+        start,
+        end,
+        normalized=False,
+    )
+
+    return _orientation_deg(
+        local_geometry
+    )
+
+
 def _angle_difference_deg(
     first: float | None,
     second: float | None,
@@ -877,9 +928,6 @@ def map_transit_connections_to_analysis_segments(
         index=False
     ):
         geometry = row.geometry
-        connection_angle = _orientation_deg(
-            geometry
-        )
         search_geometry = geometry.buffer(
             tolerance_m
         )
@@ -905,9 +953,19 @@ def map_transit_connections_to_analysis_segments(
             ):
                 continue
 
+            segment_midpoint = segment_geometry.interpolate(
+                0.5,
+                normalized=True,
+            )
+            local_connection_angle = (
+                _local_orientation_deg(
+                    geometry,
+                    segment_midpoint,
+                )
+            )
             angle_difference = (
                 _angle_difference_deg(
-                    connection_angle,
+                    local_connection_angle,
                     _orientation_deg(
                         segment_geometry
                     ),
