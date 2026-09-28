@@ -1,0 +1,13 @@
+# Liberação do piloto
+
+# Executar modulo pilot.py diretamente no terminal
+
+python -m src.simulation.run_pilot
+
+# Verificar se x biblioteca esta instalada no ambiente
+
+python -c "import matplotlib; print(matplotlib.__version__)"
+
+# Aplicar testes
+python -m unittest tests.test_multimodal_router tests.test_edge_usage tests.test_analysis_segments tests.test_entropy tests.test_edge_statistics tests.test_scenario_comparison tests.test_pilot_maps
+

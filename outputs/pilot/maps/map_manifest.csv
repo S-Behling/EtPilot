@@ -1,0 +1,7 @@
+map_id,metric,scenario,supported_only,n_segments_plotted,filename
+h_soc_baseline_all,h_soc,baseline,False,6723,h_soc_baseline_all.png
+h_soc_baseline_supported,h_soc,baseline,True,122,h_soc_baseline_supported.png
+h_soc_differentiated_all,h_soc,differentiated,False,6662,h_soc_differentiated_all.png
+h_soc_differentiated_supported,h_soc,differentiated,True,149,h_soc_differentiated_supported.png
+delta_h_soc_all,delta_h_soc,paired,False,4748,delta_h_soc_all.png
+delta_h_soc_supported,delta_h_soc,paired,True,26,delta_h_soc_supported.png
