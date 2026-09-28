@@ -384,6 +384,10 @@ def _save_outputs(
     scenario_comparison: pd.DataFrame,
     scenario_comparison_geodata: gpd.GeoDataFrame,
     scenario_comparison_summary: dict,
+    transit_mapping: pd.DataFrame,
+    transit_geometry_diagnostics: pd.DataFrame,
+    transit_match_diagnostics: pd.DataFrame,
+    transit_spatial_summary: dict,
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -458,6 +462,38 @@ def _save_outputs(
 
     used_match_report.to_csv(
         OUTPUT_DIR / "analysis_segment_used_match_report.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    transit_mapping.to_csv(
+        OUTPUT_DIR
+        / "transit_connection_to_analysis_segment.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    transit_geometry_diagnostics.to_csv(
+        OUTPUT_DIR
+        / "transit_connection_geometry_diagnostics.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    transit_match_diagnostics.to_csv(
+        OUTPUT_DIR
+        / "transit_connection_match_diagnostics.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    pd.DataFrame(
+        [
+            transit_spatial_summary,
+        ]
+    ).to_csv(
+        OUTPUT_DIR
+        / "transit_spatial_match_report.csv",
         index=False,
         encoding="utf-8",
     )
