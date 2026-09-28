@@ -1050,11 +1050,8 @@ def main() -> None:
         ],
     )
 
-    transit_connections = pd.read_parquet(
-        gtfs_data_dir
-        / transit_network_config[
-            "routable_connections_file"
-        ]
+    transit_connections = (
+        transit_router.connections
     )
 
     transit_shapes = gpd.read_file(
