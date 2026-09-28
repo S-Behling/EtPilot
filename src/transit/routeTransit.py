@@ -372,10 +372,13 @@ class TransitRouter:
             ]
         )
         connections_filename = network_config.get(
-            "routable_connections_file",
-            network_config[
-                "connections_file"
-            ],
+            "spatial_routable_connections_file",
+            network_config.get(
+                "routable_connections_file",
+                network_config[
+                    "connections_file"
+                ],
+            ),
         )
 
         connections = pd.read_parquet(
