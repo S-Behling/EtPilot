@@ -6,6 +6,7 @@ import pandas as pd
 from shapely.geometry import Point
 
 from src.transit.buildTransitNetwork import (
+    _build_routing_quality_filter,
     _build_scheduled_connections,
     _build_service_day_profile,
     _connect_stops_to_walk_network,
@@ -262,6 +263,102 @@ class BuildTransitNetworkTests(unittest.TestCase):
                 "weekday"
             ],
             "segunda-feira",
+        )
+
+    def test_filters_temporally_invalid_trips_for_routing(self):
+        # Mantém a tabela completa e marca somente as viagens aptas ao roteamento
+        quality = pd.DataFrame(
+            {
+                "trip_id": [
+                    "OK",
+                    "ZERO",
+                    "FAST",
+                    "MISSING",
+                    "INFEASIBLE",
+                ],
+                "missing_stop_time_summary": [
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                ],
+                "missing_connection_summary": [
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                ],
+                "nonpositive_scheduled_duration": [
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                ],
+                "infeasible_temporal_regularization": [
+                    False,
+                    True,
+                    False,
+                    True,
+                    True,
+                ],
+                "implied_shape_speed_kmh": [
+                    22.0,
+                    pd.NA,
+                    120.0,
+                    pd.NA,
+                    20.0,
+                ],
+            }
+        )
+
+        filtered = _build_routing_quality_filter(
+            quality,
+            quality_config={
+                "exclude_missing_temporal_summary": True,
+                "exclude_nonpositive_duration": True,
+                "exclude_infeasible_regularization": True,
+                "max_implied_shape_speed_kmh": 80,
+            },
+        )
+
+        routable = set(
+            filtered.loc[
+                filtered[
+                    "routable_for_transit"
+                ],
+                "trip_id",
+            ]
+        )
+
+        self.assertEqual(
+            routable,
+            {
+                "OK",
+            },
+        )
+
+        fast = filtered.loc[
+            filtered[
+                "trip_id"
+            ]
+            == "FAST"
+        ].iloc[
+            0
+        ]
+
+        self.assertTrue(
+            fast[
+                "routing_excluded_implied_speed"
+            ]
+        )
+        self.assertEqual(
+            fast[
+                "routing_quality_status"
+            ],
+            "implied_speed_above_limit",
         )
 
 
