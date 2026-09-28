@@ -36,6 +36,11 @@ data/bairros
 data/grade
 
 # =========================
+# GTFS baixado e processado localmente
+# =========================
+data/gtfs/
+
+# =========================
 # Outputs gerados
 # =========================
 interim/
