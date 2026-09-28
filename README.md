@@ -916,6 +916,46 @@ The article package also produces:
 - a figure/map set and a figure manifest;
 - a reproducibility manifest and a concise results report.
 
+## Article v02 — route-focused visual package
+
+The `article_v02` branch preserves the complete v01 pipeline and adds a
+route-focused visual layer. It reuses existing nominal simulations by default,
+so generating the new figures does not trigger expensive rerouting.
+
+Run:
+
+```bash
+python -m src.analysis.article_v02
+```
+
+The main v02 outputs are written to:
+
+```text
+outputs/v02 artigo/
+```
+
+The visual package includes:
+
+- one individual-route map for each income class;
+- one map with all income classes together;
+- one multi-seed aggregated flow map for each class;
+- one class-dominance map by network segment;
+- observed modal-share comparison between baseline and differentiated
+  behavior for each income class;
+- behavioral-change rates for purpose, destination and mode;
+- route-overlap comparison by income class;
+- twelve class × mode maps plus one 3 × 4 comparison panel.
+
+The present pilot has one simulated trip per agent per realization. Therefore,
+the v02 "daily aggregate" maps are explicitly labeled as a **daily spatial
+proxy**, not as a 24-hour activity-schedule reconstruction.
+
+To complete nominal seeds only when they are missing:
+
+```bash
+python -m src.analysis.article_v02 --run-core-if-missing --min-nominal-seeds 5
+```
+
 ## Remaining work to close the pilot
 
 Complete the pilot in this order:
