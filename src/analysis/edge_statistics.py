@@ -28,7 +28,6 @@ DEFAULT_INCOME_GROUPS = tuple(
 DEFAULT_MODES = tuple(
     mode.value
     for mode in TravelMode
-    if mode is not TravelMode.TRANSIT
 )
 DEFAULT_PURPOSES = tuple(
     purpose.value
