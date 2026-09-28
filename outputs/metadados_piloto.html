@@ -134,11 +134,11 @@ code {
 <header>
     <h1>Metadados do piloto EtPilot</h1>
     <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
-    <p>Documento gerado em UTC: 2026-09-28T07:41:40.727776+00:00</p>
+    <p>Documento gerado em UTC: 2026-09-28T07:52:52.803295+00:00</p>
 </header>
 <nav><a href="#variaveis">Variáveis principais</a><a href="#parametros">Parâmetros de configuração</a><a href="#metodos">Métodos de análise</a><a href="#estatisticas">Estatísticas</a><a href="#limpeza">Métodos de limpeza e validação</a><a href="#arquivos">Arquivos gerados</a></nav>
 <main>
-    <div class="cards"><div class="card"><span class="card-number">79</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">28</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">17</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">20</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">61</span><span class="card-label">arquivos catalogados</span></div></div>
+    <div class="cards"><div class="card"><span class="card-number">81</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">29</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">19</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">21</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">62</span><span class="card-label">arquivos catalogados</span></div></div>
     <section id="variaveis"><h2>Variáveis principais</h2><p>Variáveis centrais usadas na simulação, no roteamento, na harmonização, nas métricas e no processamento do GTFS</p><table class="dataframe metadata-table">
   <thead>
     <tr style="text-align: right;">
@@ -610,6 +610,18 @@ code {
       <td>diagnóstico de transporte coletivo</td>
       <td>s/conexão</td>
       <td>Tempo médio dentro do veículo por conexão GTFS usada na rota, empregado como diagnóstico de qualidade temporal</td>
+    </tr>
+    <tr>
+      <td>missing_stop_time_summary</td>
+      <td>qualidade temporal do GTFS</td>
+      <td>booleano</td>
+      <td>Indica viagem sem resumo temporal derivado de stop_times após a associação por trip_id</td>
+    </tr>
+    <tr>
+      <td>missing_connection_summary</td>
+      <td>qualidade temporal do GTFS</td>
+      <td>booleano</td>
+      <td>Indica viagem sem conexões temporais processadas após a associação por trip_id</td>
     </tr>
     <tr>
       <td>egress_walk_distance_m</td>
@@ -1324,6 +1336,11 @@ code {
       <td>TransitRouter.route</td>
       <td>Exige continuidade entre a parada de destino de uma conexão e a parada de origem da conexão seguinte e preserva a ordem numérica de stop_sequence em empates temporais</td>
     </tr>
+    <tr>
+      <td>Diagnóstico temporal por viagem GTFS</td>
+      <td>build_trip_temporal_quality</td>
+      <td>Resume por trip_id a quantidade de pontos temporais originais, a duração programada, a incidência de conexões de duração zero e a velocidade implícita pelo comprimento do shape</td>
+    </tr>
   </tbody>
 </table></section><section id="estatisticas"><h2>Estatísticas</h2><p>Estatísticas e medidas resumidas usadas nos diagnósticos e comparações</p><table class="dataframe metadata-table">
   <thead>
@@ -1400,6 +1417,14 @@ code {
     <tr>
       <td>Tempo médio por conexão veicular</td>
       <td>Divide o tempo dentro do veículo pelo número de conexões GTFS usadas na rota para identificar itinerários temporalmente suspeitos</td>
+    </tr>
+    <tr>
+      <td>Velocidade implícita pelo shape</td>
+      <td>Relaciona o comprimento geométrico do shape à duração programada da viagem para diagnosticar a coerência temporal do GTFS processado</td>
+    </tr>
+    <tr>
+      <td>Participação de conexões de duração zero por viagem</td>
+      <td>Mede a proporção de conexões consecutivas com tempo veicular igual a zero dentro de cada trip_id</td>
     </tr>
   </tbody>
 </table></section><section id="limpeza"><h2>Métodos de limpeza e validação</h2><p>Operações de limpeza, validação, padronização e controle de consistência aplicadas às bases</p><table class="dataframe metadata-table">
@@ -1489,6 +1514,10 @@ code {
     <tr>
       <td>Validação de continuidade entre conexões GTFS</td>
       <td>Confere se cada conexão do itinerário começa na parada onde a conexão anterior terminou antes de aceitar o resultado do roteamento</td>
+    </tr>
+    <tr>
+      <td>Preservação explícita de valores ausentes em diagnósticos temporais</td>
+      <td>Mantém viagens sem duração ou sem conexões como valores ausentes e evita classificá-las como duração não positiva ou como baixa quantidade de pontos temporais</td>
     </tr>
   </tbody>
 </table></section><section id="arquivos"><h2>Arquivos gerados</h2><p>Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto</p><table class="dataframe metadata-table">
@@ -2036,13 +2065,22 @@ code {
       <td>28018</td>
     </tr>
     <tr>
+      <td>gtfs_trip_temporal_quality.csv</td>
+      <td>outputs/pilot/gtfs_trip_temporal_quality.csv</td>
+      <td>qualidade temporal do GTFS</td>
+      <td>Diagnóstico por trip_id com duração programada, pontos temporais originais, conexões de duração zero e velocidade implícita pelo shape</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>5915237</td>
+    </tr>
+    <tr>
       <td>metadados_piloto.xlsx</td>
       <td>outputs/metadados_piloto.xlsx</td>
       <td>documentação</td>
       <td>Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td>27141</td>
+      <td>27138</td>
     </tr>
     <tr>
       <td>metadados_piloto.html</td>
