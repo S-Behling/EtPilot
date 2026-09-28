@@ -13,6 +13,7 @@ from collections.abc import Mapping
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from shapely.ops import unary_union
 
 from src.domain.enums import TravelMode
 from src.trajectory.transit_usage import (
@@ -467,6 +468,93 @@ def _next_analysis_segment_index(
     )
 
 
+def _extract_line_parts(
+    geometry,
+) -> list:
+    """Extrai recursivamente componentes lineares com comprimento positivo"""
+
+    if (
+        geometry is None
+        or geometry.is_empty
+    ):
+        return []
+
+    if geometry.geom_type == "LineString":
+        return (
+            [
+                geometry,
+            ]
+            if geometry.length > 1e-6
+            else []
+        )
+
+    if hasattr(
+        geometry,
+        "geoms",
+    ):
+        parts = []
+
+        for part in geometry.geoms:
+            parts.extend(
+                _extract_line_parts(
+                    part
+                )
+            )
+
+        return parts
+
+    return []
+
+
+def _line_sort_key(
+    geometry,
+) -> tuple:
+    """Cria uma chave determinística ignorando a direção da linha"""
+
+    coordinates = tuple(
+        (
+            round(
+                float(
+                    coordinate[
+                        0
+                    ]
+                ),
+                3,
+            ),
+            round(
+                float(
+                    coordinate[
+                        1
+                    ]
+                ),
+                3,
+            ),
+        )
+        for coordinate in geometry.coords
+    )
+
+    reverse = tuple(
+        reversed(
+            coordinates
+        )
+    )
+
+    canonical = min(
+        coordinates,
+        reverse,
+    )
+
+    return (
+        round(
+            float(
+                geometry.length
+            ),
+            3,
+        ),
+        canonical,
+    )
+
+
 def integrate_transit_physical_network(
     analysis_segments: gpd.GeoDataFrame,
     segment_mapping: pd.DataFrame,
@@ -583,73 +671,125 @@ def integrate_transit_physical_network(
         analysis_segments
     )
 
-    exclusive_segment_rows = []
-    exclusive_mapping_rows = []
-    exclusive_stage = {}
+    exclusive_mapping = pd.DataFrame()
+    exclusive_diagnostics = pd.DataFrame()
 
-    for offset, row in enumerate(
-        unmatched.itertuples(
-            index=False
-        )
-    ):
-        segment_id = (
-            f"S_{next_index + offset:07d}"
-        )
-
-        exclusive_segment_rows.append(
-            {
-                "analysis_segment_id": segment_id,
-                "source_mode": TravelMode.TRANSIT.value,
-                "source_modal_edge_id": str(
-                    row.modal_edge_id
-                ),
-                "strict_key": (
-                    "transit_exclusive:"
-                    + str(
-                        row.transit_physical_edge_id
-                    )
-                ),
-                "osmid_signature": "",
-                "osmid_set": frozenset(),
-                "name_norm": "",
-                "highway_norm": "transit",
-                "length_m": float(
-                    row.geometry.length
-                ),
-                "geometry": row.geometry,
-            }
-        )
-
-        exclusive_mapping_rows.append(
-            {
-                "modal_edge_id": str(
-                    row.modal_edge_id
-                ),
-                "mode": TravelMode.TRANSIT.value,
-                "analysis_segment_id": segment_id,
-                "match_method": "gtfs_exclusive",
-                "match_quality": 1.0,
-                "segment_coverage": 1.0,
-                "shape_coverage": 1.0,
-                "angle_difference_deg": 0.0,
-                "accepted_by": "exclusive",
-                "mapping_scope": "full_transit_physical_network",
-                "match_stage": "exclusive",
-            }
-        )
-
-        exclusive_stage[
-            str(
-                row.transit_physical_edge_id
+    if not unmatched.empty:
+        exclusive_union = unary_union(
+            list(
+                unmatched.geometry
             )
-        ] = segment_id
+        )
+        line_parts = sorted(
+            _extract_line_parts(
+                exclusive_union
+            ),
+            key=_line_sort_key,
+        )
 
-    if exclusive_segment_rows:
+        exclusive_segment_rows = []
+
+        for offset, geometry in enumerate(
+            line_parts
+        ):
+            segment_id = (
+                f"S_{next_index + offset:07d}"
+            )
+
+            exclusive_segment_rows.append(
+                {
+                    "analysis_segment_id": segment_id,
+                    "source_mode": TravelMode.TRANSIT.value,
+                    "source_modal_edge_id": "transit_union",
+                    "strict_key": (
+                        f"transit_exclusive_union:{offset + 1:07d}"
+                    ),
+                    "osmid_signature": "",
+                    "osmid_set": frozenset(),
+                    "name_norm": "",
+                    "highway_norm": "transit",
+                    "length_m": float(
+                        geometry.length
+                    ),
+                    "geometry": geometry,
+                }
+            )
+
+        if not exclusive_segment_rows:
+            raise RuntimeError(
+                "A união geométrica dos trechos GTFS exclusivos ficou vazia"
+            )
+
         exclusive_segments = gpd.GeoDataFrame(
             exclusive_segment_rows,
             geometry="geometry",
             crs=analysis_segments.crs,
         )
+
+        unmatched_input = unmatched[
+            [
+                "modal_edge_id",
+                "transit_physical_edge_id",
+                "shape_id",
+                "geometry",
+            ]
+        ].copy()
+        unmatched_input[
+            "connection_id"
+        ] = unmatched_input[
+            "transit_physical_edge_id"
+        ].astype(
+            "string"
+        )
+
+        (
+            exclusive_mapping,
+            exclusive_diagnostics,
+        ) = map_transit_connections_to_analysis_segments(
+            unmatched_input,
+            analysis_segments=exclusive_segments,
+            tolerance_m=0.5,
+            min_coverage=0.80,
+            max_angle_difference_deg=float(
+                fallback_config[
+                    "max_angle_difference_deg"
+                ]
+            ),
+            match_method="gtfs_exclusive_network",
+            mapping_scope="transit_exclusive_union",
+            match_stage="exclusive",
+        )
+
+        mapped_exclusive_ids = set(
+            exclusive_mapping[
+                "modal_edge_id"
+            ].astype(
+                str
+            )
+        )
+        still_unmapped = (
+            set(
+                unmatched[
+                    "modal_edge_id"
+                ].astype(
+                    str
+                )
+            )
+            - mapped_exclusive_ids
+        )
+
+        if still_unmapped:
+            missing_sample = sorted(
+                still_unmapped
+            )[
+                :10
+            ]
+
+            raise RuntimeError(
+                "A rede transit exclusiva não recobriu todos os trechos "
+                f"físicos GTFS: {len(still_unmapped)} ausentes | "
+                f"amostra={missing_sample}"
+            )
 
         analysis_segments = pd.concat(
             [
@@ -668,9 +808,7 @@ def integrate_transit_physical_network(
         transit_mapping = pd.concat(
             [
                 transit_mapping,
-                pd.DataFrame(
-                    exclusive_mapping_rows
-                ),
+                exclusive_mapping,
             ],
             ignore_index=True,
             sort=False,
@@ -688,32 +826,52 @@ def integrate_transit_physical_network(
     if not diagnostics.empty:
         diagnostics = diagnostics.copy()
 
-        unmatched_mask = diagnostics[
-            "connection_id"
-        ].astype(
-            str
-        ).isin(
-            set(
-                exclusive_stage
+        if not exclusive_diagnostics.empty:
+            exclusive_lookup = (
+                exclusive_diagnostics.set_index(
+                    "connection_id"
+                )
             )
-        )
 
-        diagnostics.loc[
-            unmatched_mask,
-            "matched_segments",
-        ] = 1
-        diagnostics.loc[
-            unmatched_mask,
-            "shape_coverage_pct",
-        ] = 100.0
-        diagnostics.loc[
-            unmatched_mask,
-            "match_stage",
-        ] = "exclusive"
-        diagnostics.loc[
-            unmatched_mask,
-            "final_match_stage",
-        ] = "exclusive"
+            for row_index in diagnostics.index:
+                physical_edge_id = str(
+                    diagnostics.loc[
+                        row_index,
+                        "connection_id",
+                    ]
+                )
+
+                if physical_edge_id not in exclusive_lookup.index:
+                    continue
+
+                exclusive_row = exclusive_lookup.loc[
+                    physical_edge_id
+                ]
+
+                diagnostics.loc[
+                    row_index,
+                    "matched_segments",
+                ] = int(
+                    exclusive_row[
+                        "matched_segments"
+                    ]
+                )
+                diagnostics.loc[
+                    row_index,
+                    "shape_coverage_pct",
+                ] = float(
+                    exclusive_row[
+                        "shape_coverage_pct"
+                    ]
+                )
+                diagnostics.loc[
+                    row_index,
+                    "match_stage",
+                ] = "exclusive"
+                diagnostics.loc[
+                    row_index,
+                    "final_match_stage",
+                ] = "exclusive"
 
     expected = set(
         transit_physical_edges[
@@ -765,7 +923,8 @@ def summarize_transit_physical_integration(
     if transit_mapping.empty:
         primary = 0
         fallback = 0
-        exclusive = 0
+        exclusive_edges = 0
+        exclusive_segments = 0
     else:
         grouped = (
             transit_mapping.groupby(
@@ -787,11 +946,20 @@ def summarize_transit_physical_integration(
                 0,
             )
         )
-        exclusive = int(
+        exclusive_edges = int(
             grouped.get(
                 "exclusive",
                 0,
             )
+        )
+        exclusive_segments = int(
+            transit_mapping.loc[
+                transit_mapping[
+                    "match_stage"
+                ]
+                == "exclusive",
+                "analysis_segment_id",
+            ].nunique()
         )
 
     mean_coverage = (
@@ -818,11 +986,12 @@ def summarize_transit_physical_integration(
         "transit_physical_edges": total,
         "primary_matches": primary,
         "fallback_matches": fallback,
-        "exclusive_transit_segments": exclusive,
+        "exclusive_transit_edges": exclusive_edges,
+        "exclusive_transit_segments": exclusive_segments,
         "mapped_transit_physical_edges": (
             primary
             + fallback
-            + exclusive
+            + exclusive_edges
         ),
         "mean_shape_coverage_pct": mean_coverage,
         "median_shape_coverage_pct": median_coverage,
