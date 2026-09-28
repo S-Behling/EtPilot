@@ -1088,7 +1088,8 @@ def main() -> None:
     print(
         "Modos roteáveis nesta etapa: "
         + ", ".join(implemented_modes)
-        + ". Transit permanece planejado para GTFS."
+        + ". Transit possui dados GTFS preparados, mas ainda não entra "
+        "no roteamento do run_pilot."
     )
     print(
         f"Roteamento: shortest path por '{routing_weight}'."
@@ -1114,7 +1115,22 @@ def main() -> None:
         "A escolha modal aplica resposta provisória à distância OD "
         "antes do roteamento e mantém os mesmos parâmetros nos dois cenários."
     )
-    print(f"Resultados salvos em: {OUTPUT_DIR.resolve()}")
+
+    from src.reporting.exportPilotMetadata import (
+        export_pilot_metadata,
+    )
+
+    metadata_path = export_pilot_metadata(
+        project_root=PROJECT_ROOT
+    )
+
+    print(
+        "Metadados do piloto salvos em: "
+        f"{metadata_path}"
+    )
+    print(
+        f"Resultados salvos em: {OUTPUT_DIR.resolve()}"
+    )
 
 
 if __name__ == "__main__":
