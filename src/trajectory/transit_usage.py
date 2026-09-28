@@ -1193,8 +1193,11 @@ def map_transit_connections_to_analysis_segments(
     *,
     analysis_segments: gpd.GeoDataFrame,
     tolerance_m: float,
-    min_segment_coverage: float,
+    min_coverage: float,
     max_angle_difference_deg: float,
+    match_method: str = "gtfs_shape_geometry",
+    mapping_scope: str = "used_transit_connections",
+    match_stage: str = "primary",
 ) -> tuple[
     pd.DataFrame,
     pd.DataFrame,
@@ -1206,9 +1209,9 @@ def map_transit_connections_to_analysis_segments(
             "tolerance_m precisa ser maior que zero"
         )
 
-    if not 0 < min_segment_coverage <= 1:
+    if not 0 < min_coverage <= 1:
         raise ValueError(
-            "min_segment_coverage precisa estar no intervalo (0, 1]"
+            "min_coverage precisa estar no intervalo (0, 1]"
         )
 
     if not 0 < max_angle_difference_deg <= 90:
@@ -1225,7 +1228,12 @@ def map_transit_connections_to_analysis_segments(
                     "analysis_segment_id",
                     "match_method",
                     "match_quality",
+                    "segment_coverage",
+                    "shape_coverage",
+                    "angle_difference_deg",
+                    "accepted_by",
                     "mapping_scope",
+                    "match_stage",
                 ]
             ),
             pd.DataFrame(
@@ -1322,22 +1330,57 @@ def map_transit_connections_to_analysis_segments(
             ):
                 continue
 
-            covered = segment_geometry.intersection(
+            covered_segment = segment_geometry.intersection(
                 search_geometry
             )
-
-            coverage = min(
+            segment_coverage = min(
                 1.0,
                 float(
-                    covered.length
+                    covered_segment.length
                 )
                 / float(
                     segment_geometry.length
                 ),
             )
 
-            if coverage < min_segment_coverage:
+            covered_shape = geometry.intersection(
+                segment_geometry.buffer(
+                    tolerance_m
+                )
+            )
+            shape_coverage = min(
+                1.0,
+                float(
+                    covered_shape.length
+                )
+                / float(
+                    geometry.length
+                ),
+            )
+
+            coverage = max(
+                segment_coverage,
+                shape_coverage,
+            )
+
+            if coverage < min_coverage:
                 continue
+
+            accepted_by = (
+                "both"
+                if (
+                    segment_coverage
+                    >= min_coverage
+                    and shape_coverage
+                    >= min_coverage
+                )
+                else (
+                    "segment_coverage"
+                    if segment_coverage
+                    >= min_coverage
+                    else "shape_coverage"
+                )
+            )
 
             mapping_rows.append(
                 {
@@ -1348,11 +1391,22 @@ def map_transit_connections_to_analysis_segments(
                     "analysis_segment_id": str(
                         segment.analysis_segment_id
                     ),
-                    "match_method": "gtfs_shape_geometry",
+                    "match_method": match_method,
                     "match_quality": float(
                         coverage
                     ),
-                    "mapping_scope": "used_transit_connections",
+                    "segment_coverage": float(
+                        segment_coverage
+                    ),
+                    "shape_coverage": float(
+                        shape_coverage
+                    ),
+                    "angle_difference_deg": float(
+                        angle_difference
+                    ),
+                    "accepted_by": accepted_by,
+                    "mapping_scope": mapping_scope,
+                    "match_stage": match_stage,
                 }
             )
             matched_geometries.append(
@@ -1401,6 +1455,7 @@ def map_transit_connections_to_analysis_segments(
                     100.0
                     * shape_coverage
                 ),
+                "match_stage": match_stage,
             }
         )
 
@@ -1439,6 +1494,7 @@ def map_transit_connections_to_analysis_segments(
             "geometry_length_m",
             "matched_segments",
             "shape_coverage_pct",
+            "match_stage",
         ],
     )
 
