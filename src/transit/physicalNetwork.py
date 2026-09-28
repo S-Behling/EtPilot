@@ -19,6 +19,7 @@ from src.domain.enums import TravelMode
 from src.trajectory.transit_usage import (
     build_used_transit_connection_geometries,
     map_transit_connections_hierarchically,
+    map_transit_connections_to_analysis_segments,
 )
 
 
