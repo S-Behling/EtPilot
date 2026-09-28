@@ -1299,37 +1299,88 @@ def _collect_config_parameters(
             "Horário fixo adotado para o roteamento transit dos agentes no piloto técnico",
         ),
         (
-            "transit.spatial_mapping.tolerance_m",
+            "transit.spatial_mapping.primary.tolerance_m",
             transit.get(
                 "spatial_mapping",
+                {},
+            ).get(
+                "primary",
                 {},
             ).get(
                 "tolerance_m"
             ),
             "m",
-            "Tolerância de proximidade usada para associar trechos de shapes GTFS aos segmentos físicos comuns",
+            "Tolerância da etapa primária usada para associar trechos GTFS aos segmentos físicos com suporte da rede car",
         ),
         (
-            "transit.spatial_mapping.min_segment_coverage",
+            "transit.spatial_mapping.primary.min_coverage",
             transit.get(
                 "spatial_mapping",
                 {},
             ).get(
-                "min_segment_coverage"
+                "primary",
+                {},
+            ).get(
+                "min_coverage"
             ),
             "proporção de 0 a 1",
-            "Cobertura mínima de um segmento físico exigida para aceitar o mapeamento de uma conexão GTFS",
+            "Cobertura mínima por segmento ou por trecho de shape exigida na etapa primária do mapeamento GTFS",
         ),
         (
-            "transit.spatial_mapping.max_angle_difference_deg",
+            "transit.spatial_mapping.primary.max_angle_difference_deg",
             transit.get(
                 "spatial_mapping",
+                {},
+            ).get(
+                "primary",
                 {},
             ).get(
                 "max_angle_difference_deg"
             ),
             "graus",
-            "Diferença angular máxima provisória entre o trecho GTFS e o segmento físico candidato",
+            "Diferença angular local máxima permitida na etapa primária do mapeamento GTFS",
+        ),
+        (
+            "transit.spatial_mapping.fallback.tolerance_m",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "fallback",
+                {},
+            ).get(
+                "tolerance_m"
+            ),
+            "m",
+            "Tolerância espacial da etapa de fallback aplicada somente às conexões ainda não mapeadas",
+        ),
+        (
+            "transit.spatial_mapping.fallback.min_coverage",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "fallback",
+                {},
+            ).get(
+                "min_coverage"
+            ),
+            "proporção de 0 a 1",
+            "Cobertura mínima por segmento ou por trecho de shape na etapa de fallback da rede física completa",
+        ),
+        (
+            "transit.spatial_mapping.fallback.max_angle_difference_deg",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "fallback",
+                {},
+            ).get(
+                "max_angle_difference_deg"
+            ),
+            "graus",
+            "Diferença angular local máxima permitida na etapa de fallback",
         ),
         (
             "transit.routing.diagnostics.sample_size",
