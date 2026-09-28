@@ -200,6 +200,64 @@ scope explicitly. Add other transit systems through additional feeds or
 network layers instead of assuming that this EPTC feed represents every
 public-transport mode.
 
+## Transit network preparation
+
+After processing the GTFS feed, connect the 5,909 EPTC stops to the walking
+network and create the scheduled stop-to-stop connection table with:
+
+```bash
+python -m src.transit.buildTransitNetwork
+```
+
+This stage does not build a fully time-expanded graph. It keeps a compact
+connection table that can support a timetable routing algorithm in the next
+stage.
+
+The generated products remain under `data/gtfs/`:
+
+```text
+stops_walk_connected_processed.gpkg
+transit_stop_walk_connectors_processed.parquet
+transit_connections_processed.parquet
+transit_topology_processed.parquet
+transit_service_day_profile_processed.csv
+transit_network_summary.csv
+```
+
+Each stop receives the nearest `node_walk`, the connector distance in metres,
+and the connector time in seconds using the provisional walking speed defined
+in `config/config.json`. Each GTFS trip is decomposed into directed temporal
+connections between consecutive stops with departure time, arrival time,
+in-vehicle duration, interpolation flags, and shape distance when available.
+
+The service-day profile counts scheduled trips by date. The current strategy
+selects the date with the largest number of scheduled trips as the
+representative service date for later routing diagnostics.
+
+## Pilot metadata XML
+
+Export consolidated methodological documentation to:
+
+```text
+outputs/metadados_piloto.xml
+```
+
+The XML contains Portuguese descriptions for:
+
+- main variables and their units;
+- current configuration parameters;
+- analysis methods;
+- statistics;
+- cleaning and validation methods;
+- generated files and their purpose.
+
+The XML is refreshed by `src.transit.buildTransitNetwork` and by the main
+pilot simulation. It can also be generated directly with:
+
+```bash
+python -m src.reporting.exportPilotMetadata
+```
+
 ## Multimodal network
 
 The first routing implementation uses three OSM networks:
@@ -438,11 +496,15 @@ Current implementation:
 - ✔ GTFS downloader with direct storage under data/gtfs
 - ✔ GTFS validation and preprocessing code
 - ✔ Service-date expansion and stop/shape processing logic
+- ✔ Validation of the downloaded EPTC GTFS feed
+- ✔ Stop-to-walking-network association code
+- ✔ Scheduled GTFS connection-table construction
+- ✔ Pilot metadata XML export
 
 In progress:
 
-- Local validation of the downloaded EPTC GTFS feed
-- Transit graph construction and transit routing
+- Local validation of the stop connectors and scheduled connection table
+- Timetable transit routing with walking access and egress
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
 - Empirical calibration of provisional modal-distance parameters
@@ -451,8 +513,8 @@ In progress:
 
 Complete the pilot in this order:
 
-1. build the scheduled bus transit network from the processed GTFS and
-   connect transit access and egress to the walking network;
+1. validate the scheduled GTFS connection table and stop-to-walk connectors,
+   then implement timetable routing with walking access and egress;
 2. validate the provisional distance-sensitive mode rule against routed
    distances and replace its parameters with empirical calibration when an
    appropriate observed mobility source is selected;
