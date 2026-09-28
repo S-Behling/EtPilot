@@ -218,26 +218,62 @@ def _trip_stop_summary(
         )
     )
 
+    aggregation = {
+        "n_stops": (
+            "stop_id",
+            "size",
+        ),
+        "n_raw_timepoints": (
+            "_raw_timepoint",
+            "sum",
+        ),
+        "n_interpolated_stops": (
+            "time_interpolated",
+            "sum",
+        ),
+    }
+
+    if "time_regularized" in ordered.columns:
+        aggregation[
+            "n_regularized_stops"
+        ] = (
+            "time_regularized",
+            "sum",
+        )
+
+    if (
+        "temporal_regularization_feasible"
+        in ordered.columns
+    ):
+        aggregation[
+            "temporal_regularization_feasible"
+        ] = (
+            "temporal_regularization_feasible",
+            "all",
+        )
+
     summary = (
         ordered.groupby(
             "trip_id",
             as_index=False,
         )
         .agg(
-            n_stops=(
-                "stop_id",
-                "size",
-            ),
-            n_raw_timepoints=(
-                "_raw_timepoint",
-                "sum",
-            ),
-            n_interpolated_stops=(
-                "time_interpolated",
-                "sum",
-            ),
+            **aggregation
         )
     )
+
+    if "n_regularized_stops" not in summary.columns:
+        summary[
+            "n_regularized_stops"
+        ] = 0
+
+    if (
+        "temporal_regularization_feasible"
+        not in summary.columns
+    ):
+        summary[
+            "temporal_regularization_feasible"
+        ] = True
 
     summary[
         "trip_start_seconds"
@@ -569,6 +605,25 @@ def build_trip_temporal_quality(
     ].isna()
 
     quality[
+        "temporal_regularization_feasible"
+    ] = (
+        quality[
+            "temporal_regularization_feasible"
+        ]
+        .fillna(
+            False
+        )
+        .astype(
+            bool
+        )
+    )
+    quality[
+        "infeasible_temporal_regularization"
+    ] = ~quality[
+        "temporal_regularization_feasible"
+    ]
+
+    quality[
         "has_zero_duration_connections"
     ] = (
         quality[
@@ -745,6 +800,18 @@ def main() -> None:
         "  Viagens sem conexões processadas: "
         f"{_format_int_pt(len(missing_connections))} viagens "
         f"({_format_percentage_pt(len(missing_connections), total)})"
+    )
+
+    infeasible_regularization = quality.loc[
+        quality[
+            "infeasible_temporal_regularization"
+        ]
+    ]
+
+    print(
+        "  Viagens sem alocação temporal positiva possível: "
+        f"{_format_int_pt(len(infeasible_regularization))} viagens "
+        f"({_format_percentage_pt(len(infeasible_regularization), total)})"
     )
 
     print(
