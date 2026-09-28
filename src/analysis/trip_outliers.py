@@ -471,7 +471,7 @@ def apply_paired_transit_outlier_filter(
                 ),
                 "rule": config.get(
                     "rule",
-                    "route_distance_and_circuity",
+                    "distance_outer_or_circuity_with_long_route",
                 ),
                 "paired_exclusion": paired_exclusion,
                 "iqr_multiplier": iqr_multiplier,
