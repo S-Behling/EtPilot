@@ -85,6 +85,7 @@ def load_json(path: Path) -> dict:
 def _assign_modes(
     agents,
     mode_config: dict,
+    distance_config: dict | None,
     seed: int,
     implemented_modes: list[str] | tuple[str, ...],
 ) -> None:
@@ -101,6 +102,7 @@ def _assign_modes(
             config=mode_config,
             rng=rng,
             available_modes=available_modes,
+            distance_config=distance_config,
         )
 
         agent.resolve_routing_nodes()
@@ -112,6 +114,10 @@ def _validate_agents(agents) -> dict[str, int]:
         "origin_node": sum(agent.origin_node is None for agent in agents),
         "propósito": sum(agent.purpose is None for agent in agents),
         "destino": sum(agent.destination_id is None for agent in agents),
+        "od_distance_m": sum(
+            agent.od_distance_m is None
+            for agent in agents
+        ),
         "destination_node": sum(
             agent.destination_node is None for agent in agents
         ),
@@ -223,6 +229,14 @@ def _print_scenario_summary(
     ]
 
     if not successful.empty:
+        print("\nDistância euclidiana OD por modo (m)")
+        print(
+            successful
+            .groupby("mode")["od_distance_m"]
+            .agg(["count", "mean", "median", "min", "max"])
+            .round(1)
+        )
+
         print("\nDistância das rotas bem-sucedidas por modo (m)")
         print(
             successful
@@ -667,6 +681,11 @@ def main() -> None:
             mode_config=(
                 scenario_config["mode_choice"]
             ),
+            distance_config=(
+                scenario_config[
+                    "mode_distance_adjustment"
+                ]
+            ),
             seed=SEED,
             implemented_modes=implemented_modes,
         )
@@ -1090,6 +1109,10 @@ def main() -> None:
     print(
         "Interprete delta_H_soc apenas como mudança de diversidade "
         "socioeconômica observada, sem atribuir melhora ou piora."
+    )
+    print(
+        "A escolha modal aplica resposta provisória à distância OD "
+        "antes do roteamento e mantém os mesmos parâmetros nos dois cenários."
     )
     print(f"Resultados salvos em: {OUTPUT_DIR.resolve()}")
 
