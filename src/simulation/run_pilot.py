@@ -1517,6 +1517,24 @@ def main() -> None:
         exist_ok=True,
     )
 
+    legacy_transit_outputs = [
+        "transit_connection_to_analysis_segment.csv",
+        "transit_connection_geometry_diagnostics.csv",
+        "transit_connection_match_diagnostics.csv",
+        "transit_spatial_match_report.csv",
+        "transit_spatial_exclusions.csv",
+        "transit_spatial_exclusion_summary.csv",
+    ]
+
+    for filename in legacy_transit_outputs:
+        legacy_path = (
+            OUTPUT_DIR
+            / filename
+        )
+
+        if legacy_path.exists():
+            legacy_path.unlink()
+
     transit_mapping.to_csv(
         OUTPUT_DIR
         / transit_spatial_config.get(
