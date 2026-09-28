@@ -149,7 +149,11 @@
             "service_day_profile_file": "transit_service_day_profile_processed.csv",
             "summary_file": "transit_network_summary.csv",
             "routable_connections_file": "transit_connections_routable_processed.parquet",
-            "trip_quality_file": "transit_trip_quality_processed.csv"
+            "trip_quality_file": "transit_trip_quality_processed.csv",
+            "transit_physical_edges_file": "transit_physical_edges_processed.gpkg",
+            "transit_physical_edge_diagnostics_file": "transit_physical_edge_diagnostics_processed.csv",
+            "connection_physical_edge_map_file": "transit_connection_to_physical_edge_processed.parquet",
+            "spatial_routable_connections_file": "transit_connections_spatial_routable_processed.parquet"
         },
         "routing": {
             "max_access_walk_m": 1500,
@@ -186,13 +190,15 @@
                 "max_angle_difference_deg": 60
             },
             "coverage_rule": "segment_or_shape",
-            "unmatched_policy": "exclude_agent_paired",
+            "unmatched_policy": "exclusive_segment",
             "calibration_status": "provisional_pilot",
             "connection_mapping_file": "transit_connection_to_analysis_segment.csv",
             "match_report_file": "transit_spatial_match_report.csv",
-            "paired_exclusion": true,
+            "paired_exclusion": false,
             "exclusions_file": "transit_spatial_exclusions.csv",
-            "exclusion_summary_file": "transit_spatial_exclusion_summary.csv"
+            "exclusion_summary_file": "transit_spatial_exclusion_summary.csv",
+            "transit_physical_mapping_file": "transit_physical_edge_to_analysis_segment.csv",
+            "transit_physical_summary_file": "transit_physical_network_summary.csv"
         }
     }
 }
