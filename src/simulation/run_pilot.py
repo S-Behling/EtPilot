@@ -639,6 +639,7 @@ def _validate_fixed_population(
 
 def _save_outputs(
     summaries: dict[str, pd.DataFrame],
+    routed_edge_usages: dict[str, pd.DataFrame],
     edge_usages: dict[str, pd.DataFrame],
     harmonized_edge_usages: dict[str, pd.DataFrame],
     analysis_segments: gpd.GeoDataFrame,
@@ -673,6 +674,26 @@ def _save_outputs(
 
     comparison.to_csv(
         OUTPUT_DIR / "agents_all_scenarios.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    for scenario_name, edge_usage in routed_edge_usages.items():
+        edge_usage.to_csv(
+            OUTPUT_DIR
+            / f"edge_usage_routed_{scenario_name}.csv",
+            index=False,
+            encoding="utf-8",
+        )
+
+    routed_all = pd.concat(
+        routed_edge_usages.values(),
+        ignore_index=True,
+    )
+
+    routed_all.to_csv(
+        OUTPUT_DIR
+        / "edge_usage_routed_all_scenarios.csv",
         index=False,
         encoding="utf-8",
     )
@@ -1285,6 +1306,12 @@ def main() -> None:
             f"{_format_int_pt(edge_usage['modal_edge_id'].nunique())} "
             "arestas modais únicas"
         )
+
+    routed_edge_usages = {
+        scenario_name: edge_usage.copy()
+        for scenario_name, edge_usage
+        in edge_usages.items()
+    }
 
     (
         summaries,
@@ -1924,6 +1951,9 @@ def main() -> None:
     _validate_fixed_population(summaries)
     _save_outputs(
         summaries=summaries,
+        routed_edge_usages=(
+            routed_edge_usages
+        ),
         edge_usages=edge_usages,
         harmonized_edge_usages=harmonized_edge_usages,
         analysis_segments=analysis_segments,
