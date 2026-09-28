@@ -129,7 +129,12 @@
             "max_egress_walk_m": 1500,
             "minimum_transfer_time_s": 60,
             "max_total_travel_time_s": 14400,
-            "calibration_status": "provisional_pilot"
+            "calibration_status": "provisional_pilot",
+            "diagnostics": {
+                "sample_size": 10,
+                "departure_time_s": 28800,
+                "seed": 42
+            }
         }
     }
 }
