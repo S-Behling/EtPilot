@@ -1,3 +1,5 @@
 Executar modulo pilot.py diretamente no terminal
 
 python -m src.simulation.run_pilot
+
+python -m src.network.prepare_multimodal_data
