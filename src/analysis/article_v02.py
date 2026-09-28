@@ -33,6 +33,7 @@ import sys
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -897,7 +898,7 @@ def _plot_all_classes_reference_routes(
     )
 
     handles = [
-        plt.Line2D(
+        Line2D(
             [0],
             [0],
             color=INCOME_COLORS[
@@ -1133,19 +1134,11 @@ def _plot_class_dominance(
                 ],
                 reference_max=max_flow,
             ),
-            alpha=np.clip(
-                0.30
-                + 0.70
-                * subset[
-                    "dominant_share"
-                ].to_numpy(),
-                0.30,
-                1.0,
-            ),
+            alpha=0.86,
         )
 
     handles = [
-        plt.Line2D(
+        Line2D(
             [0],
             [0],
             color=INCOME_COLORS[
