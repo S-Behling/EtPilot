@@ -14,7 +14,8 @@ Siga o fluxo:
 6. calcule a rota na rede correspondente ao modo;
 7. harmonize as arestas modais em segmentos físicos comuns;
 8. calcule volume, composição social e H_soc por segmento;
-9. valide, resuma e salve os resultados.
+9. compare baseline e differentiated de forma pareada por segmento;
+10. valide, resuma e salve os resultados.
 
 Execute com:
     python -m src.simulation.run_pilot
@@ -33,6 +34,11 @@ import pandas as pd
 from src.analysis.edge_statistics import (
     attach_statistics_to_segments,
     build_segment_statistics,
+)
+from src.analysis.scenario_comparison import (
+    attach_comparison_to_segments,
+    build_scenario_comparison,
+    comparison_summary,
 )
 from src.domain.enums import IncomeGroup, TravelMode
 from src.network.analysis_segments import (
@@ -271,6 +277,8 @@ def _save_outputs(
     used_match_report: pd.DataFrame,
     segment_statistics: dict[str, pd.DataFrame],
     segment_geodata: dict[str, gpd.GeoDataFrame],
+    scenario_comparison: pd.DataFrame,
+    scenario_comparison_geodata: gpd.GeoDataFrame,
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -365,6 +373,35 @@ def _save_outputs(
         OUTPUT_DIR / "segment_statistics_all_scenarios.csv",
         index=False,
         encoding="utf-8",
+    )
+
+
+    scenario_comparison.to_csv(
+        OUTPUT_DIR / "segment_scenario_comparison.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    comparison_to_save = scenario_comparison_geodata.drop(
+        columns=[
+            "osmid_set",
+        ],
+        errors="ignore",
+    )
+
+    comparison_path = (
+        OUTPUT_DIR
+        / "segment_scenario_comparison.gpkg"
+    )
+
+    if comparison_path.exists():
+        comparison_path.unlink()
+
+    comparison_to_save.to_file(
+        comparison_path,
+        layer="scenario_comparison",
+        driver="GPKG",
+        engine="pyogrio",
     )
 
     for scenario_name, geodata in segment_geodata.items():
@@ -490,7 +527,7 @@ def main() -> None:
         / config["paths"]["destinations"]
     )
 
-    print("1/9 - Carregando dados...")
+    print("1/10 - Carregando dados...")
 
     origins = gpd.read_file(origins_path)
 
@@ -499,7 +536,7 @@ def main() -> None:
         layer="destinations",
     )
 
-    print("2/9 - Carregando redes modais...")
+    print("2/10 - Carregando redes modais...")
 
     graphs = load_mode_graphs(
         config=config,
@@ -514,7 +551,7 @@ def main() -> None:
             f"{len(graph.edges):,} arestas"
         )
 
-    print("3/9 - Gerando população sintética...")
+    print("3/10 - Gerando população sintética...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -530,7 +567,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(base_agents)}")
 
-    print("4/9 - Atribuindo origens residenciais...")
+    print("4/10 - Atribuindo origens residenciais...")
 
     base_agents = assign_origins(
         agents=base_agents,
@@ -549,7 +586,7 @@ def main() -> None:
         ),
     )
 
-    print("5/9 - Construindo cenários experimentais...")
+    print("5/10 - Construindo cenários experimentais...")
 
     behavior_scenarios = build_behavior_scenarios(
         config_agents=config_agents,
@@ -559,7 +596,7 @@ def main() -> None:
     summaries: dict[str, pd.DataFrame] = {}
     edge_usages: dict[str, pd.DataFrame] = {}
 
-    print("6/9 - Executando cenários e roteamento...")
+    print("6/10 - Executando cenários e roteamento...")
 
     for scenario_name in SCENARIOS:
         print(f"\n--- {scenario_name} ---")
@@ -654,7 +691,7 @@ def main() -> None:
             "arestas modais únicas"
         )
 
-    print("\n7/9 - Harmonizando segmentos físicos de análise...")
+    print("\n7/10 - Harmonizando segmentos físicos de análise...")
 
     edge_usage_all = pd.concat(
         edge_usages.values(),
@@ -757,7 +794,7 @@ def main() -> None:
         .to_string(index=False)
     )
 
-    print("\n8/9 - Calculando estatísticas e entropia socioeconômica...")
+    print("\n8/10 - Calculando estatísticas e entropia socioeconômica...")
 
     segment_statistics: dict[
         str,
@@ -842,7 +879,87 @@ def main() -> None:
             )
         )
 
-    print("\n9/9 - Validando e salvando resultados...")
+    print("\n9/10 - Comparando cenários de forma pareada...")
+
+    statistics_all = pd.concat(
+        segment_statistics.values(),
+        ignore_index=True,
+    )
+
+    paired_comparison = build_scenario_comparison(
+        statistics=statistics_all,
+        baseline_name=SCENARIOS[0],
+        differentiated_name=SCENARIOS[1],
+        min_agents_for_interpretation=(
+            min_agents_for_interpretation
+        ),
+        flow_thresholds=flow_thresholds,
+    )
+
+    paired_comparison_geodata = attach_comparison_to_segments(
+        analysis_segments=analysis_segments,
+        comparison=paired_comparison,
+    )
+
+    paired_summary = comparison_summary(
+        paired_comparison,
+        min_agents_for_interpretation=(
+            min_agents_for_interpretation
+        ),
+        flow_thresholds=flow_thresholds,
+    )
+
+    print(
+        "\nComparabilidade espacial entre cenários"
+    )
+    print(
+        "  Segmentos usados em pelo menos um cenário: "
+        f"{paired_summary['segments_union']:,}"
+    )
+    print(
+        "  Usados nos dois cenários: "
+        f"{paired_summary['used_both']:,}"
+    )
+    print(
+        "  Apenas baseline: "
+        f"{paired_summary['baseline_only']:,}"
+    )
+    print(
+        "  Apenas differentiated: "
+        f"{paired_summary['differentiated_only']:,}"
+    )
+    print(
+        "  Delta H_soc pareado — todos os segmentos usados nos dois: "
+        f"média={paired_summary['paired_delta_H_soc_mean']:.3f} | "
+        f"mediana={paired_summary['paired_delta_H_soc_median']:.3f}"
+    )
+    print(
+        "  Segmentos com fluxo suficiente nos dois cenários "
+        f"(n_agents >= {min_agents_for_interpretation}): "
+        f"{paired_summary['sufficient_flow_both']:,}"
+    )
+
+    if paired_summary[
+        "sufficient_flow_both"
+    ] > 0:
+        print(
+            "  Delta H_soc pareado — fluxo suficiente nos dois: "
+            f"média={paired_summary['sufficient_delta_H_soc_mean']:.3f} | "
+            f"mediana={paired_summary['sufficient_delta_H_soc_median']:.3f}"
+        )
+
+    print(
+        "  Sensibilidade pareada por n_agents: "
+        + " | ".join(
+            (
+                f">={threshold}: "
+                f"{paired_summary[f'flow_ge_{threshold}_both']:,}"
+            )
+            for threshold in flow_thresholds
+        )
+    )
+
+    print("\n10/10 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
     _save_outputs(
@@ -855,6 +972,8 @@ def main() -> None:
         used_match_report=used_match_report,
         segment_statistics=segment_statistics,
         segment_geodata=segment_geodata,
+        scenario_comparison=paired_comparison,
+        scenario_comparison_geodata=paired_comparison_geodata,
     )
 
     print("\n=== TESTE FINAL ===")
@@ -881,6 +1000,15 @@ def main() -> None:
     print(
         "Interprete H_soc junto com n_agents e sufficient_flow; "
         "não trate ausência de fluxo como H_soc=0."
+    )
+    print(
+        "Compare os cenários pelo mesmo analysis_segment_id; "
+        "não compare médias de subconjuntos espaciais diferentes como se "
+        "fossem uma diferença pareada."
+    )
+    print(
+        "Interprete delta_H_soc apenas como mudança de diversidade "
+        "socioeconômica observada, sem atribuir melhora ou piora."
     )
     print(f"Resultados salvos em: {OUTPUT_DIR.resolve()}")
 
