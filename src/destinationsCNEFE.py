@@ -25,7 +25,6 @@ import unicodedata
 from pathlib import Path
 
 import geopandas as gpd
-import osmnx as ox
 import pandas as pd
 
 from src.network.multimodal import (
@@ -308,29 +307,21 @@ def aggregate_destinations(
             n_addresses=("COD_UNICO_ENDERECO", "nunique"),
             n_subcategories=("description_norm", "nunique"),
             subcategories=("DSC_ESTABELECIMENTO", sample_descriptions),
+            geometry=("geometry", "first"),
         )
-    )
-
-    car_nodes = ox.graph_to_gdfs(
-        graphs["car"],
-        nodes=True,
-        edges=False,
-    )
-
-    summary["geometry"] = (
-        summary["node_car"]
-        .map(car_nodes.geometry.to_dict())
     )
 
     if summary["geometry"].isna().any():
         raise ValueError(
-            "Há destinos agregados sem geometria da rede de referência."
+            "Há destinos agregados sem geometria representativa."
         )
 
+    # A geometria continua sendo derivada do CNEFE. O node_car é apenas
+    # a chave de consolidação para reduzir destinos muito próximos.
     summary = gpd.GeoDataFrame(
         summary,
         geometry="geometry",
-        crs=car_nodes.crs,
+        crs=long_destinations.crs,
     )
 
     summary = assign_modal_nodes(
