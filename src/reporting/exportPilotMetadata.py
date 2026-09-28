@@ -633,6 +633,11 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "TransitRouter.route",
         "descricao": "Exige continuidade entre a parada de destino de uma conexão e a parada de origem da conexão seguinte e preserva a ordem numérica de stop_sequence em empates temporais",
     },
+    {
+        "nome": "Diagnóstico temporal por viagem GTFS",
+        "funcao_codigo": "build_trip_temporal_quality",
+        "descricao": "Resume por trip_id a quantidade de pontos temporais originais, a duração programada, a incidência de conexões de duração zero e a velocidade implícita pelo comprimento do shape",
+    },
 ]
 
 STATISTICS = [
@@ -703,6 +708,14 @@ STATISTICS = [
     {
         "nome": "Tempo médio por conexão veicular",
         "descricao": "Divide o tempo dentro do veículo pelo número de conexões GTFS usadas na rota para identificar itinerários temporalmente suspeitos",
+    },
+    {
+        "nome": "Velocidade implícita pelo shape",
+        "descricao": "Relaciona o comprimento geométrico do shape à duração programada da viagem para diagnosticar a coerência temporal do GTFS processado",
+    },
+    {
+        "nome": "Participação de conexões de duração zero por viagem",
+        "descricao": "Mede a proporção de conexões consecutivas com tempo veicular igual a zero dentro de cada trip_id",
     },
 ]
 
@@ -849,6 +862,7 @@ FILES = [
     ("outputs/pilot/maps/delta_h_soc_supported.png", "Mapa da diferença pareada de H_soc restrito aos segmentos com fluxo suficiente nos dois cenários", "mapas", False),
     ("outputs/pilot/maps/map_manifest.csv", "Manifesto dos mapas gerados com identificação, quantidade de segmentos e descrição em português", "mapas", False),
     ("outputs/pilot/transit_routing_diagnostics.csv", "Amostra de consultas origem-destino usada para validar cobertura, tempos, acesso, egresso e transferências do roteador temporal de ônibus", "roteamento de transporte coletivo", False),
+    ("outputs/pilot/gtfs_trip_temporal_quality.csv", "Diagnóstico por trip_id com duração programada, pontos temporais originais, conexões de duração zero e velocidade implícita pelo shape", "qualidade temporal do GTFS", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
