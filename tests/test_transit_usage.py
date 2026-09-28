@@ -112,6 +112,9 @@ class TransitUsageTests(unittest.TestCase):
                 "connection_id": [
                     "C1",
                 ],
+                "transit_physical_edge_id": [
+                    "T_0000001",
+                ],
                 "route_id": [
                     "R1",
                 ],
@@ -213,6 +216,18 @@ class TransitUsageTests(unittest.TestCase):
                 0
             ],
             "transit",
+        )
+        self.assertEqual(
+            usage.loc[
+                usage[
+                    "transit_leg"
+                ]
+                == "in_vehicle",
+                "modal_edge_id",
+            ].iloc[
+                0
+            ],
+            "transit:T_0000001",
         )
 
     def test_maps_used_shape_substring_to_analysis_segments(self):
