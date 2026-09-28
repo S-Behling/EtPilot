@@ -1,7 +1,7 @@
 map_id,metric,scenario,supported_only,n_segments_plotted,description_pt,filename
-h_soc_baseline_all,h_soc,baseline,False,4664,Mostra a diversidade socioeconômica das trajetórias no cenário baseline para todos os segmentos com H_soc calculável,h_soc_baseline_all.png
-h_soc_baseline_supported,h_soc,baseline,True,0,Mostra o H_soc no cenário baseline apenas nos segmentos que atingem o fluxo mínimo de agentes definido para interpretação,h_soc_baseline_supported.png
-h_soc_differentiated_all,h_soc,differentiated,False,4506,Mostra a diversidade socioeconômica das trajetórias no cenário differentiated para todos os segmentos com H_soc calculável,h_soc_differentiated_all.png
-h_soc_differentiated_supported,h_soc,differentiated,True,0,Mostra o H_soc no cenário differentiated apenas nos segmentos que atingem o fluxo mínimo de agentes definido para interpretação,h_soc_differentiated_supported.png
-delta_h_soc_all,delta_h_soc,paired,False,3006,Mostra a diferença pareada de H_soc entre differentiated e baseline nos mesmos segmentos físicos observados nos dois cenários,delta_h_soc_all.png
-delta_h_soc_supported,delta_h_soc,paired,True,0,Mostra a diferença pareada de H_soc somente nos segmentos que atingem o fluxo mínimo de agentes em ambos os cenários,delta_h_soc_supported.png
+h_soc_baseline_all,h_soc,baseline,False,7340,Mostra a diversidade socioeconômica das trajetórias no cenário baseline para todos os segmentos com H_soc calculável,h_soc_baseline_all.png
+h_soc_baseline_supported,h_soc,baseline,True,162,Mostra o H_soc no cenário baseline apenas nos segmentos que atingem o fluxo mínimo de agentes definido para interpretação,h_soc_baseline_supported.png
+h_soc_differentiated_all,h_soc,differentiated,False,7451,Mostra a diversidade socioeconômica das trajetórias no cenário differentiated para todos os segmentos com H_soc calculável,h_soc_differentiated_all.png
+h_soc_differentiated_supported,h_soc,differentiated,True,92,Mostra o H_soc no cenário differentiated apenas nos segmentos que atingem o fluxo mínimo de agentes definido para interpretação,h_soc_differentiated_supported.png
+delta_h_soc_all,delta_h_soc,paired,False,5174,Mostra a diferença pareada de H_soc entre differentiated e baseline nos mesmos segmentos físicos observados nos dois cenários,delta_h_soc_all.png
+delta_h_soc_supported,delta_h_soc,paired,True,42,Mostra a diferença pareada de H_soc somente nos segmentos que atingem o fluxo mínimo de agentes em ambos os cenários,delta_h_soc_supported.png
