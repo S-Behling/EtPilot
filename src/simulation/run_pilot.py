@@ -1628,22 +1628,155 @@ def main() -> None:
             ]
         )
 
-        sample_ids = sorted(
-            missing_connection_ids
-        )[
-            :10
-        ]
-
-        raise RuntimeError(
-            "Existem conexões GTFS usadas pelos agentes sem correspondência "
-            "na camada física comum: "
-            f"{_format_int_pt(len(missing_transit_mapping))} conexões | "
-            f"{_format_int_pt(len(invalid_geometry))} com geometria inválida | "
-            f"{_format_int_pt(len(valid_but_unmatched))} com geometria válida "
-            "mas sem segmento compatível | "
-            f"amostra={sample_ids}. "
-            "Os diagnósticos espaciais foram salvos em outputs/pilot"
+        print(
+            "\nControle de falhas de espacialização transit"
         )
+        print(
+            "  Conexões sem correspondência antes da exclusão: "
+            f"{_format_int_pt(len(missing_transit_mapping))} conexões"
+        )
+        print(
+            "    com geometria inválida: "
+            f"{_format_int_pt(len(invalid_geometry))} conexões"
+        )
+        print(
+            "    com geometria válida sem segmento compatível: "
+            f"{_format_int_pt(len(valid_but_unmatched))} conexões"
+        )
+
+        unmatched_policy = transit_spatial_config.get(
+            "unmatched_policy",
+            "error",
+        )
+
+        if unmatched_policy == "exclude_agent_paired":
+            (
+                summaries,
+                edge_usages,
+                spatial_exclusions,
+                spatial_exclusion_summary,
+            ) = apply_paired_transit_spatial_exclusions(
+                summaries,
+                edge_usages,
+                missing_modal_edge_ids=(
+                    missing_transit_mapping
+                ),
+                paired_exclusion=bool(
+                    transit_spatial_config.get(
+                        "paired_exclusion",
+                        True,
+                    )
+                ),
+            )
+
+            spatial_exclusions.to_csv(
+                OUTPUT_DIR
+                / transit_spatial_config.get(
+                    "exclusions_file",
+                    "transit_spatial_exclusions.csv",
+                ),
+                index=False,
+                encoding="utf-8",
+            )
+            spatial_exclusion_summary.to_csv(
+                OUTPUT_DIR
+                / transit_spatial_config.get(
+                    "exclusion_summary_file",
+                    "transit_spatial_exclusion_summary.csv",
+                ),
+                index=False,
+                encoding="utf-8",
+            )
+
+            spatial_row = (
+                spatial_exclusion_summary.iloc[
+                    0
+                ]
+            )
+
+            print(
+                "  Agentes diretamente afetados: "
+                f"{_format_int_pt(spatial_row['directly_affected_agents'])} agentes"
+            )
+            print(
+                "  Registros removidos da análise pareada: "
+                f"{_format_int_pt(spatial_row['excluded_scenario_rows'])} linhas"
+            )
+
+            for scenario_name in SCENARIOS:
+                included_agents = int(
+                    summaries[
+                        scenario_name
+                    ][
+                        "analysis_included"
+                    ].sum()
+                )
+
+                print(
+                    f"  {scenario_name}: "
+                    f"{_format_int_pt(included_agents)} agentes mantidos "
+                    "na análise espacial"
+                )
+
+            edge_usage_all = pd.concat(
+                edge_usages.values(),
+                ignore_index=True,
+            )
+
+            used_transit_modal_edges = set(
+                edge_usage_all.loc[
+                    edge_usage_all[
+                        "mapping_mode"
+                    ]
+                    == TravelMode.TRANSIT.value,
+                    "modal_edge_id",
+                ]
+                .dropna()
+                .astype(
+                    str
+                )
+            )
+
+            missing_transit_mapping = (
+                used_transit_modal_edges
+                - mapped_transit_modal_edges
+            )
+
+            if missing_transit_mapping:
+                sample_ids = sorted(
+                    missing_transit_mapping
+                )[
+                    :10
+                ]
+
+                raise RuntimeError(
+                    "Persistem conexões GTFS sem correspondência após a "
+                    "exclusão pareada dos agentes afetados: "
+                    f"{_format_int_pt(len(missing_transit_mapping))} conexões | "
+                    f"amostra={sample_ids}"
+                )
+
+            print(
+                "  Conexões sem correspondência após a exclusão pareada: "
+                "0 conexões"
+            )
+        else:
+            sample_ids = sorted(
+                missing_connection_ids
+            )[
+                :10
+            ]
+
+            raise RuntimeError(
+                "Existem conexões GTFS usadas pelos agentes sem correspondência "
+                "na camada física comum: "
+                f"{_format_int_pt(len(missing_transit_mapping))} conexões | "
+                f"{_format_int_pt(len(invalid_geometry))} com geometria inválida | "
+                f"{_format_int_pt(len(valid_but_unmatched))} com geometria válida "
+                "mas sem segmento compatível | "
+                f"amostra={sample_ids}. "
+                "Os diagnósticos espaciais foram salvos em outputs/pilot"
+            )
 
     segment_mapping = pd.concat(
         [
