@@ -324,9 +324,21 @@ VARIABLES = [
     },
     {
         "nome": "analysis_exclusion_reason",
-        "grupo": "controle de outliers",
+        "grupo": "controle analítico",
         "unidade": "categoria",
-        "descricao": "Registra se a exclusão decorre de outlier direto ou da preservação da mesma população analítica nos dois cenários",
+        "descricao": "Registra os motivos cumulativos pelos quais o agente é retirado da análise de trajetórias, incluindo outlier e falha de espacialização transit",
+    },
+    {
+        "nome": "direct_spatial_mapping_failure",
+        "grupo": "controle de espacialização transit",
+        "unidade": "booleano",
+        "descricao": "Indica que o agente usa ao menos uma conexão GTFS sem correspondência válida na camada física comum",
+    },
+    {
+        "nome": "analysis_excluded_spatial_mapping",
+        "grupo": "controle de espacialização transit",
+        "unidade": "booleano",
+        "descricao": "Indica que o agente foi retirado da análise espacial por falha direta de espacialização ou para preservar a exclusão pareada entre cenários",
     },
     {
         "nome": "sufficient_flow_both",
@@ -797,6 +809,11 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "apply_paired_transit_outlier_filter",
         "descricao": "Calcula limites robustos com os dois cenários combinados, identifica distância extrema ou circuity extrema acompanhada de rota longa e propaga a exclusão ao mesmo agent_id nos dois cenários",
     },
+    {
+        "nome": "Exclusão pareada por falha de espacialização transit",
+        "funcao_codigo": "apply_paired_transit_spatial_exclusions",
+        "descricao": "Identifica agentes cujas conexões GTFS usadas não possuem correspondência na camada física comum e retira o mesmo agent_id da análise espacial nos dois cenários quando o pareamento está habilitado",
+    },
 ]
 
 STATISTICS = [
@@ -1011,6 +1028,10 @@ CLEANING_METHODS = [
         "nome": "Critério conservador de distância e circuity",
         "descricao": "Exclui distância roteada acima da cerca externa ou circuity acima da cerca externa quando a rota também está acima do terceiro quartil, evitando excluir viagens curtas apenas por apresentarem razão elevada",
     },
+    {
+        "nome": "Exclusão pareada de falhas de espacialização transit",
+        "descricao": "Retira da análise de H_soc toda a trajetória do agente quando ao menos uma conexão GTFS usada não pode ser associada a analysis_segment_id e aplica a mesma retirada ao agent_id correspondente no outro cenário",
+    },
 ]
 
 FILES = [
@@ -1082,6 +1103,8 @@ FILES = [
     ("outputs/pilot/transit_spatial_match_report.csv", "Resumo da cobertura e do sucesso do mapeamento espacial das conexões GTFS usadas", "harmonização do transporte coletivo", False),
     ("outputs/pilot/outlier_exclusions.csv", "Registro auditável de cada cenário e agente retirado da análise de trajetórias por outlier transit direto ou exclusão pareada", "controle de outliers", False),
     ("outputs/pilot/outlier_filter_summary.csv", "Resumo do método, quartis, cercas externas e quantidade de outliers identificados no piloto", "controle de outliers", False),
+    ("outputs/pilot/transit_spatial_exclusions.csv", "Registro por cenário e agente retirado da análise por conexões GTFS sem correspondência espacial, incluindo rotas e viagens afetadas", "controle de espacialização transit", False),
+    ("outputs/pilot/transit_spatial_exclusion_summary.csv", "Resumo da quantidade de conexões sem correspondência e de agentes afetados pela exclusão espacial pareada", "controle de espacialização transit", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
