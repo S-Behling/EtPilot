@@ -335,77 +335,237 @@ def _print_scenario_summary(
     scenario_name: str,
     summary: pd.DataFrame,
 ) -> None:
-    print("\n" + "=" * 72)
-    print(f"CENÁRIO: {scenario_name.upper()}")
-    print("=" * 72)
+    """Imprime a composição e o desempenho das viagens com unidades explícitas"""
 
-    print("\nDistribuição por renda")
     print(
-        summary["income_group"]
-        .value_counts()
-        .sort_index()
+        "\n"
+        + "="
+        * 72
+    )
+    print(
+        f"CENÁRIO: {scenario_name.upper()}"
+    )
+    print(
+        "="
+        * 72
     )
 
-    print("\nDistribuição por propósito")
-    print(
-        summary["purpose"]
-        .value_counts()
-        .sort_index()
+    total_agents = len(
+        summary
     )
 
-    print("\nDistribuição por modo")
-    print(
-        summary["mode"]
-        .value_counts()
-        .sort_index()
-    )
+    for title, column in [
+        (
+            "Distribuição por renda",
+            "income_group",
+        ),
+        (
+            "Distribuição por propósito",
+            "purpose",
+        ),
+        (
+            "Distribuição por modo",
+            "mode",
+        ),
+    ]:
+        print(
+            f"\n{title}"
+        )
 
-    print("\nRenda x propósito")
+        counts = (
+            summary[
+                column
+            ]
+            .value_counts(
+                dropna=False
+            )
+            .sort_index()
+        )
+
+        for category, count in counts.items():
+            print(
+                f"  {category}: "
+                f"{_format_int_pt(count)} agentes "
+                f"({_format_percentage_pt(count, total_agents)})"
+            )
+
+    print(
+        "\nRenda × propósito — agentes"
+    )
     print(
         pd.crosstab(
-            summary["income_group"],
-            summary["purpose"],
-        )
+            summary[
+                "income_group"
+            ],
+            summary[
+                "purpose"
+            ],
+        ).to_string()
     )
 
-    print("\nRenda x modo")
+    print(
+        "\nRenda × modo — agentes"
+    )
     print(
         pd.crosstab(
-            summary["income_group"],
-            summary["mode"],
-        )
+            summary[
+                "income_group"
+            ],
+            summary[
+                "mode"
+            ],
+        ).to_string()
     )
 
-    print("\nStatus do roteamento")
     print(
-        summary["route_status"]
-        .value_counts(dropna=False)
+        "\nStatus do roteamento"
+    )
+
+    route_counts = (
+        summary[
+            "route_status"
+        ]
+        .value_counts(
+            dropna=False
+        )
         .sort_index()
     )
 
-    successful = summary[
-        summary["route_status"].isin(
+    for status, count in route_counts.items():
+        print(
+            f"  {status}: "
+            f"{_format_int_pt(count)} viagens "
+            f"({_format_percentage_pt(count, total_agents)})"
+        )
+
+    successful = summary.loc[
+        summary[
+            "route_status"
+        ].isin(
             SUCCESS_STATUSES
         )
     ]
 
-    if not successful.empty:
-        print("\nDistância euclidiana OD por modo (m)")
+    if successful.empty:
+        return
+
+    print(
+        "\nDistâncias das viagens bem-sucedidas"
+    )
+
+    for mode, group in successful.groupby(
+        "mode"
+    ):
+        od = group[
+            "od_distance_m"
+        ].dropna()
+        routed = group[
+            "travel_distance_m"
+        ].dropna()
+
         print(
-            successful
-            .groupby("mode")["od_distance_m"]
-            .agg(["count", "mean", "median", "min", "max"])
-            .round(1)
+            f"  {mode}: {_format_int_pt(len(group))} viagens"
         )
 
-        print("\nDistância das rotas bem-sucedidas por modo (m)")
+        if not od.empty:
+            print(
+                "    OD euclidiana — "
+                f"média {_format_float_pt(od.mean())} m | "
+                f"mediana {_format_float_pt(od.median())} m | "
+                f"mínima {_format_float_pt(od.min())} m | "
+                f"máxima {_format_float_pt(od.max())} m"
+            )
+
+        if not routed.empty:
+            print(
+                "    rota — "
+                f"média {_format_float_pt(routed.mean())} m | "
+                f"mediana {_format_float_pt(routed.median())} m | "
+                f"mínima {_format_float_pt(routed.min())} m | "
+                f"máxima {_format_float_pt(routed.max())} m"
+            )
+
+    transit_success = successful.loc[
+        successful[
+            "mode"
+        ]
+        == TravelMode.TRANSIT.value
+    ]
+
+    if not transit_success.empty:
         print(
-            successful
-            .groupby("mode")["travel_distance_m"]
-            .agg(["count", "mean", "median", "min", "max"])
-            .round(1)
+            "\nDesempenho das viagens transit bem-sucedidas"
         )
 
+        travel_time = (
+            transit_success[
+                "travel_time_s"
+            ]
+            .dropna()
+            / 60.0
+        )
+        access = transit_success[
+            "transit_access_walk_distance_m"
+        ].dropna()
+        egress = transit_success[
+            "transit_egress_walk_distance_m"
+        ].dropna()
+        wait = (
+            transit_success[
+                "transit_initial_wait_time_s"
+            ]
+            .dropna()
+            / 60.0
+        )
+        in_vehicle = (
+            transit_success[
+                "transit_in_vehicle_time_s"
+            ]
+            .dropna()
+            / 60.0
+        )
+        transfers = transit_success[
+            "transit_n_transfers"
+        ].dropna()
+
+        if not travel_time.empty:
+            print(
+                "  Tempo total — "
+                f"média {_format_float_pt(travel_time.mean())} min | "
+                f"mediana {_format_float_pt(travel_time.median())} min"
+            )
+
+        if not access.empty:
+            print(
+                "  Caminhada de acesso — "
+                f"média {_format_float_pt(access.mean())} m"
+            )
+
+        if not egress.empty:
+            print(
+                "  Caminhada de egresso — "
+                f"média {_format_float_pt(egress.mean())} m"
+            )
+
+        if not wait.empty:
+            print(
+                "  Espera inicial — "
+                f"média {_format_float_pt(wait.mean())} min"
+            )
+
+        if not in_vehicle.empty:
+            print(
+                "  Tempo dentro do veículo — "
+                f"média {_format_float_pt(in_vehicle.mean())} min"
+            )
+
+        if not transfers.empty:
+            print(
+                "  Transferências — "
+                f"média {_format_float_pt(transfers.mean(), decimals=2)} "
+                "transferências/viagem | "
+                f"máxima {_format_int_pt(transfers.max())} transferências"
+            )
 
 def _validate_fixed_population(
     summaries: dict[str, pd.DataFrame],
