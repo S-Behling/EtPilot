@@ -15,7 +15,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 
 from src.analysis.entropy import normalized_shannon_entropy
