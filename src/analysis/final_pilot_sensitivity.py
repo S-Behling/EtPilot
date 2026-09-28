@@ -454,15 +454,21 @@ def _parameter_comparison(
     *,
     reference_seed: int,
 ) -> pd.DataFrame:
-    reference_rows = runs.loc[
-        (
-            runs["experiment"]
-            == "nominal_seed"
-        )
-        & (
-            runs["seed"]
-            == reference_seed
-        )
+    """Compara perturbações com a referência nominal apropriada.
+
+    Perturbações locais de parâmetros usam a seed de referência configurada.
+    A decomposição mode_homogenized usa a execução nominal da mesma seed,
+    preservando a comparação pareada entre realizações.
+    """
+
+    nominal = runs.loc[
+        runs["experiment"]
+        == "nominal_seed"
+    ].copy()
+
+    reference_rows = nominal.loc[
+        nominal["seed"]
+        == reference_seed
     ]
 
     if len(reference_rows) != 1:
@@ -470,10 +476,6 @@ def _parameter_comparison(
             "A execução nominal da reference_seed "
             "precisa existir exatamente uma vez."
         )
-
-    reference = reference_rows.iloc[
-        0
-    ]
 
     sensitivity = runs.loc[
         runs["experiment"]
@@ -483,6 +485,37 @@ def _parameter_comparison(
     rows: list[dict] = []
 
     for _, current in sensitivity.iterrows():
+        if (
+            current["experiment"]
+            == "mode_homogenized"
+        ):
+            current_reference = nominal.loc[
+                nominal["seed"]
+                == int(
+                    current["seed"]
+                )
+            ]
+
+            if len(current_reference) != 1:
+                raise ValueError(
+                    "Cada execução mode_homogenized precisa de uma "
+                    "execução nominal com a mesma seed."
+                )
+
+            reference = current_reference.iloc[
+                0
+            ]
+            reference_kind = (
+                "same_seed_nominal"
+            )
+        else:
+            reference = reference_rows.iloc[
+                0
+            ]
+            reference_kind = (
+                "configured_reference_seed"
+            )
+
         row = {
             "run_id": current["run_id"],
             "experiment": current[
@@ -491,6 +524,10 @@ def _parameter_comparison(
             "seed": int(
                 current["seed"]
             ),
+            "reference_seed": int(
+                reference["seed"]
+            ),
+            "reference_kind": reference_kind,
             "destination_decay_multiplier": float(
                 current[
                     "destination_decay_multiplier"
