@@ -8,4 +8,8 @@ destination_decay_0p75,destination_decay,42,0.75,1.0,False
 destination_decay_1p25,destination_decay,42,1.25,1.0,False
 mode_decay_0p75,mode_decay,42,1.0,0.75,False
 mode_decay_1p25,mode_decay,42,1.0,1.25,False
-mode_homogenized,mode_homogenized,42,1.0,1.0,True
+mode_homogenized_seed_11,mode_homogenized,11,1.0,1.0,True
+mode_homogenized_seed_23,mode_homogenized,23,1.0,1.0,True
+mode_homogenized_seed_42,mode_homogenized,42,1.0,1.0,True
+mode_homogenized_seed_73,mode_homogenized,73,1.0,1.0,True
+mode_homogenized_seed_101,mode_homogenized,101,1.0,1.0,True
