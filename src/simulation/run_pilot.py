@@ -1408,8 +1408,17 @@ def main() -> None:
             ]
         )
 
+        included_agents = int(
+            summaries[
+                scenario_name
+            ][
+                "analysis_included"
+            ].sum()
+        )
+
         print(
             f"  {scenario_name}: "
+            f"{_format_int_pt(included_agents)} agentes mantidos | "
             f"{_format_int_pt(before_rows - after_rows)} passagens removidas | "
             f"{_format_int_pt(after_rows)} passagens mantidas"
         )
