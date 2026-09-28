@@ -115,7 +115,7 @@ def normalized_shannon_entropy(
         / maximum
     )
 
-    # Limite pequenos erros numéricos sem mascarar resultados fora do domínio
+    # Limita pequenos erros numéricos sem mascarar resultados fora do domínio
     if -1e-12 <= normalized < 0:
         normalized = 0.0
 
