@@ -397,6 +397,14 @@ def build_transit_physical_network(
                 "spatial_geometry_valid"
             ]
         ]
+        .sort_values(
+            [
+                "departure_seconds",
+                "trip_id",
+                "from_stop_sequence",
+            ],
+            kind="stable",
+        )
         .copy()
         .reset_index(
             drop=True
