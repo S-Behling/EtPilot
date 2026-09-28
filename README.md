@@ -259,6 +259,41 @@ Use the CSV for statistical diagnostics and the GeoPackage for paired spatial
 comparison and mapping.
 
 
+## Distance-sensitive mode choice
+
+Use the Euclidean origin-destination distance selected during destination
+choice as a pre-routing impedance for mode choice. Store it separately as
+`od_distance_m` and keep `travel_distance_m` for the routed network
+distance.
+
+Adjust each available modal prior with:
+
+```text
+adjusted_weight_m = base_probability_m * exp(-beta_m * distance_km)
+```
+
+Apply the same distance-response parameters in baseline and differentiated so
+that the experimental difference remains in the behavioral priors rather than
+in a different distance function.
+
+Use the current pilot parameters as provisional constraints:
+
+```text
+walk    beta=0.55 /km   maximum OD distance=6 km
+bike    beta=0.12 /km   maximum OD distance=20 km
+car     beta=0.00 /km   no maximum
+transit beta=0.03 /km   no maximum, reserved for the future GTFS stage
+```
+
+Treat these values as technical pilot parameters rather than empirically
+estimated travel-demand coefficients. Replace or calibrate them with an
+appropriate observed mobility source before treating modal outputs as
+empirical estimates.
+
+The purpose of this stage is to remove implausible distance-independent active
+mode assignments while preserving a transparent and configurable experimental
+rule.
+
 ## Pilot maps
 
 Generate six static PNG maps with the same physical network extent and fixed
@@ -315,19 +350,22 @@ Current implementation:
 - ✔ Static H_soc maps with fixed [0, 1] scale
 - ✔ Static paired delta_H_soc maps with fixed [-1, 1] scale
 - ✔ Supported-flow map variants and map manifest
+- ✔ Distance-sensitive mode choice using pre-routing OD distance
+- ✔ Fixed distance-response rule across baseline and differentiated
 
 In progress:
 
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
-- Calibration of distance-sensitive mode choice for the road-routable pilot
+- Empirical calibration of provisional modal-distance parameters
 
 ## Remaining work to close the pilot
 
 Complete the pilot in this order:
 
-1. calibrate mode choice against trip distance so that walk and bike do not
-   receive implausibly long trips in the road-routable experiment;
+1. validate the provisional distance-sensitive mode rule against routed
+   distances and replace its parameters with empirical calibration when an
+   appropriate observed mobility source is selected;
 2. increase the synthetic population progressively and inspect convergence of
    segment coverage, flow support, and `H_soc`;
 3. repeat paired baseline × differentiated runs across multiple seeds and
