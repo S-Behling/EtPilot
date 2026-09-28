@@ -33,7 +33,7 @@ from src.domain.enums import IncomeGroup, TravelMode
 from src.network.analysis_segments import (
     apply_analysis_segment_mapping,
     build_analysis_segments,
-    extract_used_modal_edges,
+    extract_all_modal_edges,
     segment_match_report,
 )
 from src.network.multimodal import load_mode_graphs
@@ -263,6 +263,7 @@ def _save_outputs(
     analysis_segments: gpd.GeoDataFrame,
     segment_mapping: pd.DataFrame,
     match_report: pd.DataFrame,
+    used_match_report: pd.DataFrame,
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -331,6 +332,12 @@ def _save_outputs(
 
     match_report.to_csv(
         OUTPUT_DIR / "analysis_segment_match_report.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    used_match_report.to_csv(
+        OUTPUT_DIR / "analysis_segment_used_match_report.csv",
         index=False,
         encoding="utf-8",
     )
@@ -588,9 +595,10 @@ def main() -> None:
         ignore_index=True,
     )
 
-    modal_edges = extract_used_modal_edges(
-        edge_usage=edge_usage_all,
+    # Construa a camada física com as redes completas, e não com a amostra.
+    modal_edges = extract_all_modal_edges(
         graphs=graphs,
+        modes=segment_mode_order,
     )
 
     analysis_segments, segment_mapping = (
@@ -620,6 +628,18 @@ def main() -> None:
         segment_mapping
     )
 
+    used_match_report = segment_match_report(
+        segment_mapping,
+        modal_edge_ids=(
+            edge_usage_all[
+                "modal_edge_id"
+            ]
+            .drop_duplicates()
+            .astype(str)
+            .tolist()
+        ),
+    )
+
     print(
         "\nSegmentos físicos de análise: "
         f"{len(analysis_segments):,}"
@@ -629,9 +649,30 @@ def main() -> None:
         f"{segment_mapping['modal_edge_id'].nunique():,}"
     )
 
-    print("\nMétodos de harmonização")
+    print("\nMétodos de harmonização — redes completas")
     print(
         match_report[
+            [
+                "mode",
+                "match_method",
+                "modal_edges",
+                "analysis_segments",
+                "modal_edge_share_pct",
+                "mean_match_quality",
+            ]
+        ]
+        .round(
+            {
+                "modal_edge_share_pct": 1,
+                "mean_match_quality": 3,
+            }
+        )
+        .to_string(index=False)
+    )
+
+    print("\nMétodos de harmonização — arestas efetivamente usadas")
+    print(
+        used_match_report[
             [
                 "mode",
                 "match_method",
@@ -660,6 +701,7 @@ def main() -> None:
         analysis_segments=analysis_segments,
         segment_mapping=segment_mapping,
         match_report=match_report,
+        used_match_report=used_match_report,
     )
 
     print("\n=== TESTE FINAL ===")
