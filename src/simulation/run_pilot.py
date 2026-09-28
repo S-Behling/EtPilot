@@ -1,5 +1,5 @@
 """
-Executa o pipeline piloto do EtPilot até a escolha modal, comparando
+Executa o pipeline piloto do EtPilot até o roteamento, comparando
 dois cenários experimentais.
 
 Desenho do experimento
@@ -13,12 +13,12 @@ Desenho do experimento
 
 Fluxo:
 1. carrega configurações e dados;
-2. gera a população sintética;
-3. atribui origens residenciais;
+2. carrega as redes de carro, caminhada e bicicleta;
+3. gera a população sintética e atribui origens;
 4. constrói os cenários comportamentais;
-5. executa baseline e differentiated;
-6. valida atributos;
-7. salva e compara os resultados.
+5. atribui propósito, destino e modo;
+6. calcula a rota na rede correspondente ao modo;
+7. valida, resume e salva os resultados.
 
 Uso:
     python -m src.simulation.run_pilot
@@ -35,6 +35,11 @@ import numpy as np
 import pandas as pd
 
 from src.domain.enums import IncomeGroup, TravelMode
+from src.network.multimodal import load_mode_graphs
+from src.routing.multimodal_router import (
+    SUCCESS_STATUSES,
+    route_agents,
+)
 from src.simulation.destination_choice import (
     assign_destinations,
     destination_choice_summary,
@@ -97,6 +102,9 @@ def _validate_agents(agents) -> dict[str, int]:
             agent.destination_node is None for agent in agents
         ),
         "modo": sum(agent.mode is None for agent in agents),
+        "route_status": sum(
+            agent.route_status is None for agent in agents
+        ),
     }
 
 
@@ -113,6 +121,27 @@ def _build_summary(
 
     summary["mode"] = [
         agent.mode.value if agent.mode is not None else None
+        for agent in agents
+    ]
+
+    summary["route_status"] = [
+        agent.route_status
+        for agent in agents
+    ]
+
+    summary["n_route_edges"] = [
+        len(agent.route_edges)
+        for agent in agents
+    ]
+
+    summary["travel_distance_m"] = [
+        agent.travel_distance
+        for agent in agents
+    ]
+
+    # Persistência simples para inspeção e futura reconstrução do edge usage.
+    summary["route_edges"] = [
+        json.dumps(agent.route_edges)
         for agent in agents
     ]
 
@@ -166,6 +195,28 @@ def _print_scenario_summary(
         )
     )
 
+    print("\nStatus do roteamento")
+    print(
+        summary["route_status"]
+        .value_counts(dropna=False)
+        .sort_index()
+    )
+
+    successful = summary[
+        summary["route_status"].isin(
+            SUCCESS_STATUSES
+        )
+    ]
+
+    if not successful.empty:
+        print("\nDistância das rotas bem-sucedidas por modo (m)")
+        print(
+            successful
+            .groupby("mode")["travel_distance_m"]
+            .agg(["count", "mean", "median", "min", "max"])
+            .round(1)
+        )
+
 
 def _validate_fixed_population(
     summaries: dict[str, pd.DataFrame],
@@ -173,7 +224,8 @@ def _validate_fixed_population(
     """
     Garante que população e residência sejam idênticas entre cenários.
 
-    Propósito, destino e modo podem variar. Identidade, renda e origem não.
+    Propósito, destino, modo e rota podem variar.
+    Identidade, renda e origem residencial não.
     """
 
     fixed_columns = [
@@ -240,6 +292,16 @@ def main() -> None:
         "node_column_prefix",
         "node_",
     )
+    routing_weight = config["routing"].get(
+        "weight",
+        "length",
+    )
+    routing_strict = bool(
+        config["routing"].get(
+            "strict",
+            False,
+        )
+    )
 
     origins_path = (
         PROJECT_ROOT
@@ -250,7 +312,7 @@ def main() -> None:
         / config["paths"]["destinations"]
     )
 
-    print("1/6 - Carregando dados...")
+    print("1/7 - Carregando dados...")
 
     origins = gpd.read_file(origins_path)
 
@@ -259,7 +321,22 @@ def main() -> None:
         layer="destinations",
     )
 
-    print("2/6 - Gerando população sintética...")
+    print("2/7 - Carregando redes modais...")
+
+    graphs = load_mode_graphs(
+        config=config,
+        project_root=PROJECT_ROOT,
+        modes=implemented_modes,
+    )
+
+    for mode, graph in graphs.items():
+        print(
+            f"  {mode}: "
+            f"{len(graph.nodes):,} nós | "
+            f"{len(graph.edges):,} arestas"
+        )
+
+    print("3/7 - Gerando população sintética...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -275,7 +352,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(base_agents)}")
 
-    print("3/6 - Atribuindo origens residenciais...")
+    print("4/7 - Atribuindo origens residenciais...")
 
     base_agents = assign_origins(
         agents=base_agents,
@@ -294,7 +371,7 @@ def main() -> None:
         ),
     )
 
-    print("4/6 - Construindo cenários experimentais...")
+    print("5/7 - Construindo cenários experimentais...")
 
     behavior_scenarios = build_behavior_scenarios(
         config_agents=config_agents,
@@ -303,7 +380,7 @@ def main() -> None:
 
     summaries: dict[str, pd.DataFrame] = {}
 
-    print("5/6 - Executando cenários...")
+    print("6/7 - Executando cenários e roteamento...")
 
     for scenario_name in SCENARIOS:
         print(f"\n--- {scenario_name} ---")
@@ -346,12 +423,29 @@ def main() -> None:
             implemented_modes=implemented_modes,
         )
 
+        agents = route_agents(
+            agents=agents,
+            graphs=graphs,
+            weight=routing_weight,
+            strict=routing_strict,
+        )
+
         missing = _validate_agents(agents)
 
         if any(missing.values()):
             raise RuntimeError(
                 f"Cenário '{scenario_name}' possui "
                 f"atributos ausentes: {missing}"
+            )
+
+        successful_routes = sum(
+            agent.route_status in SUCCESS_STATUSES
+            for agent in agents
+        )
+
+        if successful_routes == 0:
+            raise RuntimeError(
+                f"Nenhuma rota foi calculada no cenário '{scenario_name}'."
             )
 
         summary = _build_summary(
@@ -366,7 +460,7 @@ def main() -> None:
             summary=summary,
         )
 
-    print("\n6/6 - Validando e salvando resultados...")
+    print("\n7/7 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
     _save_outputs(summaries)
@@ -384,6 +478,9 @@ def main() -> None:
         "Modos roteáveis nesta etapa: "
         + ", ".join(implemented_modes)
         + ". Transit permanece planejado para GTFS."
+    )
+    print(
+        f"Roteamento: shortest path por '{routing_weight}'."
     )
     print(f"Resultados salvos em: {OUTPUT_DIR.resolve()}")
 
