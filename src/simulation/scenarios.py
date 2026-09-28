@@ -150,6 +150,16 @@ def build_behavior_scenarios(
     mode_differentiated = deepcopy(
         config_agents["mode_choice"]["differentiated"]
     )
+    mode_distance_adjustment = deepcopy(
+        config_agents[
+            "mode_choice"
+        ].get(
+            "distance_adjustment",
+            {
+                "enabled": False,
+            },
+        )
+    )
     destination_differentiated = deepcopy(
         config_agents["destination_choice"]
     )
@@ -178,10 +188,16 @@ def build_behavior_scenarios(
             "purpose_choice": purpose_baseline,
             "destination_choice": destination_baseline,
             "mode_choice": mode_baseline,
+            "mode_distance_adjustment": deepcopy(
+                mode_distance_adjustment
+            ),
         },
         "differentiated": {
             "purpose_choice": purpose_differentiated,
             "destination_choice": destination_differentiated,
             "mode_choice": mode_differentiated,
+            "mode_distance_adjustment": deepcopy(
+                mode_distance_adjustment
+            ),
         },
     }
