@@ -1246,7 +1246,7 @@ def main() -> None:
         f"{segment_mapping['modal_edge_id'].nunique():,}"
     )
 
-    print("\nMétodos de harmonização — redes completas")
+    print("\nMétodos de harmonização — redes completas e conexões GTFS usadas")
     print(
         match_report[
             [
@@ -1517,6 +1517,14 @@ def main() -> None:
         scenario_comparison=paired_comparison,
         scenario_comparison_geodata=paired_comparison_geodata,
         scenario_comparison_summary=paired_summary,
+        transit_mapping=transit_mapping,
+        transit_geometry_diagnostics=(
+            transit_geometry_diagnostics
+        ),
+        transit_match_diagnostics=(
+            transit_match_diagnostics
+        ),
+        transit_spatial_summary=transit_spatial_summary,
     )
 
     print("\n=== TESTE FINAL ===")
@@ -1529,13 +1537,19 @@ def main() -> None:
         "nas regras de propósito, destino e modo."
     )
     print(
-        "Modos roteáveis nesta etapa: "
-        + ", ".join(implemented_modes)
-        + ". Transit possui dados GTFS preparados, mas ainda não entra "
-        "no roteamento do run_pilot."
+        "Modos disponíveis na escolha modal: "
+        + ", ".join(
+            choice_modes
+        )
     )
     print(
-        f"Roteamento: shortest path por '{routing_weight}'."
+        "Roteamento viário: shortest path por "
+        f"'{routing_weight}' para walk, bike e car"
+    )
+    print(
+        "Roteamento transit: GTFS temporal com acesso e egresso pela rede "
+        f"walk na data {transit_service_date} e partida fixa em "
+        f"{_format_float_pt(transit_departure_time_s / 3600, decimals=2)} h"
     )
     print(
         "H_soc: entropia de Shannon normalizada da composição "
@@ -1557,6 +1571,10 @@ def main() -> None:
     print(
         "A escolha modal aplica resposta provisória à distância OD "
         "antes do roteamento e mantém os mesmos parâmetros nos dois cenários."
+    )
+
+    print(
+        "\n12/12 - Atualizando documentação metodológica..."
     )
 
     from src.reporting.exportPilotMetadata import (
