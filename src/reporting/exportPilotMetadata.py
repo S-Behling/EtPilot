@@ -1180,7 +1180,18 @@ def _collect_config_parameters(
                 )
             ),
             "categorias",
-            "Modos com roteamento viário atualmente integrado ao run_pilot",
+            "Modos com grafo OSM carregado diretamente no run_pilot",
+        ),
+        (
+            "routing.choice_modes",
+            " | ".join(
+                routing.get(
+                    "choice_modes",
+                    []
+                )
+            ),
+            "categorias",
+            "Modos disponíveis para a escolha modal dos agentes no piloto integrado",
         ),
         (
             "transit.network.walk_speed_m_s",
@@ -1275,6 +1286,50 @@ def _collect_config_parameters(
             ),
             "s",
             "Horizonte máximo provisório considerado em uma consulta de transporte coletivo",
+        ),
+        (
+            "transit.routing.pilot_departure_time_s",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "pilot_departure_time_s"
+            ),
+            "s desde o início do dia de serviço",
+            "Horário fixo adotado para o roteamento transit dos agentes no piloto técnico",
+        ),
+        (
+            "transit.spatial_mapping.tolerance_m",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "tolerance_m"
+            ),
+            "m",
+            "Tolerância de proximidade usada para associar trechos de shapes GTFS aos segmentos físicos comuns",
+        ),
+        (
+            "transit.spatial_mapping.min_segment_coverage",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "min_segment_coverage"
+            ),
+            "proporção de 0 a 1",
+            "Cobertura mínima de um segmento físico exigida para aceitar o mapeamento de uma conexão GTFS",
+        ),
+        (
+            "transit.spatial_mapping.max_angle_difference_deg",
+            transit.get(
+                "spatial_mapping",
+                {},
+            ).get(
+                "max_angle_difference_deg"
+            ),
+            "graus",
+            "Diferença angular máxima provisória entre o trecho GTFS e o segmento físico candidato",
         ),
         (
             "transit.routing.diagnostics.sample_size",
