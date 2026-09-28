@@ -270,6 +270,33 @@ python -m src.reporting.exportPilotMetadata
 The exporter removes the former `outputs/metadados_piloto.xml` file when it
 exists so that XLSX and HTML remain the canonical metadata formats.
 
+## GTFS temporal quality diagnostics
+
+The EPTC feed contains a large share of interpolated stop times. Before
+integrating transit into the main agent simulation, evaluate temporal
+consistency at the trip level with:
+
+```bash
+python -m src.transit.validateGTFSTemporalQuality
+```
+
+The diagnostic writes:
+
+```text
+outputs/pilot/gtfs_trip_temporal_quality.csv
+```
+
+Each `trip_id` is summarized with the number of stops, number of original
+timepoints, scheduled duration, number and share of zero-duration connections,
+connection-time statistics, shape length when available, and implied average
+speed from the shape length and scheduled duration.
+
+The console report emphasizes descriptive diagnostics rather than filtering
+trips automatically. It reports trip-duration percentiles, prevalence of
+zero-duration connections, and the distribution of implied shape speeds.
+These results are used to decide whether the temporal reconstruction needs
+additional treatment before transit enters `run_pilot`.
+
 ## Timetable transit routing
 
 The pilot now includes a standalone timetable router in:
@@ -585,12 +612,13 @@ Current implementation:
 - ✔ Standalone timetable transit router with walking access and egress
 - ✔ Same-stop transfer logic with configurable transfer time
 - ✔ Real-data transit routing diagnostic
+- ✔ GTFS trip-level temporal quality diagnostic
 - ✔ Pilot metadata export in XLSX and HTML
 
 In progress:
 
-- Local validation of the stop connectors and scheduled connection table
-- Local validation of the timetable router on real pilot OD pairs
+- Local validation of GTFS trip-level temporal quality
+- Decision on temporal reconstruction for trips with implausibly short or zero-duration connections
 - Integration of transit into the main agent simulation
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
@@ -600,8 +628,8 @@ In progress:
 
 Complete the pilot in this order:
 
-1. validate the scheduled GTFS connection table, stop-to-walk connectors and
-   real-data timetable routing diagnostics;
+1. validate trip-level GTFS temporal quality and define how to handle
+   zero-duration or implausibly fast scheduled connections;
 2. integrate transit into the main agent simulation without redistributing the
    transit probability to car, bicycle or walking;
 3. validate the provisional distance-sensitive mode rule against routed
