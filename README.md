@@ -37,6 +37,8 @@ urban-complexity/
 │   └── ...
 │
 ├── src/
+│   ├── downloads/
+│   │   └── downloadGTFS.py
 │   ├── network.py
 │   ├── classification.py
 │   ├── visualization.py
@@ -119,6 +121,41 @@ The project is organized as a sequential research pipeline:
 11. Generate spatial maps of H_soc and paired delta_H_soc
 
 ---
+
+## External data downloads
+
+Keep download code under `src/downloads/` and keep downloaded files under
+`data/`. Store the GTFS feed directly in `data/gtfs/` without an
+additional `raw/` level.
+
+Current structure:
+
+```text
+src/
+└── downloads/
+    ├── __init__.py
+    └── downloadGTFS.py
+
+data/
+└── gtfs/
+    ├── porto_alegre_gtfs.zip
+    └── gtfs_download_metadata.json
+```
+
+Run the official Porto Alegre GTFS download with:
+
+```bash
+python -m src.downloads.downloadGTFS
+```
+
+The downloader reads the official EPTC source URL from `config/config.json`,
+stores the ZIP directly in `data/gtfs/`, and records the download timestamp,
+file size, source URL, and SHA-256 hash in `gtfs_download_metadata.json`.
+
+Keep later processed GTFS products in the same `data/gtfs/` directory and
+make their processed state explicit in the filename, for example
+`porto_alegre_gtfs_processed.gpkg` or
+`transit_network_processed.parquet`.
 
 ## Multimodal network
 
