@@ -388,9 +388,9 @@ These values are technical pilot assumptions and are not treated as
 empirically calibrated travel-demand parameters.
 
 Walking access and egress preserve the exact OSM walk edges used by the
-shortest path so they can later be incorporated into physical-segment usage.
-The transit portion preserves the ordered GTFS connection, trip, and route
-identifiers.
+shortest path and enter the same physical-segment usage table as the other
+trajectories. The transit portion preserves the ordered GTFS connection, trip,
+and route identifiers.
 
 At this stage transfers are implemented between trips that share the same
 `stop_id`. Walking transfers between distinct nearby stops remain outside
@@ -465,6 +465,21 @@ defined in `config/config.json`: spatial tolerance, minimum segment
 coverage, and maximum orientation difference. The pilot stops instead of
 silently discarding a used transit connection when no physical segment match
 is found.
+
+
+The integrated pilot writes the transit harmonization audit files:
+
+```text
+outputs/pilot/transit_connection_to_analysis_segment.csv
+outputs/pilot/transit_connection_geometry_diagnostics.csv
+outputs/pilot/transit_connection_match_diagnostics.csv
+outputs/pilot/transit_spatial_match_report.csv
+```
+
+The bus leg is matched only against physical analysis segments that have
+support from the car network. Orientation compatibility is evaluated locally
+along the GTFS shape near each candidate segment rather than from the global
+orientation of a curved connection.
 
 To prepare the multimodal data:
 
