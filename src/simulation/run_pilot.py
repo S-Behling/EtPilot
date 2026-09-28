@@ -962,6 +962,12 @@ def main() -> None:
     ][
         "segment_statistics"
     ]
+    outlier_config = config[
+        "analysis"
+    ].get(
+        "trip_outliers",
+        {},
+    )
 
     min_agents_for_interpretation = int(
         statistics_config[
@@ -1278,6 +1284,134 @@ def main() -> None:
             f"{_format_int_pt(len(edge_usage))} passagens agente×aresta | "
             f"{_format_int_pt(edge_usage['modal_edge_id'].nunique())} "
             "arestas modais únicas"
+        )
+
+    (
+        summaries,
+        outlier_exclusions,
+        outlier_filter_summary,
+    ) = apply_paired_transit_outlier_filter(
+        summaries,
+        config=outlier_config,
+    )
+
+    OUTPUT_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    outlier_exclusions.to_csv(
+        OUTPUT_DIR
+        / outlier_config.get(
+            "exclusions_file",
+            "outlier_exclusions.csv",
+        ),
+        index=False,
+        encoding="utf-8",
+    )
+    outlier_filter_summary.to_csv(
+        OUTPUT_DIR
+        / outlier_config.get(
+            "summary_file",
+            "outlier_filter_summary.csv",
+        ),
+        index=False,
+        encoding="utf-8",
+    )
+
+    filter_row = outlier_filter_summary.iloc[
+        0
+    ]
+
+    print(
+        "\nControle de outliers das viagens transit"
+    )
+    print(
+        "  Método: "
+        f"{filter_row['method']}"
+    )
+    print(
+        "  Rotas transit elegíveis: "
+        f"{_format_int_pt(filter_row['eligible_transit_routes'])} viagens"
+    )
+
+    if bool(
+        filter_row[
+            "sample_size_sufficient"
+        ]
+    ):
+        print(
+            "  Cerca externa da distância roteada: "
+            f"{_format_float_pt(filter_row['route_distance_upper_fence_m'])} m"
+        )
+        print(
+            "  Cerca externa da razão rota/OD: "
+            f"{_format_float_pt(filter_row['circuity_upper_fence'], decimals=2)}"
+        )
+
+    print(
+        "  Outliers diretos identificados: "
+        f"{_format_int_pt(filter_row['direct_outlier_routes'])} viagens"
+    )
+    print(
+        "  Agentes excluídos da análise pareada: "
+        f"{_format_int_pt(filter_row['unique_excluded_agents'])} agentes"
+    )
+    print(
+        "  Registros de exclusão salvos: "
+        f"{_format_int_pt(filter_row['excluded_scenario_rows'])} linhas"
+    )
+
+    for scenario_name in SCENARIOS:
+        included_agent_ids = set(
+            summaries[
+                scenario_name
+            ].loc[
+                summaries[
+                    scenario_name
+                ][
+                    "analysis_included"
+                ],
+                "agent_id",
+            ]
+        )
+
+        before_rows = len(
+            edge_usages[
+                scenario_name
+            ]
+        )
+
+        edge_usages[
+            scenario_name
+        ] = (
+            edge_usages[
+                scenario_name
+            ].loc[
+                edge_usages[
+                    scenario_name
+                ][
+                    "agent_id"
+                ].isin(
+                    included_agent_ids
+                )
+            ]
+            .copy()
+            .reset_index(
+                drop=True
+            )
+        )
+
+        after_rows = len(
+            edge_usages[
+                scenario_name
+            ]
+        )
+
+        print(
+            f"  {scenario_name}: "
+            f"{_format_int_pt(before_rows - after_rows)} passagens removidas | "
+            f"{_format_int_pt(after_rows)} passagens mantidas"
         )
 
     print("\n7/12 - Harmonizando segmentos físicos de análise...")
