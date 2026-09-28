@@ -186,10 +186,13 @@
                 "max_angle_difference_deg": 60
             },
             "coverage_rule": "segment_or_shape",
-            "unmatched_policy": "error",
+            "unmatched_policy": "exclude_agent_paired",
             "calibration_status": "provisional_pilot",
             "connection_mapping_file": "transit_connection_to_analysis_segment.csv",
-            "match_report_file": "transit_spatial_match_report.csv"
+            "match_report_file": "transit_spatial_match_report.csv",
+            "paired_exclusion": true,
+            "exclusions_file": "transit_spatial_exclusions.csv",
+            "exclusion_summary_file": "transit_spatial_exclusion_summary.csv"
         }
     }
 }
