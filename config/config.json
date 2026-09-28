@@ -109,7 +109,9 @@
             "source_page": "https://dadosabertos.poa.br/dataset/gtfs",
             "source_url": "https://dadosabertos.poa.br/dataset/1fe9c2c1-9fbe-48ea-841b-61e30597ecd6/resource/b3bce61f-78ee-49eb-be57-6236d82bd5e0/download/arquivo-gtfs.zip",
             "data_dir": "data/gtfs",
-            "zip_file": "porto_alegre_gtfs.zip"
+            "zip_file": "porto_alegre_gtfs.zip",
+            "mode_scope": "bus",
+            "processed_suffix": "_processed"
         }
     }
 }
