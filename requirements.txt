@@ -1,26 +1,12 @@
-'''
-Terminal commands to set up the virtual environment and install dependencies:
-P/ carregar ambiente virtual
-python -m venv .venv
-
-ativar o ambiente virtual (Windows)
-.venv\Scripts\activate
-
-* Bibliotecas
-pip install osmnx
-pip install geopandas
-pip install networkx
-pip install pandas
-pip install numpy
-pip install matplotlib
-pip install jupyter
-pip install shapely
-pip install pyarrow
-'''
+# Configuração do ambiente virtual
+# Windows: python -m venv .venv
+# Ativação no Windows: .venv\Scripts\activate
+# Instalação das dependências: python -m pip install -r requirements.txt
 
 # Análise de dados
 pandas
 numpy
+scipy
 
 # Geoprocessamento
 geopandas
@@ -28,8 +14,9 @@ shapely
 pyproj
 fiona
 rtree
+pyogrio
 
-# Redes urbanas / OSM
+# Redes urbanas e OSM
 osmnx
 networkx
 
@@ -41,9 +28,8 @@ contextily
 jupyter
 ipykernel
 
-# Arquivos geográficos
-pyogrio
+# Arquivos tabulares e colunares
+pyarrow
 
 # Utilidades
 tqdm
-scipy
