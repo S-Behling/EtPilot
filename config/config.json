@@ -101,15 +101,46 @@
         },
         "population_sensitivity": {
             "sizes": [
-                100,
-                250,
-                500,
-                1000
+                100
             ],
             "seed": 42,
             "stability_tolerance": 0.05,
             "minimum_paired_segments_ge_10": 1,
-            "status": "technical_selection_provisional"
+            "status": "operational_n_fixed_not_convergence",
+            "note": "N=100 foi fixado como tamanho operacional do piloto por custo computacional. Não deve ser descrito como tamanho populacional convergido."
+        },
+        "final_pilot_sensitivity": {
+            "n_agents": 100,
+            "seeds": [
+                11,
+                23,
+                42,
+                73,
+                101
+            ],
+            "reference_seed": 42,
+            "destination_decay_multipliers": [
+                0.75,
+                1,
+                1.25
+            ],
+            "mode_decay_multipliers": [
+                0.75,
+                1,
+                1.25
+            ],
+            "include_mode_homogenized_decomposition": true,
+            "primary_flow_threshold": 5,
+            "reported_flow_thresholds": [
+                2,
+                3,
+                5,
+                10
+            ],
+            "output_dir": "outputs/pilot/final_sensitivity",
+            "reuse_legacy_seed42": true,
+            "status": "pending_execution_for_final_freeze",
+            "interpretation": "Resultados finais devem ser avaliados entre múltiplas seeds. O limiar principal de interpretação é n_agents >= 5; >=2, >=3 e >=10 são sensibilidades de suporte."
         }
     },
     "income": {
