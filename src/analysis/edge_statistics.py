@@ -1,13 +1,13 @@
-"""Agregue o uso das trajetórias por segmento físico comum.
+"""Agregue o uso das trajetórias por segmento físico comum
 
-Conte passagens e agentes separadamente. Use agentes distintos para calcular
+Conta passagens e agentes separadamente. Usa agentes distintos para calcular
 as composições socioeconômica, modal e funcional, evitando que uma
 segmentação 1:N ou uma repetição da mesma trajetória aumente artificialmente
-o peso de um agente.
+o peso de um agente
 
-Calcule `H_soc` com as contagens de agentes distintos por grupo de renda.
-Mantenha o volume observado ao lado da entropia e marque explicitamente os
-segmentos com fluxo suficiente para interpretação.
+Calcula `H_soc` com as contagens de agentes distintos por grupo de renda
+Mantém o volume observado ao lado da entropia e marca explicitamente os
+segmentos com fluxo suficiente para interpretação
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ def _require_columns(
     frame: pd.DataFrame,
     columns: Iterable[str],
 ) -> None:
-    """Exija todas as colunas necessárias antes de agregar os dados."""
+    """Exige todas as colunas necessárias antes de agregar os dados"""
 
     required = set(
         columns
@@ -69,7 +69,7 @@ def _validate_categories(
     column: str,
     categories: tuple[str, ...],
 ) -> None:
-    """Rejeite categorias inesperadas para preservar comparabilidade."""
+    """Rejeita categorias inesperadas para preservar comparabilidade"""
 
     observed = set(
         frame[
@@ -98,7 +98,7 @@ def _validate_categories(
 def _validate_agent_income(
     edge_usage: pd.DataFrame,
 ) -> None:
-    """Garanta que cada agente mantenha um único grupo de renda por cenário."""
+    """Garante que cada agente mantém um único grupo de renda por cenário"""
 
     inconsistent = (
         edge_usage
@@ -133,7 +133,7 @@ def _add_category_counts(
     categories: tuple[str, ...],
     prefix: str,
 ) -> pd.DataFrame:
-    """Adicione contagens de agentes distintos para todas as categorias."""
+    """Adiciona contagens de agentes distintos para todas as categorias"""
 
     counts = pd.crosstab(
         index=[
@@ -187,13 +187,13 @@ def build_segment_statistics(
     flow_thresholds: Iterable[int] = DEFAULT_FLOW_THRESHOLDS,
 ) -> pd.DataFrame:
     """
-    Calcule volume, composição e entropia para cada segmento usado.
+    Calcula volume, composição e entropia para cada segmento usado
 
-    Conte `n_passages` a partir de todas as linhas harmonizadas. Conte
+    Conta `n_passages` a partir de todas as linhas harmonizadas. Conta
     `n_agents` e as composições a partir de pares únicos
-    agente × segmento. Calcule `H_soc` com agentes distintos por grupo de
+    agente × segmento. Calcula `H_soc` com agentes distintos por grupo de
     renda para representar a diversidade das trajetórias que alcançam o
-    segmento, e não o número de registros produzido pela harmonização.
+    segmento, e não o número de registros produzido pela harmonização
     """
 
     _require_columns(
@@ -268,7 +268,7 @@ def build_segment_statistics(
         edge_usage
     )
 
-    # Conte todas as passagens registradas depois da harmonização 1:N.
+    # Conta todas as passagens registradas depois da harmonização 1:N
     volume = (
         edge_usage
         .groupby(
@@ -290,7 +290,7 @@ def build_segment_statistics(
         )
     )
 
-    # Preserve somente uma observação por agente em cada segmento físico.
+    # Preserva somente uma observação por agente em cada segmento físico
     agent_segment = (
         edge_usage[
             [
@@ -548,11 +548,11 @@ def attach_statistics_to_segments(
     flow_thresholds: Iterable[int] = DEFAULT_FLOW_THRESHOLDS,
 ) -> gpd.GeoDataFrame:
     """
-    Anexe as métricas a toda a rede física e preserve segmentos sem uso.
+    Anexe as métricas a toda a rede física e preserva segmentos sem uso
 
-    Preencha contagens ausentes com zero. Preserve `H_soc` e proporções como
+    Preenche contagens ausentes com zero. Preserva `H_soc` e proporções como
     NaN em segmentos não observados para diferenciar ausência de fluxo de
-    composição homogênea.
+    composição homogênea
     """
 
     _require_columns(
