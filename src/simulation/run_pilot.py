@@ -18,7 +18,8 @@ Fluxo:
 4. constrói os cenários comportamentais;
 5. atribui propósito, destino e modo;
 6. calcula a rota na rede correspondente ao modo;
-7. valida, resume e salva os resultados.
+7. harmonize as arestas modais em segmentos físicos comuns;
+8. valide, resuma e salve os resultados.
 
 Uso:
     python -m src.simulation.run_pilot
@@ -35,6 +36,12 @@ import numpy as np
 import pandas as pd
 
 from src.domain.enums import IncomeGroup, TravelMode
+from src.network.analysis_segments import (
+    apply_analysis_segment_mapping,
+    build_analysis_segments,
+    extract_used_modal_edges,
+    segment_match_report,
+)
 from src.network.multimodal import load_mode_graphs
 from src.routing.multimodal_router import (
     SUCCESS_STATUSES,
@@ -140,7 +147,7 @@ def _build_summary(
         for agent in agents
     ]
 
-    # Persistência simples para inspeção e futura reconstrução do edge usage.
+    # Persista as arestas da rota para inspecionar e reconstruir o uso da rede.
     summary["route_edges"] = [
         json.dumps(agent.route_edges)
         for agent in agents
@@ -258,6 +265,10 @@ def _validate_fixed_population(
 def _save_outputs(
     summaries: dict[str, pd.DataFrame],
     edge_usages: dict[str, pd.DataFrame],
+    harmonized_edge_usages: dict[str, pd.DataFrame],
+    analysis_segments: gpd.GeoDataFrame,
+    segment_mapping: pd.DataFrame,
+    match_report: pd.DataFrame,
 ) -> None:
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -300,6 +311,59 @@ def _save_outputs(
         encoding="utf-8",
     )
 
+    for scenario_name, edge_usage in harmonized_edge_usages.items():
+        edge_usage.to_csv(
+            OUTPUT_DIR / f"edge_usage_analysis_{scenario_name}.csv",
+            index=False,
+            encoding="utf-8",
+        )
+
+    harmonized_all = pd.concat(
+        harmonized_edge_usages.values(),
+        ignore_index=True,
+    )
+
+    harmonized_all.to_csv(
+        OUTPUT_DIR / "edge_usage_analysis_all_scenarios.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    segment_mapping.to_csv(
+        OUTPUT_DIR / "modal_edge_to_analysis_segment.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    match_report.to_csv(
+        OUTPUT_DIR / "analysis_segment_match_report.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    # Remova estruturas Python que o GeoPackage não consegue serializar.
+    segments_to_save = analysis_segments.drop(
+        columns=[
+            "osmid_set",
+        ],
+        errors="ignore",
+    )
+
+    segment_path = (
+        OUTPUT_DIR
+        / "analysis_segments.gpkg"
+    )
+
+    if segment_path.exists():
+        segment_path.unlink()
+
+    segments_to_save.to_file(
+        segment_path,
+        layer="analysis_segments",
+        driver="GPKG",
+        engine="pyogrio",
+    )
+
 
 def main() -> None:
     config = load_json(CONFIG_PATH)
@@ -323,6 +387,33 @@ def main() -> None:
         )
     )
 
+    segment_config = config[
+        "analysis"
+    ][
+        "analysis_segments"
+    ]
+
+    segment_reference_mode = (
+        segment_config[
+            "reference_mode"
+        ]
+    )
+    segment_mode_order = tuple(
+        segment_config[
+            "mode_order"
+        ]
+    )
+    segment_tolerance_m = float(
+        segment_config[
+            "geometry_tolerance_m"
+        ]
+    )
+    segment_min_coverage = float(
+        segment_config[
+            "min_geometry_coverage"
+        ]
+    )
+
     origins_path = (
         PROJECT_ROOT
         / config["paths"]["origins_income"]
@@ -332,7 +423,7 @@ def main() -> None:
         / config["paths"]["destinations"]
     )
 
-    print("1/7 - Carregando dados...")
+    print("1/8 - Carregando dados...")
 
     origins = gpd.read_file(origins_path)
 
@@ -341,7 +432,7 @@ def main() -> None:
         layer="destinations",
     )
 
-    print("2/7 - Carregando redes modais...")
+    print("2/8 - Carregando redes modais...")
 
     graphs = load_mode_graphs(
         config=config,
@@ -356,7 +447,7 @@ def main() -> None:
             f"{len(graph.edges):,} arestas"
         )
 
-    print("3/7 - Gerando população sintética...")
+    print("3/8 - Gerando população sintética...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -372,7 +463,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(base_agents)}")
 
-    print("4/7 - Atribuindo origens residenciais...")
+    print("4/8 - Atribuindo origens residenciais...")
 
     base_agents = assign_origins(
         agents=base_agents,
@@ -391,7 +482,7 @@ def main() -> None:
         ),
     )
 
-    print("5/7 - Construindo cenários experimentais...")
+    print("5/8 - Construindo cenários experimentais...")
 
     behavior_scenarios = build_behavior_scenarios(
         config_agents=config_agents,
@@ -401,7 +492,7 @@ def main() -> None:
     summaries: dict[str, pd.DataFrame] = {}
     edge_usages: dict[str, pd.DataFrame] = {}
 
-    print("6/7 - Executando cenários e roteamento...")
+    print("6/8 - Executando cenários e roteamento...")
 
     for scenario_name in SCENARIOS:
         print(f"\n--- {scenario_name} ---")
@@ -496,12 +587,85 @@ def main() -> None:
             "arestas modais únicas"
         )
 
-    print("\n7/7 - Validando e salvando resultados...")
+    print("\n7/8 - Harmonizando segmentos físicos de análise...")
+
+    edge_usage_all = pd.concat(
+        edge_usages.values(),
+        ignore_index=True,
+    )
+
+    modal_edges = extract_used_modal_edges(
+        edge_usage=edge_usage_all,
+        graphs=graphs,
+    )
+
+    analysis_segments, segment_mapping = (
+        build_analysis_segments(
+            modal_edges=modal_edges,
+            reference_mode=segment_reference_mode,
+            mode_order=segment_mode_order,
+            tolerance_m=segment_tolerance_m,
+            min_coverage=segment_min_coverage,
+        )
+    )
+
+    harmonized_edge_usages: dict[
+        str,
+        pd.DataFrame,
+    ] = {}
+
+    for scenario_name, edge_usage in edge_usages.items():
+        harmonized_edge_usages[
+            scenario_name
+        ] = apply_analysis_segment_mapping(
+            edge_usage=edge_usage,
+            mapping=segment_mapping,
+        )
+
+    match_report = segment_match_report(
+        segment_mapping
+    )
+
+    print(
+        "\nSegmentos físicos de análise: "
+        f"{len(analysis_segments):,}"
+    )
+    print(
+        "Arestas modais harmonizadas: "
+        f"{segment_mapping['modal_edge_id'].nunique():,}"
+    )
+
+    print("\nMétodos de harmonização")
+    print(
+        match_report[
+            [
+                "mode",
+                "match_method",
+                "modal_edges",
+                "analysis_segments",
+                "modal_edge_share_pct",
+                "mean_match_quality",
+            ]
+        ]
+        .round(
+            {
+                "modal_edge_share_pct": 1,
+                "mean_match_quality": 3,
+            }
+        )
+        .to_string(index=False)
+    )
+
+    print("\n8/8 - Validando e salvando resultados...")
 
     _validate_fixed_population(summaries)
     _save_outputs(
-        summaries,
-        edge_usages,
+        summaries=summaries,
+        edge_usages=edge_usages,
+        harmonized_edge_usages=harmonized_edge_usages,
+        analysis_segments=analysis_segments,
+        segment_mapping=segment_mapping,
+        match_report=match_report,
     )
 
     print("\n=== TESTE FINAL ===")
