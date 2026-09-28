@@ -134,11 +134,11 @@ code {
 <header>
     <h1>Metadados do piloto EtPilot</h1>
     <p>Piloto computacional de mobilidade urbana, diferenciação socioespacial e entropia socioeconômica de trajetórias</p>
-    <p>Documento gerado em UTC: 2026-09-28T07:52:52.803295+00:00</p>
+    <p>Documento gerado em UTC: 2026-09-28T08:30:55.189767+00:00</p>
 </header>
 <nav><a href="#variaveis">Variáveis principais</a><a href="#parametros">Parâmetros de configuração</a><a href="#metodos">Métodos de análise</a><a href="#estatisticas">Estatísticas</a><a href="#limpeza">Métodos de limpeza e validação</a><a href="#arquivos">Arquivos gerados</a></nav>
 <main>
-    <div class="cards"><div class="card"><span class="card-number">81</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">29</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">19</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">21</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">62</span><span class="card-label">arquivos catalogados</span></div></div>
+    <div class="cards"><div class="card"><span class="card-number">86</span><span class="card-label">variáveis</span></div><div class="card"><span class="card-number">31</span><span class="card-label">métodos</span></div><div class="card"><span class="card-number">19</span><span class="card-label">estatísticas</span></div><div class="card"><span class="card-number">23</span><span class="card-label">métodos de limpeza</span></div><div class="card"><span class="card-number">64</span><span class="card-label">arquivos catalogados</span></div></div>
     <section id="variaveis"><h2>Variáveis principais</h2><p>Variáveis centrais usadas na simulação, no roteamento, na harmonização, nas métricas e no processamento do GTFS</p><table class="dataframe metadata-table">
   <thead>
     <tr style="text-align: right;">
@@ -510,6 +510,36 @@ code {
       <td>Método usado para estimar o horário entre shape_dist_traveled, geometria do shape ou stop_sequence</td>
     </tr>
     <tr>
+      <td>time_regularized</td>
+      <td>GTFS</td>
+      <td>booleano</td>
+      <td>Indica que um horário intermediário foi reconstruído para preservar intervalos positivos entre paradas consecutivas</td>
+    </tr>
+    <tr>
+      <td>time_regularization_method</td>
+      <td>GTFS</td>
+      <td>categoria</td>
+      <td>Registra se a reconstrução temporal positiva usa distância pela geometria do shape ou distribuição por stop_sequence</td>
+    </tr>
+    <tr>
+      <td>temporal_regularization_feasible</td>
+      <td>GTFS</td>
+      <td>booleano</td>
+      <td>Indica se os horários-âncora permitem distribuir pelo menos o intervalo mínimo configurado entre todas as paradas consecutivas</td>
+    </tr>
+    <tr>
+      <td>routable_for_transit</td>
+      <td>qualidade temporal do GTFS</td>
+      <td>booleano</td>
+      <td>Indica se a viagem atende aos critérios técnicos atuais para integrar a tabela usada pelo roteador de transporte coletivo</td>
+    </tr>
+    <tr>
+      <td>routing_quality_status</td>
+      <td>qualidade temporal do GTFS</td>
+      <td>categoria</td>
+      <td>Resume os motivos técnicos pelos quais uma viagem é mantida ou retirada da tabela de conexões usada no roteamento</td>
+    </tr>
+    <tr>
       <td>shape_position_m</td>
       <td>GTFS</td>
       <td>m ao longo do shape</td>
@@ -722,6 +752,20 @@ code {
       <td>max_scheduled_trips</td>
       <td>categoria</td>
       <td>Regra usada para selecionar uma data de serviço representativa do feed</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.gtfs.temporal_reconstruction.minimum_interval_s</td>
+      <td>1</td>
+      <td>s</td>
+      <td>Intervalo temporal mínimo técnico distribuído entre paradas consecutivas durante a reconstrução de horários intermediários</td>
+      <td>config/config.json</td>
+    </tr>
+    <tr>
+      <td>transit.routing.quality_filter.max_implied_shape_speed_kmh</td>
+      <td>80</td>
+      <td>km/h</td>
+      <td>Limite técnico provisório usado para impedir que viagens com velocidade média implícita extrema entrem no roteador</td>
       <td>config/config.json</td>
     </tr>
     <tr>
@@ -1297,6 +1341,16 @@ code {
       <td>Usa a posição ordinal das paradas como fallback quando não existe uma base de distância válida</td>
     </tr>
     <tr>
+      <td>Regularização temporal com intervalos positivos</td>
+      <td>_regularize_interpolated_stop_times</td>
+      <td>Redistribui o tempo entre pontos temporais originais preservando as âncoras publicadas e garantindo o intervalo mínimo configurado entre paradas consecutivas quando a alocação é matematicamente possível</td>
+    </tr>
+    <tr>
+      <td>Filtro técnico de qualidade para roteamento GTFS</td>
+      <td>_build_routing_quality_filter</td>
+      <td>Mantém a tabela completa para diagnóstico e cria separadamente um subconjunto roteável que retira viagens sem resumo temporal, com duração não positiva, regularização inviável ou velocidade implícita acima do limite técnico configurado</td>
+    </tr>
+    <tr>
       <td>Associação de paradas à rede de caminhada</td>
       <td>_connect_stops_to_walk_network</td>
       <td>Associa cada parada GTFS ao nó mais próximo da rede de caminhada e calcula distância e tempo do conector</td>
@@ -1519,6 +1573,14 @@ code {
       <td>Preservação explícita de valores ausentes em diagnósticos temporais</td>
       <td>Mantém viagens sem duração ou sem conexões como valores ausentes e evita classificá-las como duração não positiva ou como baixa quantidade de pontos temporais</td>
     </tr>
+    <tr>
+      <td>Preservação dos horários-âncora na regularização temporal</td>
+      <td>Mantém os horários originais informados pelo produtor do GTFS e modifica somente os pontos temporais intermediários estimados</td>
+    </tr>
+    <tr>
+      <td>Separação entre conexões completas e conexões roteáveis</td>
+      <td>Preserva todas as conexões processadas para auditoria e cria um arquivo separado somente com viagens que atendem aos critérios técnicos de roteamento</td>
+    </tr>
   </tbody>
 </table></section><section id="arquivos"><h2>Arquivos gerados</h2><p>Inventário dos arquivos produzidos ou mantidos ao longo do piloto e a função de cada produto</p><table class="dataframe metadata-table">
   <thead>
@@ -1657,7 +1719,7 @@ code {
       <td>Tabela de horários processados com segundos, flags de ausência e métodos de interpolação</td>
       <td>não</td>
       <td>sim</td>
-      <td>9517009</td>
+      <td>9488487</td>
     </tr>
     <tr>
       <td>calendar_processed.parquet</td>
@@ -1738,7 +1800,7 @@ code {
       <td>Inventário das tabelas GTFS encontradas e processadas</td>
       <td>não</td>
       <td>sim</td>
-      <td>1136</td>
+      <td>1213</td>
     </tr>
     <tr>
       <td>gtfs_processed_summary.csv</td>
@@ -1747,7 +1809,7 @@ code {
       <td>Resumo quantitativo e diagnóstico do processamento GTFS</td>
       <td>não</td>
       <td>sim</td>
-      <td>765</td>
+      <td>932</td>
     </tr>
     <tr>
       <td>stops_walk_connected_processed.gpkg</td>
@@ -1771,10 +1833,28 @@ code {
       <td>transit_connections_processed.parquet</td>
       <td>data/gtfs/transit_connections_processed.parquet</td>
       <td>rede de transporte coletivo</td>
-      <td>Tabela temporal de conexões entre paradas consecutivas de todas as viagens GTFS</td>
+      <td>Tabela temporal completa de conexões entre paradas consecutivas de todas as viagens GTFS processadas</td>
       <td>não</td>
       <td>sim</td>
-      <td>50224012</td>
+      <td>49996766</td>
+    </tr>
+    <tr>
+      <td>transit_connections_routable_processed.parquet</td>
+      <td>data/gtfs/transit_connections_routable_processed.parquet</td>
+      <td>rede de transporte coletivo</td>
+      <td>Subconjunto das conexões GTFS cujas viagens atendem aos critérios técnicos de qualidade temporal usados pelo roteador</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>47656187</td>
+    </tr>
+    <tr>
+      <td>transit_trip_quality_processed.csv</td>
+      <td>data/gtfs/transit_trip_quality_processed.csv</td>
+      <td>qualidade temporal do GTFS</td>
+      <td>Diagnóstico por trip_id com critérios e motivos de inclusão ou exclusão da tabela de conexões roteáveis</td>
+      <td>não</td>
+      <td>sim</td>
+      <td>7427833</td>
     </tr>
     <tr>
       <td>transit_topology_processed.parquet</td>
@@ -1783,7 +1863,7 @@ code {
       <td>Resumo topológico das ligações entre pares direcionais de paradas por rota</td>
       <td>não</td>
       <td>sim</td>
-      <td>228006</td>
+      <td>226715</td>
     </tr>
     <tr>
       <td>transit_service_day_profile_processed.csv</td>
@@ -1801,7 +1881,7 @@ code {
       <td>Resumo diagnóstico da associação das paradas à caminhada e da tabela temporal de ônibus</td>
       <td>não</td>
       <td>sim</td>
-      <td>840</td>
+      <td>1162</td>
     </tr>
     <tr>
       <td>agents_baseline.csv</td>
@@ -2062,7 +2142,7 @@ code {
       <td>Amostra de consultas origem-destino usada para validar cobertura, tempos, acesso, egresso e transferências do roteador temporal de ônibus</td>
       <td>não</td>
       <td>sim</td>
-      <td>28018</td>
+      <td>23749</td>
     </tr>
     <tr>
       <td>gtfs_trip_temporal_quality.csv</td>
@@ -2071,7 +2151,7 @@ code {
       <td>Diagnóstico por trip_id com duração programada, pontos temporais originais, conexões de duração zero e velocidade implícita pelo shape</td>
       <td>não</td>
       <td>sim</td>
-      <td>5915237</td>
+      <td>6348715</td>
     </tr>
     <tr>
       <td>metadados_piloto.xlsx</td>
@@ -2080,7 +2160,7 @@ code {
       <td>Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td>27138</td>
+      <td>28579</td>
     </tr>
     <tr>
       <td>metadados_piloto.html</td>
@@ -2089,7 +2169,7 @@ code {
       <td>Relatório HTML navegável com a documentação metodológica consolidada do piloto</td>
       <td>não</td>
       <td>sim</td>
-      <td>74339</td>
+      <td>80203</td>
     </tr>
   </tbody>
 </table></section>
