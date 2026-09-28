@@ -1,0 +1,11 @@
+run_id,experiment,seed,destination_decay_multiplier,mode_decay_multiplier,homogenize_differentiated_mode
+nominal_seed_11,nominal_seed,11,1.0,1.0,False
+nominal_seed_23,nominal_seed,23,1.0,1.0,False
+nominal_seed_42,nominal_seed,42,1.0,1.0,False
+nominal_seed_73,nominal_seed,73,1.0,1.0,False
+nominal_seed_101,nominal_seed,101,1.0,1.0,False
+destination_decay_0p75,destination_decay,42,0.75,1.0,False
+destination_decay_1p25,destination_decay,42,1.25,1.0,False
+mode_decay_0p75,mode_decay,42,1.0,0.75,False
+mode_decay_1p25,mode_decay,42,1.0,1.25,False
+mode_homogenized,mode_homogenized,42,1.0,1.0,True
