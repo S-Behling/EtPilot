@@ -181,6 +181,14 @@ times such as `25:10:00` to seconds from the beginning of the service day,
 expands active service dates, projects stops to the study CRS, and builds
 projected line geometries from `shapes.txt` when the feed provides shapes.
 
+When intermediate `stop_times` records omit arrival and departure times, the
+processor preserves the original missing-value flags and creates explicit
+processed estimates between known temporal anchors. It uses
+`shape_dist_traveled` when that field is complete and monotonic within the
+trip and otherwise falls back to `stop_sequence`. The processed table records
+`time_interpolated` and `time_interpolation_method` so estimated schedule
+times remain distinguishable from values supplied by the GTFS producer.
+
 The current official EPTC GTFS source represents the Porto Alegre bus mode.
 Keep the internal `transit` label for the pilot while documenting this bus
 scope explicitly. Add other transit systems through additional feeds or
