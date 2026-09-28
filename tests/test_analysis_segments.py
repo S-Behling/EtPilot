@@ -1,6 +1,5 @@
 import unittest
 
-import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.geometry import LineString
@@ -8,7 +7,7 @@ from shapely.geometry import LineString
 from src.network.analysis_segments import (
     apply_analysis_segment_mapping,
     build_analysis_segments,
-    extract_used_modal_edges,
+    extract_all_modal_edges,
 )
 
 
@@ -65,38 +64,12 @@ class AnalysisSegmentsTests(unittest.TestCase):
             ),
         )
 
-        edge_usage = pd.DataFrame(
-            [
-                {
-                    "mode": "walk",
-                    "u": 1,
-                    "v": 2,
-                    "key": 0,
-                    "modal_edge_id": "walk:1:2:0",
-                },
-                {
-                    "mode": "walk",
-                    "u": 2,
-                    "v": 3,
-                    "key": 0,
-                    "modal_edge_id": "walk:2:3:0",
-                },
-                {
-                    "mode": "car",
-                    "u": 1,
-                    "v": 3,
-                    "key": 0,
-                    "modal_edge_id": "car:1:3:0",
-                },
-            ]
-        )
-
-        modal_edges = extract_used_modal_edges(
-            edge_usage,
+        modal_edges = extract_all_modal_edges(
             {
                 "walk": walk,
                 "car": car,
             },
+            modes=("walk", "car"),
         )
 
         segments, mapping = build_analysis_segments(
@@ -152,31 +125,12 @@ class AnalysisSegmentsTests(unittest.TestCase):
             ),
         )
 
-        edge_usage = pd.DataFrame(
-            [
-                {
-                    "mode": "walk",
-                    "u": 1,
-                    "v": 2,
-                    "key": 0,
-                    "modal_edge_id": "walk:1:2:0",
-                },
-                {
-                    "mode": "car",
-                    "u": 4,
-                    "v": 5,
-                    "key": 0,
-                    "modal_edge_id": "car:4:5:0",
-                },
-            ]
-        )
-
-        modal_edges = extract_used_modal_edges(
-            edge_usage,
+        modal_edges = extract_all_modal_edges(
             {
                 "walk": walk,
                 "car": car,
             },
+            modes=("walk", "car"),
         )
 
         segments, mapping = build_analysis_segments(
@@ -199,6 +153,70 @@ class AnalysisSegmentsTests(unittest.TestCase):
         self.assertEqual(
             car_mapping.iloc[0]["match_method"],
             "exclusive",
+        )
+
+    def test_use_complete_network_even_when_reference_edge_is_not_observed(self):
+        walk = self._graph()
+        car = self._graph()
+
+        # Inclua na rede completa um trecho de caminhada que não apareça na amostra.
+        walk.add_edge(
+            1,
+            2,
+            key=0,
+            osmid=10,
+            length=10.0,
+            geometry=LineString(
+                [(0.0, 0.0), (10.0, 0.0)]
+            ),
+        )
+
+        # Faça o carro usar exatamente o mesmo trecho físico.
+        car.add_edge(
+            1,
+            2,
+            key=0,
+            osmid=10,
+            length=10.0,
+            geometry=LineString(
+                [(0.0, 0.0), (10.0, 0.0)]
+            ),
+        )
+
+        modal_edges = extract_all_modal_edges(
+            {
+                "walk": walk,
+                "car": car,
+            },
+            modes=("walk", "car"),
+        )
+
+        _, mapping = build_analysis_segments(
+            modal_edges,
+            reference_mode="walk",
+            mode_order=("walk", "car"),
+            tolerance_m=1.0,
+            min_coverage=0.95,
+        )
+
+        walk_segment = mapping.loc[
+            mapping["modal_edge_id"]
+            == "walk:1:2:0",
+            "analysis_segment_id",
+        ].iloc[0]
+
+        car_row = mapping.loc[
+            mapping["modal_edge_id"]
+            == "car:1:2:0"
+        ].iloc[0]
+
+        self.assertEqual(
+            car_row["analysis_segment_id"],
+            walk_segment,
+        )
+        self.assertEqual(
+            car_row["match_method"],
+            "osm_exact",
         )
 
     def test_explode_edge_usage_when_mapping_is_one_to_many(self):
