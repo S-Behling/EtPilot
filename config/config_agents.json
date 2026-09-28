@@ -94,8 +94,8 @@
         "car": 0
       },
       "max_distance_km": {
-        "walk": 8,
-        "bike": 25,
+        "walk": 6,
+        "bike": 20,
         "transit": null,
         "car": null
       },
