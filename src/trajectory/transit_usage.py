@@ -1482,7 +1482,12 @@ def map_transit_connections_to_analysis_segments(
                 "analysis_segment_id",
                 "match_method",
                 "match_quality",
+                "segment_coverage",
+                "shape_coverage",
+                "angle_difference_deg",
+                "accepted_by",
                 "mapping_scope",
+                "match_stage",
             ]
         )
 
@@ -1504,6 +1509,257 @@ def map_transit_connections_to_analysis_segments(
     )
 
 
+def map_transit_connections_hierarchically(
+    connection_geometries: gpd.GeoDataFrame,
+    *,
+    primary_segments: gpd.GeoDataFrame,
+    fallback_segments: gpd.GeoDataFrame,
+    primary_config: Mapping,
+    fallback_config: Mapping,
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+]:
+    """Aplica uma etapa primária e uma etapa de fallback ao mapeamento GTFS"""
+
+    primary_mapping, primary_diagnostics = (
+        map_transit_connections_to_analysis_segments(
+            connection_geometries,
+            analysis_segments=primary_segments,
+            tolerance_m=float(
+                primary_config[
+                    "tolerance_m"
+                ]
+            ),
+            min_coverage=float(
+                primary_config[
+                    "min_coverage"
+                ]
+            ),
+            max_angle_difference_deg=float(
+                primary_config[
+                    "max_angle_difference_deg"
+                ]
+            ),
+            match_method="gtfs_shape_geometry_primary",
+            mapping_scope=str(
+                primary_config.get(
+                    "candidate_scope",
+                    "primary",
+                )
+            ),
+            match_stage="primary",
+        )
+    )
+
+    primary_matched_ids = set(
+        primary_mapping[
+            "modal_edge_id"
+        ].astype(
+            str
+        )
+    )
+
+    fallback_enabled = bool(
+        fallback_config.get(
+            "enabled",
+            True,
+        )
+    )
+
+    if (
+        not fallback_enabled
+        or connection_geometries.empty
+    ):
+        final_diagnostics = (
+            primary_diagnostics.copy()
+        )
+        final_diagnostics[
+            "final_match_stage"
+        ] = np.where(
+            final_diagnostics[
+                "matched_segments"
+            ]
+            > 0,
+            "primary",
+            "unmatched",
+        )
+
+        return (
+            primary_mapping,
+            final_diagnostics,
+        )
+
+    fallback_geometries = (
+        connection_geometries.loc[
+            ~connection_geometries[
+                "modal_edge_id"
+            ]
+            .astype(
+                str
+            )
+            .isin(
+                primary_matched_ids
+            )
+        ]
+        .copy()
+        .reset_index(
+            drop=True
+        )
+    )
+
+    fallback_mapping, fallback_diagnostics = (
+        map_transit_connections_to_analysis_segments(
+            fallback_geometries,
+            analysis_segments=fallback_segments,
+            tolerance_m=float(
+                fallback_config[
+                    "tolerance_m"
+                ]
+            ),
+            min_coverage=float(
+                fallback_config[
+                    "min_coverage"
+                ]
+            ),
+            max_angle_difference_deg=float(
+                fallback_config[
+                    "max_angle_difference_deg"
+                ]
+            ),
+            match_method="gtfs_shape_geometry_fallback",
+            mapping_scope=str(
+                fallback_config.get(
+                    "candidate_scope",
+                    "fallback",
+                )
+            ),
+            match_stage="fallback",
+        )
+    )
+
+    mapping = (
+        pd.concat(
+            [
+                primary_mapping,
+                fallback_mapping,
+            ],
+            ignore_index=True,
+            sort=False,
+        )
+        .drop_duplicates(
+            subset=[
+                "modal_edge_id",
+                "analysis_segment_id",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+    primary_by_connection = (
+        primary_diagnostics.set_index(
+            "connection_id"
+        )
+    )
+    fallback_by_connection = (
+        fallback_diagnostics.set_index(
+            "connection_id"
+        )
+        if not fallback_diagnostics.empty
+        else pd.DataFrame()
+    )
+
+    final_rows: list[
+        dict
+    ] = []
+
+    for row in connection_geometries.itertuples(
+        index=False
+    ):
+        connection_id = str(
+            row.connection_id
+        )
+
+        primary_row = (
+            primary_by_connection.loc[
+                connection_id
+            ]
+            if connection_id
+            in primary_by_connection.index
+            else None
+        )
+
+        if (
+            primary_row is not None
+            and int(
+                primary_row[
+                    "matched_segments"
+                ]
+            )
+            > 0
+        ):
+            final_rows.append(
+                {
+                    **primary_row.to_dict(),
+                    "connection_id": connection_id,
+                    "final_match_stage": "primary",
+                }
+            )
+            continue
+
+        if (
+            not fallback_diagnostics.empty
+            and connection_id
+            in fallback_by_connection.index
+        ):
+            fallback_row = fallback_by_connection.loc[
+                connection_id
+            ]
+
+            final_rows.append(
+                {
+                    **fallback_row.to_dict(),
+                    "connection_id": connection_id,
+                    "final_match_stage": (
+                        "fallback"
+                        if int(
+                            fallback_row[
+                                "matched_segments"
+                            ]
+                        )
+                        > 0
+                        else "unmatched"
+                    ),
+                }
+            )
+            continue
+
+        final_rows.append(
+            {
+                "connection_id": connection_id,
+                "shape_id": str(
+                    row.shape_id
+                ),
+                "geometry_length_m": float(
+                    row.geometry.length
+                ),
+                "matched_segments": 0,
+                "shape_coverage_pct": 0.0,
+                "match_stage": "none",
+                "final_match_stage": "unmatched",
+            }
+        )
+
+    return (
+        mapping,
+        pd.DataFrame(
+            final_rows
+        ),
+    )
+
+
 def summarize_transit_spatial_matching(
     geometry_diagnostics: pd.DataFrame,
     match_diagnostics: pd.DataFrame,
@@ -1516,12 +1772,16 @@ def summarize_transit_spatial_matching(
         )
     )
     valid_geometry = int(
-        (
-            geometry_diagnostics[
-                "geometry_status"
-            ]
-            == "ok"
-        ).sum()
+        geometry_diagnostics[
+            "geometry_status"
+        ]
+        .astype(
+            str
+        )
+        .str.startswith(
+            "ok"
+        )
+        .sum()
     )
 
     if match_diagnostics.empty:
@@ -1552,10 +1812,35 @@ def summarize_transit_spatial_matching(
             ].median()
         )
 
+    primary_matches = int(
+        (
+            match_diagnostics.get(
+                "final_match_stage",
+                pd.Series(
+                    dtype="string"
+                ),
+            )
+            == "primary"
+        ).sum()
+    )
+    fallback_matches = int(
+        (
+            match_diagnostics.get(
+                "final_match_stage",
+                pd.Series(
+                    dtype="string"
+                ),
+            )
+            == "fallback"
+        ).sum()
+    )
+
     return {
         "used_transit_connections": total_connections,
         "connections_with_valid_geometry": valid_geometry,
         "connections_with_segment_match": matched_connections,
+        "primary_matches": primary_matches,
+        "fallback_matches": fallback_matches,
         "mean_shape_coverage_pct": mean_coverage,
         "median_shape_coverage_pct": median_coverage,
     }
