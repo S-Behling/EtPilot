@@ -5,7 +5,7 @@ A bateria executa:
 1. cinco realizações nominais independentes;
 2. sensibilidade do decaimento da escolha de destino (0,75 e 1,25);
 3. sensibilidade da resposta modal à distância (0,75 e 1,25);
-4. decomposição com probabilidades modais homogenizadas no cenário differentiated.
+4. decomposição com probabilidades modais homogenizadas no cenário differentiated para todas as seeds.
 
 O objetivo é avaliar robustez sem tratar N=100 como tamanho populacional convergido.
 """
@@ -198,16 +198,17 @@ def _build_sensitivity_plan(
         )
 
     if include_mode_homogenized:
-        rows.append(
-            {
-                "run_id": "mode_homogenized",
-                "experiment": "mode_homogenized",
-                "seed": int(reference_seed),
-                "destination_decay_multiplier": 1.0,
-                "mode_decay_multiplier": 1.0,
-                "homogenize_differentiated_mode": True,
-            }
-        )
+        for seed in seeds:
+            rows.append(
+                {
+                    "run_id": f"mode_homogenized_seed_{seed}",
+                    "experiment": "mode_homogenized",
+                    "seed": int(seed),
+                    "destination_decay_multiplier": 1.0,
+                    "mode_decay_multiplier": 1.0,
+                    "homogenize_differentiated_mode": True,
+                }
+            )
 
     return pd.DataFrame(rows)
 
