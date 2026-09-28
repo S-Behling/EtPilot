@@ -1,10 +1,10 @@
-"""Prepara a estrutura de transporte coletivo para o roteamento temporal
+"""Prepara a rede temporal e a rede física do transporte coletivo
 
-Associa cada parada GTFS ao nó mais próximo da rede de caminhada
-Calcula a distância e o tempo do conector entre parada e rede pedonal
-Transforma stop_times em conexões temporais entre paradas consecutivas
-Resume a topologia das ligações e o volume de viagens por data de serviço
-Mantém a tabela de conexões em vez de criar um grafo temporal expandido
+Associa paradas GTFS à rede de caminhada
+Cria conexões temporais entre paradas consecutivas
+Aplica o filtro técnico de qualidade temporal
+Agrupa conexões roteáveis em trechos físicos GTFS estáveis
+Mantém produtos temporais e espaciais separados para auditoria
 """
 
 from __future__ import annotations

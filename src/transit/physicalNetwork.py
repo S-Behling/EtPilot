@@ -19,6 +19,7 @@ from src.domain.enums import TravelMode
 from src.trajectory.transit_usage import (
     build_used_transit_connection_geometries,
     map_transit_connections_hierarchically,
+    map_transit_connections_to_analysis_segments,
 )
 
 
@@ -240,6 +241,21 @@ def build_transit_physical_network(
             "to_shape_position_m",
         ]
     ].copy()
+    representative_lookup[
+        "shape_id"
+    ] = representative_lookup[
+        "shape_id"
+    ].astype(
+        "string"
+    )
+
+    geometry_diagnostics[
+        "shape_id"
+    ] = geometry_diagnostics[
+        "shape_id"
+    ].astype(
+        "string"
+    )
 
     geometry_diagnostics = (
         geometry_diagnostics.merge(
@@ -371,6 +387,12 @@ def build_transit_physical_network(
         .reset_index(
             drop=True
         )
+    )
+
+    physical_edges = gpd.GeoDataFrame(
+        physical_edges,
+        geometry="geometry",
+        crs=shapes.crs,
     )
 
     valid_physical_ids = set(

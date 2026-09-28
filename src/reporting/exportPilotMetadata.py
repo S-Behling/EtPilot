@@ -1088,7 +1088,7 @@ FILES = [
     ("outputs/pilot/modal_edge_to_analysis_segment.csv", "Mapeamento de cada aresta modal para um ou mais segmentos físicos de análise", "harmonização", False),
     ("outputs/pilot/analysis_segment_match_report.csv", "Resumo dos métodos e da qualidade de harmonização nas redes completas", "harmonização", False),
     ("outputs/pilot/analysis_segment_used_match_report.csv", "Resumo dos métodos e da qualidade de harmonização restrito às arestas usadas pelos agentes", "harmonização", False),
-    ("outputs/pilot/analysis_segments.gpkg", "Camada completa dos segmentos físicos usados como unidade comum de análise", "harmonização", False),
+    ("outputs/pilot/analysis_segments.gpkg", "Camada completa dos segmentos físicos usados como unidade comum de análise, incluindo segmentos transit exclusivos quando ausentes nas redes OSM", "harmonização", False),
     ("outputs/pilot/segment_statistics_baseline.csv", "Estatísticas de fluxo, composição socioeconômica e H_soc do cenário baseline", "entropia", False),
     ("outputs/pilot/segment_statistics_differentiated.csv", "Estatísticas de fluxo, composição socioeconômica e H_soc do cenário differentiated", "entropia", False),
     ("outputs/pilot/segment_statistics_all_scenarios.csv", "Estatísticas de segmentos dos dois cenários reunidas", "entropia", False),
