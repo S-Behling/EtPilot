@@ -41,7 +41,6 @@ from src.analysis.scenario_comparison import (
     build_scenario_comparison,
     comparison_summary,
 )
-from src.analysis.pilot_maps import save_pilot_maps
 from src.domain.enums import IncomeGroup, TravelMode
 from src.network.analysis_segments import (
     apply_analysis_segment_mapping,
@@ -154,7 +153,7 @@ def _build_summary(
         for agent in agents
     ]
 
-    # Persista as arestas da rota para inspecionar e reconstruir o uso da rede
+    # Persiste as arestas da rota para inspecionar e reconstruir o uso da rede
     summary["route_edges"] = [
         json.dumps(agent.route_edges)
         for agent in agents
@@ -995,6 +994,18 @@ def main() -> None:
     print("\n10/11 - Gerando mapas espaciais...")
 
     if maps_enabled:
+        try:
+            from src.analysis.pilot_maps import save_pilot_maps
+        except ModuleNotFoundError as error:
+            if error.name == "matplotlib":
+                raise RuntimeError(
+                    "Instala a dependência matplotlib no ambiente virtual "
+                    "com 'python -m pip install matplotlib' ou executa "
+                    "'python -m pip install -r requirements.txt'"
+                ) from error
+
+            raise
+
         map_manifest = save_pilot_maps(
             segment_geodata=segment_geodata,
             scenario_comparison_geodata=(
