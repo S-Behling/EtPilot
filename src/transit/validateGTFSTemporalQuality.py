@@ -558,6 +558,17 @@ def build_trip_temporal_quality(
     )
 
     quality[
+        "missing_stop_time_summary"
+    ] = quality[
+        "scheduled_duration_s"
+    ].isna()
+    quality[
+        "missing_connection_summary"
+    ] = quality[
+        "n_connections"
+    ].isna()
+
+    quality[
         "has_zero_duration_connections"
     ] = (
         quality[
@@ -574,10 +585,13 @@ def build_trip_temporal_quality(
         quality[
             "scheduled_duration_s"
         ]
-        .fillna(
-            0
+        .notna()
+        & (
+            quality[
+                "scheduled_duration_s"
+            ]
+            <= 0
         )
-        <= 0
     )
     quality[
         "two_or_fewer_raw_timepoints"
@@ -585,10 +599,13 @@ def build_trip_temporal_quality(
         quality[
             "n_raw_timepoints"
         ]
-        .fillna(
-            0
+        .notna()
+        & (
+            quality[
+                "n_raw_timepoints"
+            ]
+            <= 2
         )
-        <= 2
     )
 
     return quality.sort_values(
@@ -706,6 +723,28 @@ def main() -> None:
         "  Viagens com até 2 pontos temporais originais: "
         f"{_format_int_pt(len(few_timepoints))} viagens "
         f"({_format_percentage_pt(len(few_timepoints), total)})"
+    )
+
+    missing_stop_times = quality.loc[
+        quality[
+            "missing_stop_time_summary"
+        ]
+    ]
+    missing_connections = quality.loc[
+        quality[
+            "missing_connection_summary"
+        ]
+    ]
+
+    print(
+        "  Viagens sem resumo temporal de stop_times: "
+        f"{_format_int_pt(len(missing_stop_times))} viagens "
+        f"({_format_percentage_pt(len(missing_stop_times), total)})"
+    )
+    print(
+        "  Viagens sem conexões processadas: "
+        f"{_format_int_pt(len(missing_connections))} viagens "
+        f"({_format_percentage_pt(len(missing_connections), total)})"
     )
 
     print(
