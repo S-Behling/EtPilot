@@ -94,7 +94,7 @@
             "iqr_multiplier": 3,
             "min_sample_size": 20,
             "paired_exclusion": true,
-            "rule": "route_distance_and_circuity",
+            "rule": "distance_outer_or_circuity_with_long_route",
             "status": "provisional_pilot",
             "exclusions_file": "outlier_exclusions.csv",
             "summary_file": "outlier_filter_summary.csv"
