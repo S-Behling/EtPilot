@@ -1,17 +1,11 @@
 """
-Executa o pipeline piloto do EtPilot até o roteamento, comparando
-dois cenários experimentais.
+Execute o pipeline piloto do EtPilot até a harmonização dos segmentos.
 
-Desenho do experimento
-----------------------
-- A população sintética e as origens residenciais são geradas uma única vez.
-- Os mesmos agentes e as mesmas origens são usados nos dois cenários.
-- baseline:
-    remove diferenças comportamentais entre grupos de renda;
-- differentiated:
-    preserva diferenças por renda em propósito, escolha de destino e modo.
+Preserve o mesmo conjunto de agentes e as mesmas origens residenciais nos
+dois cenários. Remova diferenças comportamentais por renda no baseline e
+preserve diferenças de propósito, destino e modo no differentiated.
 
-Fluxo:
+Siga o fluxo:
 1. carregue configurações e dados;
 2. carregue as redes de carro, caminhada e bicicleta;
 3. gere a população sintética e atribua origens;
@@ -21,7 +15,7 @@ Fluxo:
 7. harmonize as arestas modais em segmentos físicos comuns;
 8. valide, resuma e salve os resultados.
 
-Uso:
+Execute com:
     python -m src.simulation.run_pilot
 """
 
