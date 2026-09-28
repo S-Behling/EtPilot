@@ -305,6 +305,30 @@ VARIABLES = [
         "descricao": "Diferença no número de passagens entre differentiated e baseline",
     },
     {
+        "nome": "route_to_od_ratio",
+        "grupo": "controle de outliers",
+        "unidade": "razão adimensional",
+        "descricao": "Razão entre a distância roteada e a distância euclidiana origem-destino usada para diagnosticar trajetórias excessivamente circuitosas",
+    },
+    {
+        "nome": "direct_outlier",
+        "grupo": "controle de outliers",
+        "unidade": "booleano",
+        "descricao": "Indica que a viagem transit excede simultaneamente as cercas externas da distância roteada e da razão rota por OD",
+    },
+    {
+        "nome": "analysis_included",
+        "grupo": "controle de outliers",
+        "unidade": "booleano",
+        "descricao": "Indica se o agente permanece na análise de trajetórias e H_soc após o controle pareado de outliers",
+    },
+    {
+        "nome": "analysis_exclusion_reason",
+        "grupo": "controle de outliers",
+        "unidade": "categoria",
+        "descricao": "Registra se a exclusão decorre de outlier direto ou da preservação da mesma população analítica nos dois cenários",
+    },
+    {
         "nome": "sufficient_flow_both",
         "grupo": "comparação de cenários",
         "unidade": "booleano",
@@ -768,6 +792,11 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "_forward_stop_positions",
         "descricao": "Seleciona projeções sucessivas das paradas ao longo do shape quando as posições processadas estão ausentes, iguais ou decrescentes, preservando a ordem do deslocamento",
     },
+    {
+        "nome": "Filtro pareado de outliers de trajetórias transit",
+        "funcao_codigo": "apply_paired_transit_outlier_filter",
+        "descricao": "Calcula limites robustos com os dois cenários combinados, identifica somente viagens simultaneamente extremas em distância e circuity e propaga a exclusão ao mesmo agent_id nos dois cenários",
+    },
 ]
 
 STATISTICS = [
@@ -854,6 +883,14 @@ STATISTICS = [
     {
         "nome": "Taxa de sucesso do mapeamento espacial transit",
         "descricao": "Calcula a proporção das conexões GTFS usadas que possuem geometria válida e correspondência com pelo menos um analysis_segment_id",
+    },
+    {
+        "nome": "Cerca externa superior de Tukey",
+        "descricao": "Calcula Q3 mais três vezes o intervalo interquartil por padrão para identificar valores extremos sem depender da média ou do desvio padrão",
+    },
+    {
+        "nome": "Circuity da viagem",
+        "descricao": "Relaciona a distância roteada à distância euclidiana origem-destino para distinguir rotas longas de trajetórias desproporcionalmente circuitosas",
     },
 ]
 
@@ -966,6 +1003,14 @@ CLEANING_METHODS = [
         "nome": "Cobertura bidirecional no mapeamento GTFS",
         "descricao": "Aceita uma correspondência quando o segmento físico ou o trecho de shape atinge a cobertura mínima configurada, reduzindo rejeições artificiais de conexões curtas contidas em segmentos mais longos",
     },
+    {
+        "nome": "Exclusão pareada de outliers de trajetória",
+        "descricao": "Remove a trajetória do cálculo espacial sem apagar o registro original do agente e aplica a mesma exclusão ao agent_id correspondente no outro cenário para preservar comparabilidade",
+    },
+    {
+        "nome": "Critério conjunto de distância e circuity",
+        "descricao": "Exige que uma viagem transit ultrapasse simultaneamente a cerca externa da distância roteada e da razão rota por OD para evitar excluir viagens curtas apenas por apresentarem razão elevada",
+    },
 ]
 
 FILES = [
@@ -1035,6 +1080,8 @@ FILES = [
     ("outputs/pilot/transit_connection_geometry_diagnostics.csv", "Diagnóstico da disponibilidade e validade da geometria parcial de cada conexão GTFS usada", "harmonização do transporte coletivo", False),
     ("outputs/pilot/transit_connection_match_diagnostics.csv", "Diagnóstico de quantidade de segmentos associados e cobertura geométrica por conexão GTFS usada", "harmonização do transporte coletivo", False),
     ("outputs/pilot/transit_spatial_match_report.csv", "Resumo da cobertura e do sucesso do mapeamento espacial das conexões GTFS usadas", "harmonização do transporte coletivo", False),
+    ("outputs/pilot/outlier_exclusions.csv", "Registro auditável de cada cenário e agente retirado da análise de trajetórias por outlier transit direto ou exclusão pareada", "controle de outliers", False),
+    ("outputs/pilot/outlier_filter_summary.csv", "Resumo do método, quartis, cercas externas e quantidade de outliers identificados no piloto", "controle de outliers", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
@@ -1188,6 +1235,39 @@ def _collect_config_parameters(
             ),
             "agentes",
             "Limiares preservados para análise de sensibilidade do suporte amostral por segmento",
+        ),
+        (
+            "analysis.trip_outliers.iqr_multiplier",
+            analysis.get(
+                "trip_outliers",
+                {},
+            ).get(
+                "iqr_multiplier"
+            ),
+            "multiplicador do IQR",
+            "Multiplicador usado na cerca externa superior de Tukey aplicada às métricas de distância e circuity",
+        ),
+        (
+            "analysis.trip_outliers.min_sample_size",
+            analysis.get(
+                "trip_outliers",
+                {},
+            ).get(
+                "min_sample_size"
+            ),
+            "viagens transit",
+            "Quantidade mínima de viagens elegíveis nos dois cenários combinados para ativar o filtro de outliers",
+        ),
+        (
+            "analysis.trip_outliers.paired_exclusion",
+            analysis.get(
+                "trip_outliers",
+                {},
+            ).get(
+                "paired_exclusion"
+            ),
+            "booleano",
+            "Indica se um agent_id identificado como outlier em um cenário também é retirado da análise espacial no outro cenário",
         ),
         (
             "routing.implemented_modes",
