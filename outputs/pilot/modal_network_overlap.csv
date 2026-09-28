@@ -1,0 +1,4 @@
+pair,strict_shared,walk_strict_share_pct,bike_strict_share_pct,node_pair_shared,car_strict_share_pct
+walk × bike,46086,81.18020081028712,89.66845668923652,45750,
+walk × car,24296,42.79725206975515,,24232,79.0628050764725
+bike × car,26314,,51.19853685111682,26239,85.62967783924503
