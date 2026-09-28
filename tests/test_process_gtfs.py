@@ -6,7 +6,10 @@ import zipfile
 import geopandas as gpd
 import pandas as pd
 
-from src.transit.processGTFS import process_gtfs_zip
+from src.transit.processGTFS import (
+    _regularize_interpolated_stop_times,
+    process_gtfs_zip,
+)
 
 
 class ProcessGTFSTests(unittest.TestCase):
@@ -159,6 +162,22 @@ class ProcessGTFSTests(unittest.TestCase):
                 ],
                 "shape_geometry",
             )
+            self.assertTrue(
+                middle_stop[
+                    "time_regularized"
+                ]
+            )
+            self.assertEqual(
+                middle_stop[
+                    "time_regularization_method"
+                ],
+                "shape_geometry_positive",
+            )
+            self.assertTrue(
+                middle_stop[
+                    "temporal_regularization_feasible"
+                ]
+            )
             self.assertEqual(
                 last_stop[
                     "arrival_seconds"
@@ -189,6 +208,18 @@ class ProcessGTFSTests(unittest.TestCase):
             self.assertEqual(
                 summary[
                     "stop_times_interpolated_stop_sequence"
+                ],
+                0,
+            )
+            self.assertEqual(
+                summary[
+                    "stop_times_regularized"
+                ],
+                1,
+            )
+            self.assertEqual(
+                summary[
+                    "trips_temporal_regularization_infeasible"
                 ],
                 0,
             )
@@ -309,6 +340,167 @@ class ProcessGTFSTests(unittest.TestCase):
                     ),
                     projected_crs="EPSG:31982",
                 )
+
+    def test_regularizes_duplicate_shape_positions_with_stop_sequence(self):
+        # Usa stop_sequence quando a geometria não produz progresso estritamente positivo
+        frame = pd.DataFrame(
+            {
+                "trip_id": [
+                    "T1",
+                    "T1",
+                    "T1",
+                ],
+                "stop_id": [
+                    "A",
+                    "B",
+                    "C",
+                ],
+                "arrival_missing_raw": [
+                    False,
+                    True,
+                    False,
+                ],
+                "departure_missing_raw": [
+                    False,
+                    True,
+                    False,
+                ],
+                "arrival_seconds": pd.Series(
+                    [
+                        0,
+                        0,
+                        2,
+                    ],
+                    dtype="Int64",
+                ),
+                "departure_seconds": pd.Series(
+                    [
+                        0,
+                        0,
+                        2,
+                    ],
+                    dtype="Int64",
+                ),
+                "time_interpolated": [
+                    False,
+                    True,
+                    False,
+                ],
+                "shape_position_m": pd.Series(
+                    [
+                        0.0,
+                        0.0,
+                        100.0,
+                    ],
+                    dtype="Float64",
+                ),
+            }
+        )
+
+        result = _regularize_interpolated_stop_times(
+            frame,
+            minimum_interval_s=1,
+        )
+
+        middle = result.iloc[
+            1
+        ]
+
+        self.assertEqual(
+            middle[
+                "arrival_seconds"
+            ],
+            1,
+        )
+        self.assertEqual(
+            middle[
+                "departure_seconds"
+            ],
+            1,
+        )
+        self.assertEqual(
+            middle[
+                "time_regularization_method"
+            ],
+            "stop_sequence_positive",
+        )
+        self.assertTrue(
+            middle[
+                "temporal_regularization_feasible"
+            ]
+        )
+
+    def test_flags_infeasible_positive_interval_allocation(self):
+        # Marca a viagem quando o intervalo publicado não comporta um segundo por conexão
+        frame = pd.DataFrame(
+            {
+                "trip_id": [
+                    "T1",
+                    "T1",
+                    "T1",
+                ],
+                "stop_id": [
+                    "A",
+                    "B",
+                    "C",
+                ],
+                "arrival_missing_raw": [
+                    False,
+                    True,
+                    False,
+                ],
+                "departure_missing_raw": [
+                    False,
+                    True,
+                    False,
+                ],
+                "arrival_seconds": pd.Series(
+                    [
+                        0,
+                        0,
+                        0,
+                    ],
+                    dtype="Int64",
+                ),
+                "departure_seconds": pd.Series(
+                    [
+                        0,
+                        0,
+                        0,
+                    ],
+                    dtype="Int64",
+                ),
+                "time_interpolated": [
+                    False,
+                    True,
+                    False,
+                ],
+                "shape_position_m": pd.Series(
+                    [
+                        0.0,
+                        50.0,
+                        100.0,
+                    ],
+                    dtype="Float64",
+                ),
+            }
+        )
+
+        result = _regularize_interpolated_stop_times(
+            frame,
+            minimum_interval_s=1,
+        )
+
+        self.assertFalse(
+            result[
+                "temporal_regularization_feasible"
+            ].all()
+        )
+        self.assertFalse(
+            result[
+                "time_regularized"
+            ].any()
+        )
 
 
 if __name__ == "__main__":
