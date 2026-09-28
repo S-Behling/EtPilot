@@ -142,6 +142,8 @@ def build_edge_usage(
                         agent.purpose
                     ),
                     "mode": mode,
+                    "mapping_mode": mode,
+                    "leg_mode": mode,
                     "origin_id": agent.origin_id,
                     "destination_id": (
                         agent.destination_id
@@ -175,6 +177,8 @@ def build_edge_usage(
         "income_group",
         "purpose",
         "mode",
+        "mapping_mode",
+        "leg_mode",
         "origin_id",
         "destination_id",
         "route_position",
