@@ -438,13 +438,35 @@ after mode choice. Transit reuses `node_walk` as the spatial origin and
 destination for access and egress and uses the quality-filtered GTFS
 connection table for the bus portion of the trip.
 
-Build the common analysis network from the complete walk, bike and car
-graphs, not from the sampled trajectories. Use walk as the initial reference,
-map bike and car edges first by exact OSM equivalence and then by geometric
-overlap, and preserve unmatched edges as exclusive segments. Keep this layer
-independent of agent count, seed and scenario so that `analysis_segment_id`
-remains stable across simulations.
+Build the common analysis network from complete modal sources rather than from
+sampled trajectories. Use walk as the initial OSM reference, map bike and car
+first by exact OSM equivalence and then by geometric overlap, and preserve
+unmatched OSM edges as exclusive segments.
 
+Transit contributes a fourth physical source. During
+`python -m src.transit.buildTransitNetwork`, all spatially valid routable GTFS
+connections are grouped into stable stop-to-stop physical edges that do not
+depend on schedule time, agent count, seed, or scenario. The products are:
+
+```text
+data/gtfs/transit_connections_spatial_routable_processed.parquet
+data/gtfs/transit_physical_edges_processed.gpkg
+data/gtfs/transit_physical_edge_diagnostics_processed.csv
+data/gtfs/transit_connection_to_physical_edge_processed.parquet
+```
+
+The connection-to-physical-edge table allows repeated scheduled trips over the
+same shape segment to share the same `transit_physical_edge_id`.
+
+During `run_pilot`, the complete GTFS physical network is integrated after
+the OSM walk-bike-car layer. The primary stage searches physical segments
+supported by the car network. The fallback searches the complete OSM physical
+layer. If a valid GTFS physical edge still has no safe correspondence, the
+pipeline creates a new exclusive transit `analysis_segment_id` instead of
+removing agents.
+
+This keeps the physical layer independent of the N=100 sample and preserves
+bus-only corridors that are absent from the OSM drive graph.
 
 For transit trips, preserve three leg types in the usage table:
 
@@ -456,43 +478,22 @@ egress_walk
 
 The walking legs keep `mode=transit` as the trip mode but use
 `mapping_mode=walk` to reuse the existing walk-edge harmonization. The bus
-leg uses `mapping_mode=transit`: each used GTFS connection is cut from its
-shape between the two stop positions and matched geometrically to the common
-physical segments.
-
-The transit-to-segment match uses a two-stage provisional procedure defined in
-`config/config.json`. The primary stage searches physical segments supported
-by the car network. Connections still unmatched are evaluated against the full
-physical analysis network with a slightly wider tolerance and relaxed
-coverage/orientation thresholds. A candidate is accepted when either the
-physical segment or the GTFS shape portion reaches the configured coverage
-threshold, which prevents short stop-to-stop connections from being rejected
-only because they fall inside a longer street segment.
-
-When processed shape positions are missing or fail to progress along the
-shape, the geometry extractor attempts a forward projection of the two stops
-onto the shape while preserving stop order. The fallback is explicitly
-recorded in the geometry diagnostics rather than replacing the original
-processed positions silently.
-
-The pilot still stops instead of silently discarding a used transit connection
-when no physical segment match is found after both stages.
-
+leg uses the stable `transit_physical_edge_id` produced before simulation, so
+every observed transit passage refers to a physical edge that already belongs
+to the complete common network.
 
 The integrated pilot writes the transit harmonization audit files:
 
 ```text
-outputs/pilot/transit_connection_to_analysis_segment.csv
-outputs/pilot/transit_connection_geometry_diagnostics.csv
-outputs/pilot/transit_connection_match_diagnostics.csv
-outputs/pilot/transit_spatial_match_report.csv
+outputs/pilot/transit_physical_edge_to_analysis_segment.csv
+outputs/pilot/transit_physical_match_diagnostics.csv
+outputs/pilot/transit_physical_network_summary.csv
 ```
 
-The primary bus-leg match uses physical analysis segments with support from
-the car network. The fallback may use the complete physical network when a bus
-corridor is not represented in the car graph. Orientation compatibility is
-evaluated locally along the GTFS shape near each candidate segment rather than
-from the global orientation of a curved connection.
+The summary separates primary matches, fallback matches, and exclusive transit
+segments. A used transit physical edge without `analysis_segment_id` is
+treated as an internal consistency error rather than as a reason to exclude an
+agent.
 
 To prepare the multimodal data:
 
@@ -530,29 +531,6 @@ and an explicit exclusion reason. The audit files are:
 outputs/pilot/outlier_exclusions.csv
 outputs/pilot/outlier_filter_summary.csv
 ```
-## Unmapped transit trajectory control
-
-When a transit connection used by an agent cannot be matched to the common
-physical analysis network after the primary and fallback spatial procedures,
-the pilot does not keep a partial trajectory in H_soc.
-
-The current policy is `exclude_agent_paired`: the directly affected agent is
-removed from trajectory analysis and the same `agent_id` is removed from the
-other scenario to preserve the paired analytical population. The routed agent
-record remains in the scenario tables and receives explicit spatial exclusion
-flags and reasons.
-
-The audit outputs are:
-
-```text
-outputs/pilot/transit_spatial_exclusions.csv
-outputs/pilot/transit_spatial_exclusion_summary.csv
-```
-
-This treatment is separate from the statistical transit outlier filter. A
-trajectory may be excluded because it is geometrically unmappable even when
-its routed distance and circuity are not outliers.
-
 ## Segment statistics and H_soc
 
 Aggregate the harmonized edge usage by `analysis_segment_id`. Keep passage
@@ -773,8 +751,8 @@ Current implementation:
 
 In progress:
 
-- Local validation of integrated transit spatial matching in the N=100 pilot
-- Sensitivity analysis of the provisional GTFS-to-segment mapping parameters
+- Local validation of the full GTFS physical network integration in the N=100 pilot
+- Sensitivity analysis of the provisional GTFS-to-OSM matching parameters
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
 - Empirical calibration of provisional modal-distance parameters
