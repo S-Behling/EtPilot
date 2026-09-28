@@ -3,7 +3,7 @@ import unittest
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from src.domain.agent import Agent
 from src.domain.enums import (
@@ -17,6 +17,7 @@ from src.network.analysis_segments import (
 from src.trajectory.transit_usage import (
     build_transit_edge_usage,
     build_used_transit_connection_geometries,
+    map_transit_connections_hierarchically,
     map_transit_connections_to_analysis_segments,
 )
 
@@ -297,7 +298,7 @@ class TransitUsageTests(unittest.TestCase):
                 geometries,
                 analysis_segments=segments,
                 tolerance_m=2.0,
-                min_segment_coverage=0.9,
+                min_coverage=0.9,
                 max_angle_difference_deg=10.0,
             )
         )
@@ -400,6 +401,297 @@ class TransitUsageTests(unittest.TestCase):
                 "analysis_segment_id"
             ],
             "S1",
+        )
+
+    def test_accepts_short_shape_when_shape_coverage_is_high(self):
+        # Aceita conexão curta contida em um segmento físico mais longo
+        geometries = gpd.GeoDataFrame(
+            {
+                "modal_edge_id": [
+                    "transit:C1",
+                ],
+                "connection_id": [
+                    "C1",
+                ],
+                "shape_id": [
+                    "SH1",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            40.0,
+                            0.0,
+                        ),
+                        (
+                            60.0,
+                            0.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        segments = gpd.GeoDataFrame(
+            {
+                "analysis_segment_id": [
+                    "S1",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            0.0,
+                        ),
+                        (
+                            100.0,
+                            0.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        mapping, diagnostics = (
+            map_transit_connections_to_analysis_segments(
+                geometries,
+                analysis_segments=segments,
+                tolerance_m=2.0,
+                min_coverage=0.5,
+                max_angle_difference_deg=10.0,
+            )
+        )
+
+        self.assertEqual(
+            len(
+                mapping
+            ),
+            1,
+        )
+        self.assertEqual(
+            mapping.iloc[
+                0
+            ][
+                "accepted_by"
+            ],
+            "shape_coverage",
+        )
+        self.assertEqual(
+            diagnostics.iloc[
+                0
+            ][
+                "matched_segments"
+            ],
+            1,
+        )
+
+    def test_hierarchical_matching_uses_full_network_fallback(self):
+        # Usa a rede física completa quando não existe correspondência car-supported
+        geometries = gpd.GeoDataFrame(
+            {
+                "modal_edge_id": [
+                    "transit:C1",
+                ],
+                "connection_id": [
+                    "C1",
+                ],
+                "shape_id": [
+                    "SH1",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            0.0,
+                        ),
+                        (
+                            100.0,
+                            0.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        primary = gpd.GeoDataFrame(
+            {
+                "analysis_segment_id": [
+                    "CAR1",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            100.0,
+                        ),
+                        (
+                            100.0,
+                            100.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        fallback = gpd.GeoDataFrame(
+            {
+                "analysis_segment_id": [
+                    "BUS1",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            2.0,
+                        ),
+                        (
+                            100.0,
+                            2.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        mapping, diagnostics = (
+            map_transit_connections_hierarchically(
+                geometries,
+                primary_segments=primary,
+                fallback_segments=fallback,
+                primary_config={
+                    "tolerance_m": 10.0,
+                    "min_coverage": 0.5,
+                    "max_angle_difference_deg": 45.0,
+                    "candidate_scope": "car_supported",
+                },
+                fallback_config={
+                    "enabled": True,
+                    "tolerance_m": 10.0,
+                    "min_coverage": 0.5,
+                    "max_angle_difference_deg": 45.0,
+                    "candidate_scope": "full_analysis_network",
+                },
+            )
+        )
+
+        self.assertEqual(
+            mapping.iloc[
+                0
+            ][
+                "match_stage"
+            ],
+            "fallback",
+        )
+        self.assertEqual(
+            diagnostics.iloc[
+                0
+            ][
+                "final_match_stage"
+            ],
+            "fallback",
+        )
+
+    def test_recovers_nonpositive_shape_positions_from_stop_order(self):
+        # Recupera a geometria quando projeções simples coincidem em um shape com retorno
+        agent = self._agent()
+        usage = build_transit_edge_usage(
+            [
+                agent,
+            ],
+            walk_graph=self._walk_graph(),
+            connections=self._connections().assign(
+                from_shape_position_m=50.0,
+                to_shape_position_m=50.0,
+            ),
+            scenario_name="baseline",
+        )
+
+        shapes = gpd.GeoDataFrame(
+            {
+                "shape_id": [
+                    "SH1",
+                ],
+            },
+            geometry=[
+                LineString(
+                    [
+                        (
+                            0.0,
+                            0.0,
+                        ),
+                        (
+                            100.0,
+                            0.0,
+                        ),
+                        (
+                            0.0,
+                            0.0,
+                        ),
+                    ]
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        stops = gpd.GeoDataFrame(
+            {
+                "stop_id": [
+                    "S1",
+                    "S2",
+                ],
+            },
+            geometry=[
+                Point(
+                    20.0,
+                    0.0,
+                ),
+                Point(
+                    80.0,
+                    0.0,
+                ),
+            ],
+            crs="EPSG:31982",
+        )
+
+        geometries, diagnostics = (
+            build_used_transit_connection_geometries(
+                usage,
+                connections=self._connections().assign(
+                    from_shape_position_m=50.0,
+                    to_shape_position_m=50.0,
+                ),
+                shapes=shapes,
+                stops=stops,
+            )
+        )
+
+        self.assertEqual(
+            len(
+                geometries
+            ),
+            1,
+        )
+        self.assertEqual(
+            diagnostics.iloc[
+                0
+            ][
+                "geometry_status"
+            ],
+            "ok_fallback_projection",
         )
 
 
