@@ -48,7 +48,9 @@
             "car"
         ],
         "node_column_prefix": "node_",
-        "transit_status": "planned_gtfs"
+        "transit_status": "planned_gtfs",
+        "weight": "length",
+        "strict": false
     },
     "analysis": {
         "entropy_base": 2,
