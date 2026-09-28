@@ -389,6 +389,9 @@ The supported H_soc maps highlight only segments with
 with `sufficient_flow_both=True`. The complete physical network remains in
 the background as a spatial reference.
 
+The `map_manifest.csv` file includes `description_pt`, a short Portuguese
+description of what each generated image displays.
+
 Treat the current maps as diagnostic outputs while the experiment still uses
 100 agents. Use them to validate spatial behavior and the comparison pipeline,
 not as final empirical representations of segregation.
@@ -420,11 +423,12 @@ Current implementation:
 - ✔ Distance-sensitive mode choice using pre-routing OD distance
 - ✔ Fixed distance-response rule across baseline and differentiated
 - ✔ GTFS downloader with direct storage under data/gtfs
-- ✔ GTFS validation and preprocessing pipeline
-- ✔ Processed service dates, stops and optional shapes for transit construction
+- ✔ GTFS validation and preprocessing code
+- ✔ Service-date expansion and stop/shape processing logic
 
 In progress:
 
+- Local validation of the downloaded EPTC GTFS feed
 - Transit graph construction and transit routing
 - Sensitivity analysis with larger synthetic populations
 - Repeated paired runs with multiple seeds
@@ -448,12 +452,13 @@ Complete the pilot in this order:
 6. consolidate final pilot tables, maps, diagnostics, limitations, and
    reproducibility instructions.
 
-Keep GTFS public transport outside this first closed pilot unless the research
-scope explicitly requires it before validation.
+The current GTFS integration covers the EPTC bus feed. Add other public
+transport systems as separate feeds or network layers when required by the
+research scope.
 
 Future work:
 
-- GTFS public transport routing
+- Additional public transport feeds beyond EPTC buses
 - Segregation indicators
 - Accessibility analysis
 - Machine Learning
