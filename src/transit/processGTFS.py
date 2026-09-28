@@ -2070,6 +2070,30 @@ def process_configured_gtfs() -> dict:
         f"{summary['service_end_date']}"
     )
     print(
+        "Shapes processados: "
+        f"{summary['n_shapes']:,}"
+    )
+    print(
+        "Frequências processadas: "
+        f"{summary['n_frequencies']:,}"
+    )
+    print(
+        "Transferências processadas: "
+        f"{summary['n_transfers']:,}"
+    )
+    print(
+        "Tipos de rota: "
+        f"{summary['route_types'] or 'não informado'}"
+    )
+    print(
+        "Horários sem chegada: "
+        f"{summary['stop_times_missing_arrival']:,}"
+    )
+    print(
+        "Horários sem partida: "
+        f"{summary['stop_times_missing_departure']:,}"
+    )
+    print(
         "Produtos salvos em "
         f"{data_dir}"
     )
