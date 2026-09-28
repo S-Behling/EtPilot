@@ -112,6 +112,17 @@
             "zip_file": "porto_alegre_gtfs.zip",
             "mode_scope": "bus",
             "processed_suffix": "_processed"
+        },
+        "network": {
+            "walk_speed_m_s": 1.4,
+            "walk_speed_status": "provisional_pilot",
+            "service_date_strategy": "max_scheduled_trips",
+            "stops_walk_file": "stops_walk_connected_processed.gpkg",
+            "stop_connectors_file": "transit_stop_walk_connectors_processed.parquet",
+            "connections_file": "transit_connections_processed.parquet",
+            "topology_file": "transit_topology_processed.parquet",
+            "service_day_profile_file": "transit_service_day_profile_processed.csv",
+            "summary_file": "transit_network_summary.csv"
         }
     }
 }
