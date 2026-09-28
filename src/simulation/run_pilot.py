@@ -1000,13 +1000,16 @@ def main() -> None:
                 ]
             ),
             seed=SEED,
-            implemented_modes=implemented_modes,
+            available_mode_names=choice_modes,
         )
 
-        agents = route_agents(
-            agents=agents,
+        agents = route_pilot_agents(
+            agents,
             graphs=graphs,
-            weight=routing_weight,
+            transit_router=transit_router,
+            transit_service_date=transit_service_date,
+            transit_departure_time_s=transit_departure_time_s,
+            road_weight=routing_weight,
             strict=routing_strict,
         )
 
@@ -1035,10 +1038,34 @@ def main() -> None:
 
         summaries[scenario_name] = summary
 
-        edge_usage = build_edge_usage(
-            agents=agents,
+        road_agents = [
+            agent
+            for agent in agents
+            if agent.mode is not TravelMode.TRANSIT
+        ]
+
+        road_edge_usage = build_edge_usage(
+            agents=road_agents,
             graphs=graphs,
             scenario_name=scenario_name,
+        )
+
+        transit_edge_usage = build_transit_edge_usage(
+            agents,
+            walk_graph=graphs[
+                TravelMode.WALK.value
+            ],
+            connections=transit_connections,
+            scenario_name=scenario_name,
+        )
+
+        edge_usage = pd.concat(
+            [
+                road_edge_usage,
+                transit_edge_usage,
+            ],
+            ignore_index=True,
+            sort=False,
         )
 
         edge_usages[scenario_name] = edge_usage
