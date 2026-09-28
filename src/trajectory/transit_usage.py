@@ -175,6 +175,7 @@ def _walk_edge_row(
             )
         ),
         "transit_connection_id": None,
+        "transit_physical_edge_id": None,
         "transit_trip_id": None,
         "transit_route_id": None,
         "transit_shape_id": None,
@@ -198,6 +199,9 @@ def _transit_connection_row(
     connection_id = str(
         connection.connection_id
     )
+    physical_edge_id = str(
+        connection.transit_physical_edge_id
+    )
 
     return {
         "scenario": scenario_name,
@@ -220,7 +224,7 @@ def _transit_connection_row(
         "v": None,
         "key": None,
         "modal_edge_id": (
-            f"transit:{connection_id}"
+            f"transit:{physical_edge_id}"
         ),
         "edge_length_m": _safe_float(
             getattr(
@@ -233,6 +237,7 @@ def _transit_connection_row(
         "name": None,
         "highway": None,
         "transit_connection_id": connection_id,
+        "transit_physical_edge_id": physical_edge_id,
         "transit_trip_id": str(
             connection.trip_id
         ),
@@ -418,6 +423,7 @@ def build_transit_edge_usage(
         "name",
         "highway",
         "transit_connection_id",
+        "transit_physical_edge_id",
         "transit_trip_id",
         "transit_route_id",
         "transit_shape_id",
