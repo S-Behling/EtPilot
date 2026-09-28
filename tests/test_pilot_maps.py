@@ -163,6 +163,23 @@ class PilotMapsTests(unittest.TestCase):
                 ),
                 6,
             )
+            self.assertIn(
+                "description_pt",
+                manifest.columns,
+            )
+            self.assertTrue(
+                manifest[
+                    "description_pt"
+                ]
+                .astype(
+                    "string"
+                )
+                .str.len()
+                .gt(
+                    0
+                )
+                .all()
+            )
 
             self.assertTrue(
                 (
