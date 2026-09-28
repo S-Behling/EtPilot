@@ -384,20 +384,15 @@ def _save_outputs(
     )
 
 
-    with (
-        OUTPUT_DIR
-        / "segment_scenario_comparison_summary.json"
-    ).open(
-        "w",
-        encoding="utf-8",
-    ) as f:
-        json.dump(
+    pd.DataFrame(
+        [
             scenario_comparison_summary,
-            f,
-            ensure_ascii=False,
-            indent=4,
-            allow_nan=True,
-        )
+        ]
+    ).to_csv(
+        OUTPUT_DIR / "segment_scenario_comparison_summary.csv",
+        index=False,
+        encoding="utf-8",
+    )
 
     comparison_to_save = scenario_comparison_geodata.drop(
         columns=[
