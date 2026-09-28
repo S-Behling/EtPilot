@@ -21,6 +21,7 @@ from pathlib import Path
 import zipfile
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 from shapely.geometry import LineString
 
@@ -412,6 +413,267 @@ def _add_time_seconds(
     )
 
 
+def _interpolate_stop_time_events(
+    frame: pd.DataFrame,
+) -> pd.DataFrame:
+    """Interpola horários ausentes entre pontos temporais conhecidos"""
+
+    result = frame.copy()
+
+    raw_arrival_missing = (
+        result[
+            "arrival_seconds"
+        ].isna()
+    )
+    raw_departure_missing = (
+        result[
+            "departure_seconds"
+        ].isna()
+    )
+
+    result[
+        "time_interpolated"
+    ] = False
+    result[
+        "time_filled_from_pair"
+    ] = (
+        raw_arrival_missing
+        ^ raw_departure_missing
+    )
+    result[
+        "time_interpolation_method"
+    ] = "provided"
+
+    grouped_indices = result.groupby(
+        "trip_id",
+        sort=False,
+    ).indices
+
+    for trip_id, positions in grouped_indices.items():
+        positions = np.asarray(
+            positions,
+            dtype=int,
+        )
+
+        arrivals = (
+            result.iloc[
+                positions
+            ][
+                "arrival_seconds"
+            ]
+            .astype(
+                "Float64"
+            )
+            .to_numpy(
+                dtype=float,
+                na_value=np.nan,
+            )
+        )
+        departures = (
+            result.iloc[
+                positions
+            ][
+                "departure_seconds"
+            ]
+            .astype(
+                "Float64"
+            )
+            .to_numpy(
+                dtype=float,
+                na_value=np.nan,
+            )
+        )
+
+        event_seconds = np.where(
+            np.isfinite(
+                departures
+            ),
+            departures,
+            arrivals,
+        )
+        known = np.isfinite(
+            event_seconds
+        )
+
+        if (
+            not known[
+                0
+            ]
+            or not known[
+                -1
+            ]
+        ):
+            raise ValueError(
+                "stop_times.txt possui viagem sem horário no primeiro "
+                f"ou último ponto: trip_id={trip_id}"
+            )
+
+        missing = ~known
+
+        if missing.any():
+            sequence = (
+                result.iloc[
+                    positions
+                ][
+                    "stop_sequence"
+                ]
+                .astype(
+                    float
+                )
+                .to_numpy()
+            )
+
+            basis = sequence
+            method = "stop_sequence"
+
+            if (
+                "shape_dist_traveled"
+                in result.columns
+            ):
+                shape_distance = (
+                    result.iloc[
+                        positions
+                    ][
+                        "shape_dist_traveled"
+                    ]
+                    .astype(
+                        "Float64"
+                    )
+                    .to_numpy(
+                        dtype=float,
+                        na_value=np.nan,
+                    )
+                )
+
+                valid_shape_distance = (
+                    np.isfinite(
+                        shape_distance
+                    ).all()
+                    and np.all(
+                        np.diff(
+                            shape_distance
+                        )
+                        >= 0
+                    )
+                    and np.unique(
+                        shape_distance[
+                            known
+                        ]
+                    ).size
+                    >= 2
+                )
+
+                if valid_shape_distance:
+                    basis = shape_distance
+                    method = "shape_dist_traveled"
+
+            known_basis = basis[
+                known
+            ]
+
+            if np.unique(
+                known_basis
+            ).size < 2:
+                raise ValueError(
+                    "stop_times.txt não possui base suficiente para "
+                    f"interpolar trip_id={trip_id}"
+                )
+
+            interpolated = np.interp(
+                basis[
+                    missing
+                ],
+                known_basis,
+                event_seconds[
+                    known
+                ],
+            )
+
+            event_seconds[
+                missing
+            ] = np.rint(
+                interpolated
+            )
+
+            missing_positions = positions[
+                missing
+            ]
+
+            result.loc[
+                missing_positions,
+                "time_interpolated",
+            ] = True
+            result.loc[
+                missing_positions,
+                "time_interpolation_method",
+            ] = method
+
+        arrival_values = (
+            result.iloc[
+                positions
+            ][
+                "arrival_seconds"
+            ]
+            .astype(
+                "Float64"
+            )
+            .to_numpy(
+                dtype=float,
+                na_value=np.nan,
+            )
+        )
+        departure_values = (
+            result.iloc[
+                positions
+            ][
+                "departure_seconds"
+            ]
+            .astype(
+                "Float64"
+            )
+            .to_numpy(
+                dtype=float,
+                na_value=np.nan,
+            )
+        )
+
+        arrival_values = np.where(
+            np.isfinite(
+                arrival_values
+            ),
+            arrival_values,
+            event_seconds,
+        )
+        departure_values = np.where(
+            np.isfinite(
+                departure_values
+            ),
+            departure_values,
+            event_seconds,
+        )
+
+        result.loc[
+            positions,
+            "arrival_seconds",
+        ] = pd.array(
+            np.rint(
+                arrival_values
+            ),
+            dtype="Int64",
+        )
+        result.loc[
+            positions,
+            "departure_seconds",
+        ] = pd.array(
+            np.rint(
+                departure_values
+            ),
+            dtype="Int64",
+        )
+
+    return result
+
+
 def _parse_gtfs_date_series(
     values: pd.Series,
     *,
@@ -719,6 +981,17 @@ def _process_stop_times(
         integer=True,
     )
 
+    if (
+        "shape_dist_traveled"
+        in stop_times.columns
+    ):
+        _to_numeric(
+            stop_times,
+            "stop_times.txt",
+            "shape_dist_traveled",
+            nullable=True,
+        )
+
     _add_time_seconds(
         stop_times,
         "arrival_time",
@@ -729,6 +1002,17 @@ def _process_stop_times(
         "departure_time",
         "departure_seconds",
     )
+
+    stop_times[
+        "arrival_missing_raw"
+    ] = stop_times[
+        "arrival_seconds"
+    ].isna()
+    stop_times[
+        "departure_missing_raw"
+    ] = stop_times[
+        "departure_seconds"
+    ].isna()
 
     invalid_dwell = (
         stop_times[
@@ -780,39 +1064,40 @@ def _process_stop_times(
             f"{invalid_trips.index.astype(str).tolist()[:5]}"
         )
 
-    event_seconds = (
+    ordered = _interpolate_stop_time_events(
+        ordered
+    )
+
+    invalid_dwell_after = (
         ordered[
             "departure_seconds"
         ]
-        .fillna(
-            ordered[
-                "arrival_seconds"
-            ]
-        )
+        < ordered[
+            "arrival_seconds"
+        ]
     )
 
-    ordered[
-        "_event_seconds"
-    ] = event_seconds
+    if invalid_dwell_after.any():
+        raise ValueError(
+            "stop_times.txt possui departure_time anterior a arrival_time "
+            "após o preenchimento temporal"
+        )
 
-    previous = ordered.groupby(
+    previous_departure = ordered.groupby(
         "trip_id"
     )[
-        "_event_seconds"
+        "departure_seconds"
     ].shift(
         1
     )
 
     invalid_sequence = (
-        ordered[
-            "_event_seconds"
-        ].notna()
-        & previous.notna()
+        previous_departure.notna()
         & (
             ordered[
-                "_event_seconds"
+                "arrival_seconds"
             ]
-            < previous
+            < previous_departure
         )
     )
 
@@ -821,12 +1106,7 @@ def _process_stop_times(
             "stop_times.txt possui horários decrescentes dentro de uma viagem"
         )
 
-    return ordered.drop(
-        columns=[
-            "_event_seconds",
-        ]
-    )
-
+    return ordered
 
 def _process_calendar(
     calendar: pd.DataFrame,
@@ -1956,6 +2236,14 @@ def process_gtfs_zip(
             .date()
             .isoformat()
         ),
+        "service_period_expired_at_processing": bool(
+            pd.Timestamp(
+                service_end
+            ).date()
+            < datetime.now(
+                timezone.utc
+            ).date()
+        ),
         "n_shapes": (
             int(
                 len(
@@ -1990,12 +2278,48 @@ def process_gtfs_zip(
                 in route_types.items()
             )
         ),
-        "stop_times_missing_arrival": int(
+        "stop_times_missing_arrival_raw": int(
+            stop_times[
+                "arrival_missing_raw"
+            ].sum()
+        ),
+        "stop_times_missing_departure_raw": int(
+            stop_times[
+                "departure_missing_raw"
+            ].sum()
+        ),
+        "stop_times_interpolated": int(
+            stop_times[
+                "time_interpolated"
+            ].sum()
+        ),
+        "stop_times_interpolated_shape_distance": int(
+            (
+                stop_times[
+                    "time_interpolation_method"
+                ]
+                == "shape_dist_traveled"
+            ).sum()
+        ),
+        "stop_times_interpolated_stop_sequence": int(
+            (
+                stop_times[
+                    "time_interpolation_method"
+                ]
+                == "stop_sequence"
+            ).sum()
+        ),
+        "stop_times_filled_from_pair": int(
+            stop_times[
+                "time_filled_from_pair"
+            ].sum()
+        ),
+        "stop_times_missing_arrival_processed": int(
             stop_times[
                 "arrival_seconds"
             ].isna().sum()
         ),
-        "stop_times_missing_departure": int(
+        "stop_times_missing_departure_processed": int(
             stop_times[
                 "departure_seconds"
             ].isna().sum()
@@ -2086,13 +2410,45 @@ def process_configured_gtfs() -> dict:
         f"{summary['route_types'] or 'não informado'}"
     )
     print(
-        "Horários sem chegada: "
-        f"{summary['stop_times_missing_arrival']:,}"
+        "Horários sem chegada no GTFS original: "
+        f"{summary['stop_times_missing_arrival_raw']:,}"
     )
     print(
-        "Horários sem partida: "
-        f"{summary['stop_times_missing_departure']:,}"
+        "Horários sem partida no GTFS original: "
+        f"{summary['stop_times_missing_departure_raw']:,}"
     )
+    print(
+        "Horários interpolados: "
+        f"{summary['stop_times_interpolated']:,}"
+    )
+    print(
+        "  por shape_dist_traveled: "
+        f"{summary['stop_times_interpolated_shape_distance']:,}"
+    )
+    print(
+        "  por stop_sequence: "
+        f"{summary['stop_times_interpolated_stop_sequence']:,}"
+    )
+    print(
+        "Horários preenchidos a partir do par chegada/partida: "
+        f"{summary['stop_times_filled_from_pair']:,}"
+    )
+    print(
+        "Horários sem chegada após processamento: "
+        f"{summary['stop_times_missing_arrival_processed']:,}"
+    )
+    print(
+        "Horários sem partida após processamento: "
+        f"{summary['stop_times_missing_departure_processed']:,}"
+    )
+
+    if summary[
+        "service_period_expired_at_processing"
+    ]:
+        print(
+            "AVISO: o período de serviço do GTFS termina antes da data "
+            "de processamento e deve ser tratado como uma referência histórica"
+        )
     print(
         "Produtos salvos em "
         f"{data_dir}"
