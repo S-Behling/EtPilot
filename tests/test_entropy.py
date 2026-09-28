@@ -6,7 +6,7 @@ from src.analysis.entropy import normalized_shannon_entropy
 
 class EntropyTests(unittest.TestCase):
     def test_single_group_returns_zero(self):
-        # Verifique composição totalmente concentrada em um grupo.
+        # Verifica composição totalmente concentrada em um grupo
         result = normalized_shannon_entropy(
             [10, 0, 0],
             n_categories=3,
@@ -18,7 +18,7 @@ class EntropyTests(unittest.TestCase):
         )
 
     def test_equal_three_groups_returns_one(self):
-        # Verifique diversidade máxima entre três grupos.
+        # Verifica diversidade máxima entre três grupos
         result = normalized_shannon_entropy(
             [10, 10, 10],
             n_categories=3,
@@ -30,7 +30,7 @@ class EntropyTests(unittest.TestCase):
         )
 
     def test_two_equal_groups_use_three_group_maximum(self):
-        # Normalize pelo universo de três grupos, mesmo com um grupo ausente.
+        # Normaliza pelo universo de três grupos, mesmo com um grupo ausente
         result = normalized_shannon_entropy(
             [5, 5, 0],
             n_categories=3,
@@ -47,7 +47,7 @@ class EntropyTests(unittest.TestCase):
         )
 
     def test_zero_total_returns_nan(self):
-        # Diferencie ausência de observação de concentração social.
+        # Diferencia ausência de observação de concentração social
         result = normalized_shannon_entropy(
             [0, 0, 0],
             n_categories=3,
