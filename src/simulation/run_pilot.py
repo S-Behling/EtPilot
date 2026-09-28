@@ -67,7 +67,7 @@ from src.trajectory.edge_usage import build_edge_usage
 from src.trajectory.transit_usage import (
     build_transit_edge_usage,
     build_used_transit_connection_geometries,
-    map_transit_connections_to_analysis_segments,
+    map_transit_connections_hierarchically,
     summarize_transit_spatial_matching,
 )
 from src.transit.routeTransit import TransitRouter
@@ -916,19 +916,14 @@ def main() -> None:
             "pilot_departure_time_s"
         ]
     )
-    transit_tolerance_m = float(
+    transit_primary_spatial_config = (
         transit_spatial_config[
-            "tolerance_m"
+            "primary"
         ]
     )
-    transit_min_segment_coverage = float(
+    transit_fallback_spatial_config = (
         transit_spatial_config[
-            "min_segment_coverage"
-        ]
-    )
-    transit_max_angle_difference_deg = float(
-        transit_spatial_config[
-            "max_angle_difference_deg"
+            "fallback"
         ]
     )
 
@@ -1087,6 +1082,12 @@ def main() -> None:
         gtfs_data_dir
         / "shapes_processed.gpkg",
         layer="shapes_processed",
+        engine="pyogrio",
+    )
+    transit_stops = gpd.read_file(
+        gtfs_data_dir
+        / "stops_processed.gpkg",
+        layer="stops_processed",
         engine="pyogrio",
     )
 
@@ -1310,6 +1311,7 @@ def main() -> None:
         edge_usage_all,
         connections=transit_connections,
         shapes=transit_shapes,
+        stops=transit_stops,
     )
 
     car_supported_segment_ids = set(
@@ -1351,15 +1353,15 @@ def main() -> None:
     (
         transit_mapping,
         transit_match_diagnostics,
-    ) = map_transit_connections_to_analysis_segments(
+    ) = map_transit_connections_hierarchically(
         transit_connection_geometries,
-        analysis_segments=transit_candidate_segments,
-        tolerance_m=transit_tolerance_m,
-        min_segment_coverage=(
-            transit_min_segment_coverage
+        primary_segments=transit_candidate_segments,
+        fallback_segments=analysis_segments,
+        primary_config=(
+            transit_primary_spatial_config
         ),
-        max_angle_difference_deg=(
-            transit_max_angle_difference_deg
+        fallback_config=(
+            transit_fallback_spatial_config
         ),
     )
 
@@ -1453,10 +1455,15 @@ def main() -> None:
                     missing_connection_ids
                 )
                 & (
-                    transit_geometry_diagnostics[
+                    ~transit_geometry_diagnostics[
                         "geometry_status"
                     ]
-                    != "ok"
+                    .astype(
+                        str
+                    )
+                    .str.startswith(
+                        "ok"
+                    )
                 )
             ]
         )
@@ -1527,6 +1534,14 @@ def main() -> None:
         "  Conexões associadas a segmentos físicos: "
         f"{_format_int_pt(transit_spatial_summary['connections_with_segment_match'])} conexões "
         f"({_format_percentage_pt(transit_spatial_summary['connections_with_segment_match'], max(transit_spatial_summary['used_transit_connections'], 1))})"
+    )
+    print(
+        "    na etapa primária car-supported: "
+        f"{_format_int_pt(transit_spatial_summary['primary_matches'])} conexões"
+    )
+    print(
+        "    na etapa de fallback da rede física completa: "
+        f"{_format_int_pt(transit_spatial_summary['fallback_matches'])} conexões"
     )
     print(
         "  Cobertura média do shape pelos segmentos associados: "
