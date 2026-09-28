@@ -64,6 +64,29 @@
         "transit": 0.10,
         "car": 0.70
       }
+    },
+    "destination_choice": {
+      "attractiveness_exponent": 1.0,
+
+      "distance_decay_per_km": {
+        "low": 0.25,
+        "middle": 0.15,
+        "high": 0.08
+      },
+
+      "diversity_temperature": {
+        "low": 0.80,
+        "middle": 1.00,
+        "high": 1.25
+      },
+
+      "purpose_categories": {
+        "education": ["education"],
+        "health": ["health"],
+        "shopping": ["shopping"],
+        "leisure": ["leisure"],
+        "work": []
+      }
     }
   }
 }
