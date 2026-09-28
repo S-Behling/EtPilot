@@ -194,9 +194,6 @@
             "calibration_status": "provisional_pilot",
             "connection_mapping_file": "transit_connection_to_analysis_segment.csv",
             "match_report_file": "transit_spatial_match_report.csv",
-            "paired_exclusion": false,
-            "exclusions_file": "transit_spatial_exclusions.csv",
-            "exclusion_summary_file": "transit_spatial_exclusion_summary.csv",
             "transit_physical_mapping_file": "transit_physical_edge_to_analysis_segment.csv",
             "transit_physical_summary_file": "transit_physical_network_summary.csv"
         }

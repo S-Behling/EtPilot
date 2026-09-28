@@ -1,9 +1,8 @@
-"""Converte rotas GTFS em observações compatíveis com a análise por segmento
+"""Converte viagens transit em uso da rede física comum
 
 Representa acesso e egresso com as arestas exatas da rede de caminhada
-Representa o trecho embarcado com as conexões GTFS selecionadas pelo roteador
-Extrai a geometria parcial do shape entre duas paradas consecutivas
-Mapeia essas geometrias para a camada física comum usada pelo H_soc
+Representa o trecho embarcado com transit_physical_edge_id estável
+Também fornece rotinas geométricas reutilizadas na construção da rede GTFS
 """
 
 from __future__ import annotations

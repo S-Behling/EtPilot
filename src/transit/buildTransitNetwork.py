@@ -1393,6 +1393,11 @@ def build_transit_network() -> dict:
                 spatial_routable_connections
             )
         ),
+        "n_spatial_routable_trips": int(
+            spatial_routable_connections[
+                "trip_id"
+            ].nunique()
+        ),
         "n_transit_physical_edges": int(
             len(
                 transit_physical_edges
@@ -1469,7 +1474,7 @@ def build_transit_network() -> dict:
             else None
         ),
         "n_unique_stop_pairs": int(
-            routable_connections[
+            spatial_routable_connections[
                 [
                     "from_stop_id",
                     "to_stop_id",
@@ -1651,6 +1656,10 @@ def main() -> None:
         f"({_format_percentage_pt(summary['n_spatial_routable_connections'], summary['n_routable_connections'])})"
     )
     print(
+        "  Viagens com pelo menos uma conexão temporal e espacial válida: "
+        f"{_format_int_pt(summary['n_spatial_routable_trips'])} viagens"
+    )
+    print(
         "  Pares direcionais de paradas distintos: "
         f"{_format_int_pt(summary['n_unique_stop_pairs'])} pares"
     )
@@ -1710,6 +1719,11 @@ def main() -> None:
         "  Viagens aptas ao roteamento: "
         f"{_format_int_pt(summary['n_routable_trips'])} viagens "
         f"({_format_percentage_pt(summary['n_routable_trips'], summary['n_total_trips_quality'])})"
+    )
+    print(
+        "  Viagens presentes na rede temporal e espacial: "
+        f"{_format_int_pt(summary['n_spatial_routable_trips'])} viagens "
+        f"({_format_percentage_pt(summary['n_spatial_routable_trips'], summary['n_routable_trips'])})"
     )
     print(
         "  Viagens excluídas por pelo menos um critério: "

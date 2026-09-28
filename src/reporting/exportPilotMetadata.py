@@ -338,19 +338,7 @@ VARIABLES = [
         "nome": "analysis_exclusion_reason",
         "grupo": "controle analítico",
         "unidade": "categoria",
-        "descricao": "Registra os motivos cumulativos pelos quais o agente é retirado da análise de trajetórias, incluindo outlier e falha de espacialização transit",
-    },
-    {
-        "nome": "direct_spatial_mapping_failure",
-        "grupo": "controle de espacialização transit",
-        "unidade": "booleano",
-        "descricao": "Indica que o agente usa ao menos uma conexão GTFS sem correspondência válida na camada física comum",
-    },
-    {
-        "nome": "analysis_excluded_spatial_mapping",
-        "grupo": "controle de espacialização transit",
-        "unidade": "booleano",
-        "descricao": "Indica que o agente foi retirado da análise espacial por falha direta de espacialização ou para preservar a exclusão pareada entre cenários",
+        "descricao": "Registra o motivo pelo qual o agente é retirado da análise de trajetórias, atualmente associado ao controle pareado de outliers transit",
     },
     {
         "nome": "sufficient_flow_both",
@@ -1531,17 +1519,6 @@ def _collect_config_parameters(
             ),
             "categoria",
             "Política aplicada quando um trecho físico GTFS válido não encontra correspondência segura nas redes OSM e precisa ser incorporado à camada comum",
-        ),
-        (
-            "transit.spatial_mapping.paired_exclusion",
-            transit.get(
-                "spatial_mapping",
-                {},
-            ).get(
-                "paired_exclusion"
-            ),
-            "booleano",
-            "Parâmetro legado mantido como falso após a substituição da exclusão de agentes pela criação de segmentos exclusivos transit",
         ),
         (
             "transit.routing.diagnostics.sample_size",
