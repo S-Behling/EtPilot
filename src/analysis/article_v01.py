@@ -32,8 +32,6 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-from typing import Iterable
-
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
@@ -694,6 +692,19 @@ def _build_final_bases(
     )
     seed_base = pd.DataFrame(seed_rows).sort_values("seed")
 
+    reconstruction_error = pd.to_numeric(
+        segments["delta_H_soc_reconstruction_error"],
+        errors="coerce",
+    ).abs().dropna()
+    if (
+        not reconstruction_error.empty
+        and reconstruction_error.max() > 1e-9
+    ):
+        raise RuntimeError(
+            "A decomposição aditiva de H_soc não reconstruiu delta_H_soc "
+            "dentro da tolerância numérica."
+        )
+
     agents.to_csv(
         dirs["bases"] / "base01_agentes_pareados.csv",
         index=False,
@@ -1279,6 +1290,28 @@ def _hierarchical_bootstrap(
         else:
             observed = np.nan
 
+        seed_sign_consistency = np.nan
+        if (
+            metric in seed_base.columns
+            and "delta" in metric.lower()
+            and np.isfinite(observed)
+            and not np.isclose(observed, 0.0)
+        ):
+            seed_values = pd.to_numeric(
+                seed_base[metric],
+                errors="coerce",
+            ).dropna()
+            seed_values = seed_values.loc[
+                ~np.isclose(seed_values, 0.0)
+            ]
+            if not seed_values.empty:
+                seed_sign_consistency = float(
+                    (
+                        np.sign(seed_values)
+                        == np.sign(observed)
+                    ).mean()
+                )
+
         summary_rows.append(
             {
                 "metric": metric,
@@ -1286,6 +1319,7 @@ def _hierarchical_bootstrap(
                 "bootstrap_median": float(values.median()),
                 "ci95_low": float(values.quantile(0.025)),
                 "ci95_high": float(values.quantile(0.975)),
+                "seed_sign_consistency": seed_sign_consistency,
                 "bootstrap_reps_valid": int(len(values)),
                 "inference_unit": (
                     "hierarchical bootstrap: seed + complete agent trajectory"
@@ -1346,23 +1380,25 @@ def _behavioral_mechanisms(
                         errors="coerce",
                     ).median()
                 ),
-                "delta_od_distance_m_median": float(
-                    pd.to_numeric(
-                        group.get(
-                            "delta_od_distance_m",
-                            np.nan,
-                        ),
-                        errors="coerce",
-                    ).median()
+                "delta_od_distance_m_median": (
+                    float(
+                        pd.to_numeric(
+                            group["delta_od_distance_m"],
+                            errors="coerce",
+                        ).median()
+                    )
+                    if "delta_od_distance_m" in group.columns
+                    else np.nan
                 ),
-                "delta_travel_distance_m_median": float(
-                    pd.to_numeric(
-                        group.get(
-                            "delta_travel_distance_m",
-                            np.nan,
-                        ),
-                        errors="coerce",
-                    ).median()
+                "delta_travel_distance_m_median": (
+                    float(
+                        pd.to_numeric(
+                            group["delta_travel_distance_m"],
+                            errors="coerce",
+                        ).median()
+                    )
+                    if "delta_travel_distance_m" in group.columns
+                    else np.nan
                 ),
             }
         )
@@ -1567,6 +1603,95 @@ def _parameter_sensitivity(
     result = pd.DataFrame(rows)
     result.to_csv(
         dirs["stats"] / "sensibilidade_parametros_artigo.csv",
+        index=False,
+        encoding="utf-8",
+    )
+    return result
+
+
+def _direct_article_result(
+    *,
+    bootstrap_summary: pd.DataFrame,
+    seed_base: pd.DataFrame,
+    dirs: dict[str, Path],
+) -> pd.DataFrame:
+    def metric_row(name: str) -> pd.Series:
+        rows = bootstrap_summary.loc[
+            bootstrap_summary["metric"] == name
+        ]
+        if rows.empty:
+            return pd.Series(dtype=float)
+        return rows.iloc[0]
+
+    baseline = metric_row(
+        "H_soc_baseline_length_weighted"
+    )
+    differentiated = metric_row(
+        "H_soc_differentiated_length_weighted"
+    )
+    delta = metric_row(
+        "delta_H_soc_length_weighted"
+    )
+
+    result = pd.DataFrame(
+        [
+            {
+                "H_soc_baseline_seed_median": baseline.get(
+                    "point_estimate_seed_median",
+                    np.nan,
+                ),
+                "H_soc_differentiated_seed_median": differentiated.get(
+                    "point_estimate_seed_median",
+                    np.nan,
+                ),
+                "delta_H_soc_seed_median": delta.get(
+                    "point_estimate_seed_median",
+                    np.nan,
+                ),
+                "delta_H_soc_ci95_low": delta.get(
+                    "ci95_low",
+                    np.nan,
+                ),
+                "delta_H_soc_ci95_high": delta.get(
+                    "ci95_high",
+                    np.nan,
+                ),
+                "delta_H_soc_seed_sign_consistency": delta.get(
+                    "seed_sign_consistency",
+                    np.nan,
+                ),
+                "supported_segments_seed_median": float(
+                    pd.to_numeric(
+                        seed_base["supported_segments"],
+                        errors="coerce",
+                    ).median()
+                ),
+                "supported_length_km_seed_median": float(
+                    pd.to_numeric(
+                        seed_base["supported_length_m"],
+                        errors="coerce",
+                    ).median()
+                    / 1000.0
+                ),
+                "length_share_decrease_seed_median": float(
+                    seed_base["length_share_decrease"].median()
+                ),
+                "length_share_stable_seed_median": float(
+                    seed_base["length_share_stable"].median()
+                ),
+                "length_share_increase_seed_median": float(
+                    seed_base["length_share_increase"].median()
+                ),
+                "inference_unit": (
+                    "seeds + paired complete agent trajectories; "
+                    "segments are not independent observations"
+                ),
+            }
+        ]
+    )
+
+    result.to_csv(
+        dirs["stats"] / "resposta_pergunta_artigo.csv",
         index=False,
         encoding="utf-8",
     )
@@ -2135,18 +2260,28 @@ def _make_figures(
     if not mode_decomposition.empty:
         ordered = mode_decomposition.sort_values("seed")
         figure, axis = plt.subplots(figsize=(9, 5))
+        x = np.arange(len(ordered))
+        width = 0.27
         axis.bar(
-            ordered["seed"].astype(str),
+            x - width,
             ordered["purpose_destination_component"],
+            width=width,
             label="Propósito + destino",
         )
         axis.bar(
-            ordered["seed"].astype(str),
+            x,
             ordered["mode_differentiation_component"],
-            bottom=ordered["purpose_destination_component"],
+            width=width,
             label="Diferenciação modal",
         )
+        axis.scatter(
+            x + width,
+            ordered["total_delta_H_soc"],
+            label="ΔH total",
+            zorder=3,
+        )
         axis.axhline(0, linewidth=1, color="black", alpha=0.5)
+        axis.set_xticks(x, ordered["seed"].astype(str))
         axis.set_ylabel("Contribuição para ΔH_soc")
         axis.set_xlabel("Seed")
         axis.set_title("Decomposição comportamental sequencial")
@@ -2497,6 +2632,12 @@ def main() -> None:
         sensitivity_root=sensitivity_root,
         threshold=threshold,
         practical_delta=practical_delta,
+        seed_base=seed_base,
+        dirs=dirs,
+    )
+
+    direct_result = _direct_article_result(
+        bootstrap_summary=bootstrap_summary,
         seed_base=seed_base,
         dirs=dirs,
     )
