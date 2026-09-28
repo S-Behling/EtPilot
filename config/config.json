@@ -55,7 +55,17 @@
     "analysis": {
         "entropy_base": 2,
         "buffer": 500,
-        "max_trip_distance": 30000
+        "max_trip_distance": 30000,
+        "analysis_segments": {
+            "reference_mode": "walk",
+            "mode_order": [
+                "walk",
+                "bike",
+                "car"
+            ],
+            "geometry_tolerance_m": 5,
+            "min_geometry_coverage": 0.8
+        }
     },
     "income": {
         "variable": "renda_media_responsavel",
