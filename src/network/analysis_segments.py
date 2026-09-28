@@ -1,14 +1,13 @@
-"""Harmonize as arestas modais em segmentos físicos comuns de análise.
+"""Harmonize as redes modais completas em segmentos físicos comuns.
 
-Use a rede de caminhada como referência inicial porque ela cobre a maior
-parte dos espaços acessíveis no piloto. Mapeie bicicleta e carro primeiro
-por equivalência OSM exata e, em seguida, por sobreposição geométrica com
-identificador OSM compatível. Preserve como segmentos exclusivos as arestas
-que não puderem ser reconciliadas com segurança.
+Use a rede de caminhada como referência inicial. Mapeie bicicleta e carro
+primeiro por equivalência OSM exata e, em seguida, por sobreposição
+geométrica compatível. Preserve como exclusivos apenas os segmentos que não
+puderem ser reconciliados com segurança.
 
-Permita mapeamento 1:N. Use-o para representar, por exemplo, uma aresta
-simplificada de carro que corresponda a vários segmentos menores da rede
-de caminhada.
+Construa esta camada a partir das redes completas, e não das trajetórias
+observadas. Preserve assim o mesmo `analysis_segment_id` quando altere o
+número de agentes, a seed ou o cenário experimental.
 """
 
 from __future__ import annotations
@@ -41,21 +40,23 @@ def _normalize_osmid(value) -> str:
     return str(value)
 
 
-def _osmid_set(value) -> set[str]:
-    """Converta o osmid para um conjunto de identificadores."""
+def _osmid_set(value) -> frozenset[str]:
+    """Converta o osmid para um conjunto imutável de identificadores."""
 
     if value is None:
-        return set()
+        return frozenset()
 
     if isinstance(value, (list, tuple, set)):
-        return {
+        return frozenset(
             str(item)
             for item in value
-        }
+        )
 
-    return {
-        str(value)
-    }
+    return frozenset(
+        {
+            str(value),
+        }
+    )
 
 
 def _normalize_text(value) -> str:
@@ -95,14 +96,16 @@ def _edge_geometry(
     u: int,
     v: int,
     key: int,
+    attributes: Mapping | None = None,
 ):
-    """Recupere a geometria da aresta e crie uma linha quando necessário."""
+    """Recupere a geometria e crie uma linha quando a aresta não a possuir."""
 
-    attributes = graph.get_edge_data(
-        u,
-        v,
-        key,
-    )
+    if attributes is None:
+        attributes = graph.get_edge_data(
+            u,
+            v,
+            key,
+        )
 
     if attributes is None:
         raise ValueError(
@@ -138,11 +141,156 @@ def _edge_geometry(
     )
 
 
+def _edge_record(
+    *,
+    mode: str,
+    graph,
+    u: int,
+    v: int,
+    key: int,
+    attributes: Mapping,
+) -> dict:
+    """Converta uma aresta modal em um registro padronizado."""
+
+    u = int(u)
+    v = int(v)
+    key = int(key)
+
+    a, b = _canonical_endpoints(
+        u,
+        v,
+    )
+
+    osmid = attributes.get(
+        "osmid"
+    )
+    osmid_signature = _normalize_osmid(
+        osmid
+    )
+
+    geometry = _edge_geometry(
+        graph,
+        u,
+        v,
+        key,
+        attributes,
+    )
+
+    return {
+        "mode": mode,
+        "u": u,
+        "v": v,
+        "key": key,
+        "modal_edge_id": (
+            f"{mode}:{u}:{v}:{key}"
+        ),
+        "undirected_nodes": (
+            f"{a}:{b}"
+        ),
+        "osmid_signature": (
+            osmid_signature
+        ),
+        "osmid_set": _osmid_set(
+            osmid
+        ),
+        "strict_key": (
+            f"{a}:{b}:{osmid_signature}"
+        ),
+        "name_norm": _normalize_text(
+            attributes.get(
+                "name"
+            )
+        ),
+        "highway_norm": _normalize_text(
+            attributes.get(
+                "highway"
+            )
+        ),
+        "length_m": float(
+            geometry.length
+        ),
+        "geometry": geometry,
+    }
+
+
+def extract_all_modal_edges(
+    graphs: Mapping[str, object],
+    *,
+    modes: Iterable[str] | None = None,
+) -> gpd.GeoDataFrame:
+    """Extraia todas as arestas das redes modais carregadas."""
+
+    if modes is None:
+        modes = graphs.keys()
+
+    rows: list[dict] = []
+    common_crs = None
+
+    for mode in modes:
+        if mode not in graphs:
+            raise ValueError(
+                f"Carregue a rede correspondente ao modo '{mode}'."
+            )
+
+        graph = graphs[
+            mode
+        ]
+
+        graph_crs = graph.graph.get(
+            "crs"
+        )
+
+        if graph_crs is None:
+            raise ValueError(
+                f"Registre um CRS na rede '{mode}'."
+            )
+
+        if common_crs is None:
+            common_crs = graph_crs
+
+        if str(graph_crs) != str(common_crs):
+            raise ValueError(
+                "Projete todas as redes para o mesmo CRS antes "
+                "de harmonizar os segmentos."
+            )
+
+        for (
+            u,
+            v,
+            key,
+            attributes,
+        ) in graph.edges(
+            keys=True,
+            data=True,
+        ):
+            rows.append(
+                _edge_record(
+                    mode=str(mode),
+                    graph=graph,
+                    u=int(u),
+                    v=int(v),
+                    key=int(key),
+                    attributes=attributes,
+                )
+            )
+
+    if not rows:
+        raise ValueError(
+            "Forneça redes com pelo menos uma aresta."
+        )
+
+    return gpd.GeoDataFrame(
+        rows,
+        geometry="geometry",
+        crs=common_crs,
+    )
+
+
 def extract_used_modal_edges(
     edge_usage: pd.DataFrame,
     graphs: Mapping[str, object],
 ) -> gpd.GeoDataFrame:
-    """Extraia somente as arestas modais efetivamente usadas nas simulações."""
+    """Extraia apenas as arestas efetivamente usadas pelas trajetórias."""
 
     required_columns = {
         "mode",
@@ -178,8 +326,7 @@ def extract_used_modal_edges(
     )
 
     rows: list[dict] = []
-
-    crs = None
+    common_crs = None
 
     for row in used.itertuples(
         index=False
@@ -196,7 +343,6 @@ def extract_used_modal_edges(
         graph = graphs[
             mode
         ]
-
         graph_crs = graph.graph.get(
             "crs"
         )
@@ -206,10 +352,10 @@ def extract_used_modal_edges(
                 f"Registre um CRS na rede '{mode}'."
             )
 
-        if crs is None:
-            crs = graph_crs
+        if common_crs is None:
+            common_crs = graph_crs
 
-        if str(graph_crs) != str(crs):
+        if str(graph_crs) != str(common_crs):
             raise ValueError(
                 "Projete todas as redes para o mesmo CRS antes "
                 "de harmonizar os segmentos."
@@ -237,70 +383,29 @@ def extract_used_modal_edges(
                 f"{mode}:{u}:{v}:{key}."
             )
 
-        a, b = _canonical_endpoints(
-            u,
-            v,
+        record = _edge_record(
+            mode=mode,
+            graph=graph,
+            u=u,
+            v=v,
+            key=key,
+            attributes=attributes,
         )
 
-        osmid = attributes.get(
-            "osmid"
-        )
-
-        osmid_signature = (
-            _normalize_osmid(
-                osmid
-            )
-        )
-
-        geometry = _edge_geometry(
-            graph,
-            u,
-            v,
-            key,
+        record[
+            "modal_edge_id"
+        ] = str(
+            row.modal_edge_id
         )
 
         rows.append(
-            {
-                "mode": mode,
-                "u": u,
-                "v": v,
-                "key": key,
-                "modal_edge_id": str(
-                    row.modal_edge_id
-                ),
-                "undirected_nodes": (
-                    f"{a}:{b}"
-                ),
-                "osmid_signature": (
-                    osmid_signature
-                ),
-                "osmid_set": _osmid_set(
-                    osmid
-                ),
-                "strict_key": (
-                    f"{a}:{b}:{osmid_signature}"
-                ),
-                "name_norm": _normalize_text(
-                    attributes.get(
-                        "name"
-                    )
-                ),
-                "highway_norm": _normalize_text(
-                    attributes.get(
-                        "highway"
-                    )
-                ),
-                "length_m": float(
-                    geometry.length
-                ),
-                "geometry": geometry,
-            }
+            record
         )
 
     return gpd.GeoDataFrame(
         rows,
         geometry="geometry",
-        crs=crs,
+        crs=common_crs,
     )
 
 
@@ -364,12 +469,7 @@ def _coverage_ratio(
     edge_geometry,
     tolerance_m: float,
 ) -> float:
-    """
-    Meça quanto do segmento candidato fica coberto pela geometria modal.
-
-    Cubra o segmento candidato, e não a aresta modal, para permitir que uma
-    aresta modal longa seja associada a vários segmentos menores.
-    """
+    """Meça quanto do segmento candidato fica coberto pela aresta modal."""
 
     if candidate_geometry.length <= 0:
         return 0.0
@@ -398,7 +498,7 @@ def _find_geometry_matches(
     tolerance_m: float,
     min_coverage: float,
 ) -> list[tuple[str, float]]:
-    """Selecione todos os segmentos compatíveis cobertos pela aresta modal."""
+    """Selecione os segmentos compatíveis cobertos pela aresta modal."""
 
     if segments.empty:
         return []
@@ -458,9 +558,20 @@ def _find_geometry_matches(
 
     return sorted(
         matches,
-        key=lambda item: (
-            item[0]
-        ),
+        key=lambda item: item[0],
+    )
+
+
+def _segments_frame(
+    rows: list[dict],
+    crs,
+) -> gpd.GeoDataFrame:
+    """Converta os registros acumulados em um GeoDataFrame."""
+
+    return gpd.GeoDataFrame(
+        rows,
+        geometry="geometry",
+        crs=crs,
     )
 
 
@@ -472,20 +583,14 @@ def build_analysis_segments(
     tolerance_m: float = 5.0,
     min_coverage: float = 0.80,
 ) -> tuple[gpd.GeoDataFrame, pd.DataFrame]:
-    """
-    Construa os segmentos comuns e mapeie cada aresta modal para eles.
-
-    Use a rede de referência como primeira camada. Mapeie os demais modos por
-    chave OSM exata. Procure em seguida correspondências geométricas 1:N.
-    Preserve como exclusivo tudo o que não puder ser reconciliado.
-    """
+    """Construa a rede física comum e mapeie todas as arestas modais."""
 
     if modal_edges.empty:
         raise ValueError(
-            "Forneça pelo menos uma aresta modal usada."
+            "Forneça pelo menos uma aresta modal."
         )
 
-    if not modal_edges.crs:
+    if modal_edges.crs is None:
         raise ValueError(
             "Defina o CRS projetado das arestas antes da harmonização."
         )
@@ -508,14 +613,14 @@ def build_analysis_segments(
     modes_present = set(
         modal_edges[
             "mode"
-        ]
-        .astype(str)
+        ].astype(
+            str
+        )
     )
 
     if reference_mode not in modes_present:
         raise ValueError(
-            f"Inclua o modo de referência '{reference_mode}' "
-            "entre as arestas usadas."
+            f"Inclua o modo de referência '{reference_mode}'."
         )
 
     ordered_modes = [
@@ -532,34 +637,28 @@ def build_analysis_segments(
             mode
         )
 
-    segments_rows: list[
-        dict
-    ] = []
-    mapping_rows: list[
-        dict
-    ] = []
-
+    segments_rows: list[dict] = []
+    mapping_rows: list[dict] = []
     next_segment_index = 1
 
     def append_segment(
         edge: pd.Series,
         source_mode: str,
     ) -> str:
-        """Adicione um novo segmento físico e devolva seu identificador."""
+        """Adicione um segmento físico e devolva seu identificador."""
 
         nonlocal next_segment_index
 
         segment_id = _new_segment_id(
             next_segment_index
         )
-
         next_segment_index += 1
 
         segments_rows.append(
             {
                 "analysis_segment_id": segment_id,
                 "source_mode": source_mode,
-                "source_modal_edge_id": (
+                "source_modal_edge_id": str(
                     edge[
                         "modal_edge_id"
                     ]
@@ -567,22 +666,18 @@ def build_analysis_segments(
                 "strict_key": edge[
                     "strict_key"
                 ],
-                "osmid_signature": (
-                    edge[
-                        "osmid_signature"
-                    ]
-                ),
+                "osmid_signature": edge[
+                    "osmid_signature"
+                ],
                 "osmid_set": edge[
                     "osmid_set"
                 ],
                 "name_norm": edge[
                     "name_norm"
                 ],
-                "highway_norm": (
-                    edge[
-                        "highway_norm"
-                    ]
-                ),
+                "highway_norm": edge[
+                    "highway_norm"
+                ],
                 "length_m": float(
                     edge[
                         "geometry"
@@ -597,98 +692,100 @@ def build_analysis_segments(
         return segment_id
 
     reference_edges = (
-        modal_edges[
+        modal_edges.loc[
             modal_edges[
                 "mode"
             ]
             == reference_mode
         ]
         .sort_values(
-            "modal_edge_id"
-        )
-        .drop_duplicates(
-            subset=[
+            [
                 "strict_key",
-            ],
-            keep="first",
+                "modal_edge_id",
+            ]
         )
     )
 
-    for _, edge in reference_edges.iterrows():
+    for (
+        strict_key,
+        group,
+    ) in reference_edges.groupby(
+        "strict_key",
+        sort=True,
+    ):
+        edge = group.iloc[
+            0
+        ]
+
         segment_id = append_segment(
             edge,
             reference_mode,
         )
 
-        matching_modal_edges = (
-            modal_edges[
-                (modal_edges["mode"] == reference_mode)
-                & (
-                    modal_edges["strict_key"]
-                    == edge["strict_key"]
-                )
-            ]
-        )
-
-        for _, modal_edge in matching_modal_edges.iterrows():
+        for modal_edge_id in group[
+            "modal_edge_id"
+        ].astype(
+            str
+        ):
             mapping_rows.append(
                 {
-                    "modal_edge_id": (
-                        modal_edge[
-                            "modal_edge_id"
-                        ]
-                    ),
+                    "modal_edge_id": modal_edge_id,
                     "mode": reference_mode,
-                    "analysis_segment_id": (
-                        segment_id
-                    ),
-                    "match_method": (
-                        "reference"
-                    ),
+                    "analysis_segment_id": segment_id,
+                    "match_method": "reference",
                     "match_quality": 1.0,
                 }
             )
-
-    mapped_modal_edges = {
-        row[
-            "modal_edge_id"
-        ]
-        for row in mapping_rows
-    }
 
     for mode in ordered_modes:
         if mode == reference_mode:
             continue
 
-        # Congele os segmentos já disponíveis antes de processar o modo.
-        segments_snapshot = gpd.GeoDataFrame(
+        # Congele a camada já harmonizada antes de processar o próximo modo.
+        segments_snapshot = _segments_frame(
             segments_rows,
-            geometry="geometry",
-            crs=modal_edges.crs,
+            modal_edges.crs,
+        )
+
+        # Indexe as chaves exatas uma única vez para evitar buscas repetidas.
+        strict_lookup = (
+            segments_snapshot.groupby(
+                "strict_key"
+            )[
+                "analysis_segment_id"
+            ]
+            .apply(
+                lambda values: [
+                    str(value)
+                    for value in values
+                ]
+            )
+            .to_dict()
         )
 
         mode_edges = (
-            modal_edges[
+            modal_edges.loc[
                 modal_edges[
                     "mode"
                 ]
                 == mode
             ]
             .sort_values(
-                "modal_edge_id"
+                [
+                    "strict_key",
+                    "modal_edge_id",
+                ]
             )
         )
 
         # Agrupe direções e duplicatas físicas antes de procurar equivalências.
-        physical_groups = (
-            mode_edges
-            .groupby(
-                "strict_key",
-                sort=True,
-            )
-        )
-
-        for _, group in physical_groups:
+        for (
+            strict_key,
+            group,
+        ) in mode_edges.groupby(
+            "strict_key",
+            sort=True,
+        ):
             edge = group.iloc[
                 0
             ]
@@ -701,37 +798,26 @@ def build_analysis_segments(
                 .tolist()
             )
 
-            exact = segments_snapshot[
-                segments_snapshot[
-                    "strict_key"
-                ]
-                == edge[
-                    "strict_key"
-                ]
-            ]
+            exact_targets = strict_lookup.get(
+                strict_key,
+                [],
+            )
 
-            if not exact.empty:
+            if exact_targets:
                 targets = [
                     (
-                        str(
-                            segment[
-                                "analysis_segment_id"
-                            ]
-                        ),
+                        segment_id,
                         "osm_exact",
                         1.0,
                     )
-                    for _, segment
-                    in exact.iterrows()
+                    for segment_id in exact_targets
                 ]
             else:
-                geometry_matches = (
-                    _find_geometry_matches(
-                        edge,
-                        segments_snapshot,
-                        tolerance_m=tolerance_m,
-                        min_coverage=min_coverage,
-                    )
+                geometry_matches = _find_geometry_matches(
+                    edge,
+                    segments_snapshot,
+                    tolerance_m=tolerance_m,
+                    min_coverage=min_coverage,
                 )
 
                 if geometry_matches:
@@ -760,7 +846,7 @@ def build_analysis_segments(
                         )
                     ]
 
-            # Aplique o mesmo mapeamento às direções da mesma aresta física.
+            # Aplique o mesmo mapeamento a todas as direções da aresta física.
             for modal_edge_id in modal_edge_ids:
                 for (
                     segment_id,
@@ -769,44 +855,34 @@ def build_analysis_segments(
                 ) in targets:
                     mapping_rows.append(
                         {
-                            "modal_edge_id": (
-                                modal_edge_id
-                            ),
+                            "modal_edge_id": modal_edge_id,
                             "mode": mode,
-                            "analysis_segment_id": (
-                                segment_id
-                            ),
-                            "match_method": (
-                                method
-                            ),
-                            "match_quality": (
-                                quality
-                            ),
+                            "analysis_segment_id": segment_id,
+                            "match_method": method,
+                            "match_quality": quality,
                         }
                     )
 
-                mapped_modal_edges.add(
-                    modal_edge_id
-                )
-
-    segments = gpd.GeoDataFrame(
+    segments = _segments_frame(
         segments_rows,
-        geometry="geometry",
-        crs=modal_edges.crs,
+        modal_edges.crs,
     )
 
     mapping = pd.DataFrame(
         mapping_rows
     )
 
-    if mapping[
+    mapped_count = mapping[
         "modal_edge_id"
-    ].nunique() != modal_edges[
+    ].nunique()
+    source_count = modal_edges[
         "modal_edge_id"
-    ].nunique():
+    ].nunique()
+
+    if mapped_count != source_count:
         raise RuntimeError(
             "Mapeie todas as arestas modais antes de concluir "
-            "a harmonização."
+            f"a harmonização ({mapped_count}/{source_count})."
         )
 
     return (
@@ -819,12 +895,7 @@ def apply_analysis_segment_mapping(
     edge_usage: pd.DataFrame,
     mapping: pd.DataFrame,
 ) -> pd.DataFrame:
-    """
-    Aplique o mapeamento 1:N ao edge_usage e preserve uma linha por passagem.
-
-    Exploda uma passagem modal em várias linhas quando a aresta simplificada
-    corresponder a vários segmentos físicos comuns.
-    """
+    """Aplique o mapeamento 1:N às passagens registradas no edge_usage."""
 
     result = edge_usage.merge(
         mapping,
@@ -860,11 +931,43 @@ def apply_analysis_segment_mapping(
 
 def segment_match_report(
     mapping: pd.DataFrame,
+    *,
+    modal_edge_ids: Iterable[str] | None = None,
 ) -> pd.DataFrame:
     """Resuma os métodos usados para harmonizar as arestas modais."""
 
+    selected = mapping
+
+    if modal_edge_ids is not None:
+        selected_ids = {
+            str(value)
+            for value in modal_edge_ids
+        }
+
+        selected = mapping.loc[
+            mapping[
+                "modal_edge_id"
+            ].astype(str).isin(
+                selected_ids
+            )
+        ]
+
+    if selected.empty:
+        return pd.DataFrame(
+            columns=[
+                "mode",
+                "match_method",
+                "mapping_rows",
+                "modal_edges",
+                "analysis_segments",
+                "mean_match_quality",
+                "mode_modal_edges",
+                "modal_edge_share_pct",
+            ]
+        )
+
     report = (
-        mapping
+        selected
         .groupby(
             [
                 "mode",
@@ -893,7 +996,7 @@ def segment_match_report(
     )
 
     mode_totals = (
-        mapping
+        selected
         .groupby(
             "mode"
         )[
