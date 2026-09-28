@@ -826,6 +826,32 @@ def integrate_transit_physical_network(
                 f"amostra={missing_sample}"
             )
 
+        used_exclusive_segment_ids = set(
+            exclusive_mapping[
+                "analysis_segment_id"
+            ].astype(
+                str
+            )
+        )
+
+        exclusive_segments = (
+            exclusive_segments.loc[
+                exclusive_segments[
+                    "analysis_segment_id"
+                ]
+                .astype(
+                    str
+                )
+                .isin(
+                    used_exclusive_segment_ids
+                )
+            ]
+            .copy()
+            .reset_index(
+                drop=True
+            )
+        )
+
         analysis_segments = pd.concat(
             [
                 analysis_segments,
