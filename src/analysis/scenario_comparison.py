@@ -660,12 +660,54 @@ def comparison_summary(
     for threshold in thresholds:
         column = f"flow_ge_{threshold}_both"
 
+        if column not in comparison.columns:
+            result[
+                column
+            ] = 0
+            result[
+                f"delta_H_soc_mean_ge_{threshold}_both"
+            ] = float(
+                "nan"
+            )
+            result[
+                f"delta_H_soc_median_ge_{threshold}_both"
+            ] = float(
+                "nan"
+            )
+            continue
+
+        threshold_subset = comparison.loc[
+            comparison[
+                column
+            ]
+        ]
+
         result[
             column
         ] = int(
-            comparison[
-                column
-            ].sum()
-        ) if column in comparison.columns else 0
+            len(
+                threshold_subset
+            )
+        )
+
+        result[
+            f"delta_H_soc_mean_ge_{threshold}_both"
+        ] = float(
+            threshold_subset[
+                "delta_H_soc"
+            ].mean()
+        ) if not threshold_subset.empty else float(
+            "nan"
+        )
+
+        result[
+            f"delta_H_soc_median_ge_{threshold}_both"
+        ] = float(
+            threshold_subset[
+                "delta_H_soc"
+            ].median()
+        ) if not threshold_subset.empty else float(
+            "nan"
+        )
 
     return result
