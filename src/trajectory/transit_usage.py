@@ -433,11 +433,267 @@ def build_transit_edge_usage(
     )
 
 
+def _projection_candidates_on_line(
+    line,
+    point,
+    *,
+    max_candidates: int = 16,
+) -> list[tuple[float, float]]:
+    """Calcula posições candidatas de um ponto ao longo de um shape"""
+
+    if (
+        line is None
+        or point is None
+        or line.is_empty
+        or point.is_empty
+        or line.geom_type != "LineString"
+    ):
+        return []
+
+    coordinates = np.asarray(
+        line.coords,
+        dtype=float,
+    )
+
+    if len(
+        coordinates
+    ) < 2:
+        return []
+
+    starts = coordinates[
+        :-1,
+        :2,
+    ]
+    ends = coordinates[
+        1:,
+        :2,
+    ]
+    vectors = (
+        ends
+        - starts
+    )
+    lengths = np.linalg.norm(
+        vectors,
+        axis=1,
+    )
+    valid = lengths > 1e-9
+
+    if not valid.any():
+        return []
+
+    point_xy = np.asarray(
+        [
+            float(
+                point.x
+            ),
+            float(
+                point.y
+            ),
+        ],
+        dtype=float,
+    )
+
+    squared = (
+        lengths
+        * lengths
+    )
+    t = np.zeros(
+        len(
+            lengths
+        ),
+        dtype=float,
+    )
+
+    t[
+        valid
+    ] = (
+        np.sum(
+            (
+                point_xy
+                - starts[
+                    valid
+                ]
+            )
+            * vectors[
+                valid
+            ],
+            axis=1,
+        )
+        / squared[
+            valid
+        ]
+    )
+    t = np.clip(
+        t,
+        0.0,
+        1.0,
+    )
+
+    projected = (
+        starts
+        + vectors
+        * t[
+            :,
+            None,
+        ]
+    )
+    distances = np.linalg.norm(
+        projected
+        - point_xy,
+        axis=1,
+    )
+
+    cumulative = np.concatenate(
+        [
+            np.asarray(
+                [
+                    0.0,
+                ]
+            ),
+            np.cumsum(
+                lengths
+            ),
+        ]
+    )
+    positions = (
+        cumulative[
+            :-1
+        ]
+        + t
+        * lengths
+    )
+
+    candidate_indices = np.argsort(
+        distances,
+        kind="stable",
+    )[
+        :max_candidates
+    ]
+
+    return [
+        (
+            float(
+                positions[
+                    index
+                ]
+            ),
+            float(
+                distances[
+                    index
+                ]
+            ),
+        )
+        for index in candidate_indices
+        if valid[
+            index
+        ]
+    ]
+
+
+def _forward_stop_positions(
+    line,
+    from_point,
+    to_point,
+) -> tuple[
+    float,
+    float,
+    float,
+    float,
+] | None:
+    """Seleciona projeções sucessivas compatíveis com a ordem das paradas"""
+
+    from_candidates = _projection_candidates_on_line(
+        line,
+        from_point,
+    )
+    to_candidates = _projection_candidates_on_line(
+        line,
+        to_point,
+    )
+
+    pairs: list[
+        tuple[
+            float,
+            float,
+            float,
+            float,
+            float,
+            float,
+        ]
+    ] = []
+
+    for (
+        start,
+        start_distance,
+    ) in from_candidates:
+        for (
+            end,
+            end_distance,
+        ) in to_candidates:
+            route_distance = (
+                end
+                - start
+            )
+
+            if route_distance <= 1e-6:
+                continue
+
+            pairs.append(
+                (
+                    start_distance
+                    + end_distance,
+                    route_distance,
+                    start,
+                    end,
+                    start_distance,
+                    end_distance,
+                )
+            )
+
+    if not pairs:
+        return None
+
+    (
+        _,
+        _,
+        start,
+        end,
+        start_distance,
+        end_distance,
+    ) = min(
+        pairs,
+        key=lambda item: (
+            item[
+                0
+            ],
+            item[
+                1
+            ],
+        ),
+    )
+
+    return (
+        float(
+            start
+        ),
+        float(
+            end
+        ),
+        float(
+            start_distance
+        ),
+        float(
+            end_distance
+        ),
+    )
+
+
 def build_used_transit_connection_geometries(
     edge_usage: pd.DataFrame,
     *,
     connections: pd.DataFrame,
     shapes: gpd.GeoDataFrame,
+    stops: gpd.GeoDataFrame | None = None,
 ) -> tuple[
     gpd.GeoDataFrame,
     pd.DataFrame,
@@ -541,6 +797,37 @@ def build_used_transit_connection_geometries(
         .to_dict()
     )
 
+    if stops is not None:
+        stop_table = stops[
+            [
+                "stop_id",
+                "geometry",
+            ]
+        ].copy()
+        stop_table[
+            "stop_id"
+        ] = stop_table[
+            "stop_id"
+        ].astype(
+            "string"
+        )
+        stop_lookup = (
+            stop_table
+            .drop_duplicates(
+                subset=[
+                    "stop_id",
+                ]
+            )
+            .set_index(
+                "stop_id"
+            )[
+                "geometry"
+            ]
+            .to_dict()
+        )
+    else:
+        stop_lookup = {}
+
     geometry_rows: list[
         dict
     ] = []
@@ -585,13 +872,14 @@ def build_used_transit_connection_geometries(
 
         status = "ok"
         geometry = None
+        position_method = "processed_shape_position"
+        from_snap_distance_m = np.nan
+        to_snap_distance_m = np.nan
 
         if shape_id is None:
             status = "missing_shape_id"
         elif shape_id not in shape_lookup:
             status = "missing_shape_geometry"
-        elif start is None or end is None:
-            status = "missing_shape_position"
         else:
             line = shape_lookup[
                 shape_id
@@ -604,32 +892,85 @@ def build_used_transit_connection_geometries(
             ):
                 status = "invalid_shape_geometry"
             else:
-                start_clamped = min(
-                    max(
-                        float(
-                            start
-                        ),
-                        0.0,
-                    ),
-                    float(
-                        line.length
-                    ),
-                )
-                end_clamped = min(
-                    max(
-                        float(
-                            end
-                        ),
-                        0.0,
-                    ),
-                    float(
-                        line.length
-                    ),
+                valid_processed_positions = (
+                    start is not None
+                    and end is not None
+                    and float(
+                        end
+                    )
+                    > float(
+                        start
+                    )
                 )
 
-                if end_clamped <= start_clamped:
-                    status = "nonpositive_shape_progress"
+                if valid_processed_positions:
+                    start_clamped = min(
+                        max(
+                            float(
+                                start
+                            ),
+                            0.0,
+                        ),
+                        float(
+                            line.length
+                        ),
+                    )
+                    end_clamped = min(
+                        max(
+                            float(
+                                end
+                            ),
+                            0.0,
+                        ),
+                        float(
+                            line.length
+                        ),
+                    )
                 else:
+                    from_stop_id = str(
+                        row.from_stop_id
+                    )
+                    to_stop_id = str(
+                        row.to_stop_id
+                    )
+                    fallback_positions = (
+                        _forward_stop_positions(
+                            line,
+                            stop_lookup.get(
+                                from_stop_id
+                            ),
+                            stop_lookup.get(
+                                to_stop_id
+                            ),
+                        )
+                        if stop_lookup
+                        else None
+                    )
+
+                    if fallback_positions is None:
+                        status = (
+                            "missing_shape_position"
+                            if start is None
+                            or end is None
+                            else "nonpositive_shape_progress"
+                        )
+                        start_clamped = None
+                        end_clamped = None
+                    else:
+                        (
+                            start_clamped,
+                            end_clamped,
+                            from_snap_distance_m,
+                            to_snap_distance_m,
+                        ) = fallback_positions
+                        position_method = "forward_stop_projection"
+                        status = "ok_fallback_projection"
+
+                if (
+                    start_clamped is not None
+                    and end_clamped is not None
+                    and end_clamped > start_clamped
+                ):
                     geometry = substring(
                         line,
                         start_clamped,
@@ -650,6 +991,9 @@ def build_used_transit_connection_geometries(
                 "connection_id": connection_id,
                 "shape_id": shape_id,
                 "geometry_status": status,
+                "position_method": position_method,
+                "from_snap_distance_m": from_snap_distance_m,
+                "to_snap_distance_m": to_snap_distance_m,
                 "geometry_length_m": (
                     float(
                         geometry.length
