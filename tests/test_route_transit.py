@@ -185,7 +185,7 @@ class TransitRouterTests(unittest.TestCase):
             service_dates=self._service_dates(),
             walk_speed_m_s=1.0,
             max_access_walk_m=150.0,
-            max_egress_walk_m=150.0,
+            max_egress_walk_m=50.0,
             minimum_transfer_time_s=minimum_transfer_time_s,
             max_total_travel_time_s=7200,
         )
