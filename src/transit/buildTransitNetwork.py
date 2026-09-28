@@ -1474,7 +1474,7 @@ def build_transit_network() -> dict:
             else None
         ),
         "n_unique_stop_pairs": int(
-            routable_connections[
+            spatial_routable_connections[
                 [
                     "from_stop_id",
                     "to_stop_id",
@@ -1719,6 +1719,11 @@ def main() -> None:
         "  Viagens aptas ao roteamento: "
         f"{_format_int_pt(summary['n_routable_trips'])} viagens "
         f"({_format_percentage_pt(summary['n_routable_trips'], summary['n_total_trips_quality'])})"
+    )
+    print(
+        "  Viagens presentes na rede temporal e espacial: "
+        f"{_format_int_pt(summary['n_spatial_routable_trips'])} viagens "
+        f"({_format_percentage_pt(summary['n_spatial_routable_trips'], summary['n_routable_trips'])})"
     )
     print(
         "  Viagens excluídas por pelo menos um critério: "
