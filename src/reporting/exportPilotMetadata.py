@@ -819,6 +819,11 @@ ANALYSIS_METHODS = [
         "funcao_codigo": "apply_paired_transit_outlier_filter",
         "descricao": "Calcula limites robustos com os dois cenários combinados, identifica distância extrema ou circuity extrema acompanhada de rota longa e propaga a exclusão ao mesmo agent_id nos dois cenários",
     },
+    {
+        "nome": "Sensibilidade ao tamanho da população sintética",
+        "funcao_codigo": "population_sensitivity.main",
+        "descricao": "Executa o piloto para diferentes valores de N com a mesma seed, preserva cada execução em diretório próprio e compara suporte de fluxo, H_soc, delta_H_soc, outliers e tempo computacional",
+    },
 ]
 
 STATISTICS = [
@@ -913,6 +918,14 @@ STATISTICS = [
     {
         "nome": "Circuity da viagem",
         "descricao": "Relaciona a distância roteada à distância euclidiana origem-destino para distinguir rotas longas de trajetórias desproporcionalmente circuitosas",
+    },
+    {
+        "nome": "Mudança absoluta entre tamanhos populacionais consecutivos",
+        "descricao": "Calcula a diferença absoluta de métricas-chave entre cada N e o próximo N maior para avaliar estabilização do piloto",
+    },
+    {
+        "nome": "Critério provisório de estabilidade populacional",
+        "descricao": "Marca um N como estável quando a maior mudança absoluta entre métricas-chave fica dentro da tolerância configurada e existe suporte pareado no limiar de dez agentes",
     },
 ]
 
@@ -1114,6 +1127,10 @@ FILES = [
     ("outputs/pilot/transit_physical_network_summary.csv", "Resumo quantitativo da integração da rede física GTFS completa à camada comum de análise", "harmonização do transporte coletivo", False),
     ("outputs/pilot/outlier_exclusions.csv", "Registro auditável de cada cenário e agente retirado da análise de trajetórias por outlier transit direto ou exclusão pareada", "controle de outliers", False),
     ("outputs/pilot/outlier_filter_summary.csv", "Resumo do método, quartis, cercas externas e quantidade de outliers identificados no piloto", "controle de outliers", False),
+    ("outputs/pilot/population_sensitivity/population_sensitivity_summary.csv", "Resumo comparativo das execuções por tamanho populacional com cobertura, suporte, H_soc, delta_H_soc, outliers e tempo", "sensibilidade populacional", False),
+    ("outputs/pilot/population_sensitivity/population_sensitivity_stability.csv", "Mudanças das métricas-chave entre tamanhos populacionais consecutivos e marcação do critério provisório de estabilidade", "sensibilidade populacional", False),
+    ("outputs/pilot/population_sensitivity/population_sensitivity_selection.csv", "Registro do candidato técnico provisório a N operacional e do status da seleção", "sensibilidade populacional", False),
+    ("outputs/pilot/population_sensitivity/population_sensitivity_report.md", "Resumo legível da análise de sensibilidade ao tamanho da população", "sensibilidade populacional", False),
     ("outputs/metadados_piloto.xlsx", "Planilha consolidada com variáveis, parâmetros, métodos, estatísticas, limpeza e arquivos do piloto", "documentação", False),
     ("outputs/metadados_piloto.html", "Relatório HTML navegável com a documentação metodológica consolidada do piloto", "documentação", False),
 ]
@@ -1300,6 +1317,56 @@ def _collect_config_parameters(
             ),
             "booleano",
             "Indica se um agent_id identificado como outlier em um cenário também é retirado da análise espacial no outro cenário",
+        ),
+        (
+            "analysis.population_sensitivity.sizes",
+            " | ".join(
+                str(
+                    value
+                )
+                for value in analysis.get(
+                    "population_sensitivity",
+                    {},
+                ).get(
+                    "sizes",
+                    [],
+                )
+            ),
+            "agentes",
+            "Tamanhos de população sintética avaliados na seleção do N operacional",
+        ),
+        (
+            "analysis.population_sensitivity.seed",
+            analysis.get(
+                "population_sensitivity",
+                {},
+            ).get(
+                "seed"
+            ),
+            "semente",
+            "Seed mantida fixa durante a primeira análise de sensibilidade ao tamanho populacional",
+        ),
+        (
+            "analysis.population_sensitivity.stability_tolerance",
+            analysis.get(
+                "population_sensitivity",
+                {},
+            ).get(
+                "stability_tolerance"
+            ),
+            "H_soc",
+            "Maior mudança absoluta provisoriamente aceita entre métricas-chave de tamanhos populacionais consecutivos",
+        ),
+        (
+            "analysis.population_sensitivity.minimum_paired_segments_ge_10",
+            analysis.get(
+                "population_sensitivity",
+                {},
+            ).get(
+                "minimum_paired_segments_ge_10"
+            ),
+            "segmentos",
+            "Quantidade mínima provisória de segmentos pareados com pelo menos dez agentes exigida para considerar um N candidato estável",
         ),
         (
             "routing.implemented_modes",
