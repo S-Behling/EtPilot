@@ -32,6 +32,8 @@ Thumbs.db
 data/ibge/
 data/censo_2022
 data/cnefe
+data/bairros
+data/grade
 
 # =========================
 # Outputs gerados
