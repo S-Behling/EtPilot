@@ -377,6 +377,36 @@ VARIABLES = [
         "descricao": "Método usado para estimar o horário entre shape_dist_traveled, geometria do shape ou stop_sequence",
     },
     {
+        "nome": "time_regularized",
+        "grupo": "GTFS",
+        "unidade": "booleano",
+        "descricao": "Indica que um horário intermediário foi reconstruído para preservar intervalos positivos entre paradas consecutivas",
+    },
+    {
+        "nome": "time_regularization_method",
+        "grupo": "GTFS",
+        "unidade": "categoria",
+        "descricao": "Registra se a reconstrução temporal positiva usa distância pela geometria do shape ou distribuição por stop_sequence",
+    },
+    {
+        "nome": "temporal_regularization_feasible",
+        "grupo": "GTFS",
+        "unidade": "booleano",
+        "descricao": "Indica se os horários-âncora permitem distribuir pelo menos o intervalo mínimo configurado entre todas as paradas consecutivas",
+    },
+    {
+        "nome": "routable_for_transit",
+        "grupo": "qualidade temporal do GTFS",
+        "unidade": "booleano",
+        "descricao": "Indica se a viagem atende aos critérios técnicos atuais para integrar a tabela usada pelo roteador de transporte coletivo",
+    },
+    {
+        "nome": "routing_quality_status",
+        "grupo": "qualidade temporal do GTFS",
+        "unidade": "categoria",
+        "descricao": "Resume os motivos técnicos pelos quais uma viagem é mantida ou retirada da tabela de conexões usada no roteamento",
+    },
+    {
         "nome": "shape_position_m",
         "grupo": "GTFS",
         "unidade": "m ao longo do shape",
@@ -606,6 +636,16 @@ ANALYSIS_METHODS = [
         "descricao": "Usa a posição ordinal das paradas como fallback quando não existe uma base de distância válida",
     },
     {
+        "nome": "Regularização temporal com intervalos positivos",
+        "funcao_codigo": "_regularize_interpolated_stop_times",
+        "descricao": "Redistribui o tempo entre pontos temporais originais preservando as âncoras publicadas e garantindo o intervalo mínimo configurado entre paradas consecutivas quando a alocação é matematicamente possível",
+    },
+    {
+        "nome": "Filtro técnico de qualidade para roteamento GTFS",
+        "funcao_codigo": "_build_routing_quality_filter",
+        "descricao": "Mantém a tabela completa para diagnóstico e cria separadamente um subconjunto roteável que retira viagens sem resumo temporal, com duração não positiva, regularização inviável ou velocidade implícita acima do limite técnico configurado",
+    },
+    {
         "nome": "Associação de paradas à rede de caminhada",
         "funcao_codigo": "_connect_stops_to_walk_network",
         "descricao": "Associa cada parada GTFS ao nó mais próximo da rede de caminhada e calcula distância e tempo do conector",
@@ -816,6 +856,14 @@ CLEANING_METHODS = [
         "nome": "Preservação explícita de valores ausentes em diagnósticos temporais",
         "descricao": "Mantém viagens sem duração ou sem conexões como valores ausentes e evita classificá-las como duração não positiva ou como baixa quantidade de pontos temporais",
     },
+    {
+        "nome": "Preservação dos horários-âncora na regularização temporal",
+        "descricao": "Mantém os horários originais informados pelo produtor do GTFS e modifica somente os pontos temporais intermediários estimados",
+    },
+    {
+        "nome": "Separação entre conexões completas e conexões roteáveis",
+        "descricao": "Preserva todas as conexões processadas para auditoria e cria um arquivo separado somente com viagens que atendem aos critérios técnicos de roteamento",
+    },
 ]
 
 FILES = [
@@ -845,7 +893,9 @@ FILES = [
     ("data/gtfs/gtfs_processed_summary.csv", "Resumo quantitativo e diagnóstico do processamento GTFS", "GTFS processado", False),
     ("data/gtfs/stops_walk_connected_processed.gpkg", "Paradas GTFS com associação ao nó mais próximo da rede de caminhada e métricas do conector", "rede de transporte coletivo", False),
     ("data/gtfs/transit_stop_walk_connectors_processed.parquet", "Tabela tabular dos conectores entre paradas GTFS e nós da rede de caminhada", "rede de transporte coletivo", False),
-    ("data/gtfs/transit_connections_processed.parquet", "Tabela temporal de conexões entre paradas consecutivas de todas as viagens GTFS", "rede de transporte coletivo", False),
+    ("data/gtfs/transit_connections_processed.parquet", "Tabela temporal completa de conexões entre paradas consecutivas de todas as viagens GTFS processadas", "rede de transporte coletivo", False),
+    ("data/gtfs/transit_connections_routable_processed.parquet", "Subconjunto das conexões GTFS cujas viagens atendem aos critérios técnicos de qualidade temporal usados pelo roteador", "rede de transporte coletivo", False),
+    ("data/gtfs/transit_trip_quality_processed.csv", "Diagnóstico por trip_id com critérios e motivos de inclusão ou exclusão da tabela de conexões roteáveis", "qualidade temporal do GTFS", False),
     ("data/gtfs/transit_topology_processed.parquet", "Resumo topológico das ligações entre pares direcionais de paradas por rota", "rede de transporte coletivo", False),
     ("data/gtfs/transit_service_day_profile_processed.csv", "Perfil diário do número de serviços e viagens programadas no período do GTFS", "rede de transporte coletivo", False),
     ("data/gtfs/transit_network_summary.csv", "Resumo diagnóstico da associação das paradas à caminhada e da tabela temporal de ônibus", "rede de transporte coletivo", False),
@@ -1065,6 +1115,34 @@ def _collect_config_parameters(
             ),
             "categoria",
             "Regra usada para selecionar uma data de serviço representativa do feed",
+        ),
+        (
+            "transit.gtfs.temporal_reconstruction.minimum_interval_s",
+            transit.get(
+                "gtfs",
+                {},
+            ).get(
+                "temporal_reconstruction",
+                {},
+            ).get(
+                "minimum_interval_s"
+            ),
+            "s",
+            "Intervalo temporal mínimo técnico distribuído entre paradas consecutivas durante a reconstrução de horários intermediários",
+        ),
+        (
+            "transit.routing.quality_filter.max_implied_shape_speed_kmh",
+            transit.get(
+                "routing",
+                {},
+            ).get(
+                "quality_filter",
+                {},
+            ).get(
+                "max_implied_shape_speed_kmh"
+            ),
+            "km/h",
+            "Limite técnico provisório usado para impedir que viagens com velocidade média implícita extrema entrem no roteador",
         ),
         (
             "transit.routing.max_access_walk_m",
