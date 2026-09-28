@@ -9,14 +9,18 @@
       "destination_pool",
       "network_set",
       "seed",
-      "mode_distance_adjustment"
+      "mode_distance_adjustment",
+      "transit_service_date",
+      "transit_departure_time",
+      "transit_quality_filter",
+      "transit_spatial_mapping"
     ],
     "baseline": {
-      "description": "Mantém a estrutura residencial por renda, aplica as mesmas regras comportamentais de propósito, destino e probabilidades modais aos três grupos e usa a mesma resposta modal à distância do cenário differentiated. O nó efetivo de roteamento pode variar porque depende do modo escolhido.",
+      "description": "Mantém a estrutura residencial por renda, aplica as mesmas regras comportamentais de propósito, destino e probabilidades modais aos três grupos e usa a mesma resposta modal à distância do cenário differentiated. O roteamento usa as mesmas redes OSM, a mesma data e horário GTFS, o mesmo filtro de qualidade temporal e as mesmas regras de harmonização espacial nos dois cenários.",
       "parameter_rule": "Os parâmetros comuns do baseline são derivados por média ponderada do cenário differentiated usando as participações populacionais."
     },
     "differentiated": {
-      "description": "Mantém diferenças por grupo de renda nas probabilidades de propósito, sensibilidade à distância na escolha de destino e probabilidades modais, usando a mesma resposta modal à distância aplicada no baseline."
+      "description": "Mantém diferenças por grupo de renda nas probabilidades de propósito, sensibilidade à distância na escolha de destino e probabilidades modais, usando a mesma resposta modal à distância, as mesmas redes e os mesmos parâmetros de roteamento e harmonização do baseline."
     }
   },
   "purpose_choice": {
