@@ -39,7 +39,9 @@
         "destinations": "data/o-d/destinos_cnefe_classificados_porto_alegre.gpkg",
         "destinationsIBGE": "data/o-d/destinos_porto_alegre.gpkg",
         "od_pairs": "data/o-d/od_pairs.gpkg",
-        "origins_income": "data/o-d/origens_porto_alegre_income.gpkg"
+        "origins_income": "data/o-d/origens_porto_alegre_income.gpkg",
+        "gtfs": "data/gtfs",
+        "gtfs_zip": "data/gtfs/porto_alegre_gtfs.zip"
     },
     "routing": {
         "implemented_modes": [
@@ -98,6 +100,16 @@
                 "max": null,
                 "share": 0.17857621
             }
+        }
+    },
+    "transit": {
+        "gtfs": {
+            "provider": "EPTC",
+            "city": "Porto Alegre",
+            "source_page": "https://dadosabertos.poa.br/dataset/gtfs",
+            "source_url": "https://dadosabertos.poa.br/dataset/1fe9c2c1-9fbe-48ea-841b-61e30597ecd6/resource/b3bce61f-78ee-49eb-be57-6236d82bd5e0/download/arquivo-gtfs.zip",
+            "data_dir": "data/gtfs",
+            "zip_file": "porto_alegre_gtfs.zip"
         }
     }
 }
