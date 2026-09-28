@@ -98,6 +98,18 @@
             "status": "provisional_pilot",
             "exclusions_file": "outlier_exclusions.csv",
             "summary_file": "outlier_filter_summary.csv"
+        },
+        "population_sensitivity": {
+            "sizes": [
+                100,
+                250,
+                500,
+                1000
+            ],
+            "seed": 42,
+            "stability_tolerance": 0.05,
+            "minimum_paired_segments_ge_10": 1,
+            "status": "technical_selection_provisional"
         }
     },
     "income": {
