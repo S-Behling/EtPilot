@@ -1120,13 +1120,20 @@ def main() -> None:
         export_pilot_metadata,
     )
 
-    metadata_path = export_pilot_metadata(
+    metadata_paths = export_pilot_metadata(
         project_root=PROJECT_ROOT
     )
 
     print(
-        "Metadados do piloto salvos em: "
-        f"{metadata_path}"
+        "Metadados do piloto salvos em:"
+    )
+    print(
+        "  XLSX: "
+        f"{metadata_paths['xlsx']}"
+    )
+    print(
+        "  HTML: "
+        f"{metadata_paths['html']}"
     )
     print(
         f"Resultados salvos em: {OUTPUT_DIR.resolve()}"
