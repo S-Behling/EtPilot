@@ -9,14 +9,15 @@ e passa a usar a RENDA OFICIAL POR BAIRRO como atributo socioeconômico do
 piloto, em vez de atribuir a renda do setor censitário aos recortes.
 
 Fluxo:
-1. Carrega a configuração do projeto.
-2. Baixa e salva a rede viária de Porto Alegre e do bairro-piloto.
-3. Baixa a malha de setores censitários.
-4. Baixa a malha de bairros e a renda oficial por bairro.
-5. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
-6. Constrói o limite municipal.
+- Carrega a configuração do projeto.
+1. Baixa e salva a rede viária de Porto Alegre e do bairro-piloto.
+2. Baixa a malha de setores censitários.
+3. Baixa a malha de bairros e a renda oficial por bairro.
+4. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
+5. Constrói o limite municipal.
+6. Baixa os agregados básicos do Censo 2022.
 7. Baixa e extrai o CNEFE do município.
-8. Baixa e extrai os microdados públicos do RS.
+8. Baixa e extrai os microdados públicos da UF.
 9. Baixa e extrai as tabelas das áreas de ponderação.
 10. Gera um GeoPackage consolidado.
 11. Gera os três mapas finais do piloto.
