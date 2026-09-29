@@ -5,8 +5,37 @@ from pathlib import Path
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
+import numpy as np
 import osmnx as ox
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
+
+
+def _soft_colormap(
+    cmap_name: str,
+    start: float = 0.08,
+    end: float = 0.72,
+) -> LinearSegmentedColormap:
+    """
+    Retorna uma versão mais suave de um colormap contínuo.
+
+    O corte evita os extremos muito claros e muito saturados da paleta,
+    preservando a leitura do gradiente sem deixar o mapa visualmente forte.
+    """
+    base = plt.get_cmap(cmap_name)
+
+    colors = base(
+        np.linspace(
+            start,
+            end,
+            256,
+        )
+    )
+
+    return LinearSegmentedColormap.from_list(
+        f"{cmap_name}_soft",
+        colors,
+    )
 
 
 def _prepare_output_path(output_path: str | Path) -> Path:
@@ -115,11 +144,12 @@ def plot_income_map(
     gdf[value_column] = gdf[value_column].astype("float64")
 
     figure, axes = plt.subplots(figsize=(12, 12))
+    plot_cmap = _soft_colormap(cmap)
 
     gdf.plot(
         ax=axes,
         column=value_column,
-        cmap=cmap,
+        cmap=plot_cmap,
         legend=True,
         linewidth=0.35,
         edgecolor="white",
@@ -464,11 +494,12 @@ def preview_sector_income_with_neighborhood_labels(
         )
 
     figure, axes = plt.subplots(figsize=figsize)
+    plot_cmap = _soft_colormap(cmap)
 
     setores.plot(
         ax=axes,
         column=value_column,
-        cmap=cmap,
+        cmap=plot_cmap,
         legend=True,
         linewidth=0.20,
         edgecolor="white",
