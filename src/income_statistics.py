@@ -6,6 +6,17 @@ import numpy as np
 import pandas as pd
 
 
+def _format_brl(value: float) -> str:
+    """Formata um valor numérico em padrão monetário brasileiro."""
+    formatted = f"{value:,.2f}"
+    formatted = (
+        formatted.replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
+    )
+    return f"R$ {formatted}"
+
+
 def assign_sectors_to_neighborhoods(
     sector_neighborhood_fragments,
 ) -> pd.DataFrame:
@@ -183,17 +194,44 @@ def build_neighborhood_income_tables(
         np.nan,
     )
 
-    detail["FORA_1_DESVIO_PADRAO"] = (
+    detail["ABAIXO_1_DESVIO_PADRAO"] = (
         detail["RENDA_MED_SETOR"].notna()
         & detail["DESVIO_PADRAO_RENDA"].notna()
-        & (
-            detail["RENDA_MED_SETOR"].lt(
-                detail["LIMITE_INFERIOR_1DP"]
-            )
-            | detail["RENDA_MED_SETOR"].gt(
-                detail["LIMITE_SUPERIOR_1DP"]
-            )
+        & detail["RENDA_MED_SETOR"].lt(
+            detail["LIMITE_INFERIOR_1DP"]
         )
+    )
+
+    detail["ACIMA_1_DESVIO_PADRAO"] = (
+        detail["RENDA_MED_SETOR"].notna()
+        & detail["DESVIO_PADRAO_RENDA"].notna()
+        & detail["RENDA_MED_SETOR"].gt(
+            detail["LIMITE_SUPERIOR_1DP"]
+        )
+    )
+
+    detail["FORA_1_DESVIO_PADRAO"] = (
+        detail["ABAIXO_1_DESVIO_PADRAO"]
+        | detail["ACIMA_1_DESVIO_PADRAO"]
+    )
+
+    conditions = [
+        detail["RENDA_MED_SETOR"].isna(),
+        detail["DESVIO_PADRAO_RENDA"].isna(),
+        detail["ABAIXO_1_DESVIO_PADRAO"],
+        detail["ACIMA_1_DESVIO_PADRAO"],
+    ]
+    choices = [
+        "sem renda",
+        "desvio padrão indisponível",
+        "abaixo de -1 DP",
+        "acima de +1 DP",
+    ]
+
+    detail["CLASSE_DESVIO"] = np.select(
+        conditions,
+        choices,
+        default="dentro de ±1 DP",
     )
 
     list_rows = []
@@ -212,6 +250,18 @@ def build_neighborhood_income_tables(
             "RENDA_MED_SETOR"
         )
 
+        below = group.loc[
+            group["ABAIXO_1_DESVIO_PADRAO"]
+        ].sort_values(
+            "RENDA_MED_SETOR"
+        )
+
+        above = group.loc[
+            group["ACIMA_1_DESVIO_PADRAO"]
+        ].sort_values(
+            "RENDA_MED_SETOR"
+        )
+
         sector_codes = (
             group["CD_SETOR"]
             .dropna()
@@ -221,22 +271,24 @@ def build_neighborhood_income_tables(
             .tolist()
         )
 
-        outlier_sector_codes = (
-            outliers["CD_SETOR"]
-            .dropna()
-            .astype(str)
-            .sort_values()
-            .tolist()
-        )
-
-        outlier_incomes = [
-            (
-                f"{row.CD_SETOR}: "
-                f"R$ {row.RENDA_MED_SETOR:,.2f}"
+        def sector_list(frame: pd.DataFrame) -> str:
+            return "; ".join(
+                frame["CD_SETOR"]
+                .dropna()
+                .astype(str)
+                .sort_values()
+                .tolist()
             )
-            for row in outliers.itertuples()
-            if pd.notna(row.RENDA_MED_SETOR)
-        ]
+
+        def income_list(frame: pd.DataFrame) -> str:
+            return "; ".join(
+                (
+                    f"{row.CD_SETOR}: "
+                    f"{_format_brl(row.RENDA_MED_SETOR)}"
+                )
+                for row in frame.itertuples()
+                if pd.notna(row.RENDA_MED_SETOR)
+            )
 
         list_rows.append(
             {
@@ -248,11 +300,29 @@ def build_neighborhood_income_tables(
                 "N_SETORES_FORA_1DP": int(
                     len(outliers)
                 ),
-                "SETORES_FORA_1DP": "; ".join(
-                    outlier_sector_codes
+                "SETORES_FORA_1DP": sector_list(
+                    outliers
                 ),
-                "RENDAS_FORA_1DP": "; ".join(
-                    outlier_incomes
+                "RENDAS_FORA_1DP": income_list(
+                    outliers
+                ),
+                "N_SETORES_ABAIXO_1DP": int(
+                    len(below)
+                ),
+                "SETORES_ABAIXO_1DP": sector_list(
+                    below
+                ),
+                "RENDAS_ABAIXO_1DP": income_list(
+                    below
+                ),
+                "N_SETORES_ACIMA_1DP": int(
+                    len(above)
+                ),
+                "SETORES_ACIMA_1DP": sector_list(
+                    above
+                ),
+                "RENDAS_ACIMA_1DP": income_list(
+                    above
                 ),
             }
         )
@@ -281,6 +351,12 @@ def build_neighborhood_income_tables(
         "N_SETORES_FORA_1DP",
         "SETORES_FORA_1DP",
         "RENDAS_FORA_1DP",
+        "N_SETORES_ABAIXO_1DP",
+        "SETORES_ABAIXO_1DP",
+        "RENDAS_ABAIXO_1DP",
+        "N_SETORES_ACIMA_1DP",
+        "SETORES_ACIMA_1DP",
+        "RENDAS_ACIMA_1DP",
     ]
 
     summary = summary[
@@ -300,7 +376,10 @@ def build_neighborhood_income_tables(
         "Z_SCORE_BAIRRO",
         "LIMITE_INFERIOR_1DP",
         "LIMITE_SUPERIOR_1DP",
+        "ABAIXO_1_DESVIO_PADRAO",
+        "ACIMA_1_DESVIO_PADRAO",
         "FORA_1_DESVIO_PADRAO",
+        "CLASSE_DESVIO",
     ]
 
     detail = detail[
@@ -438,6 +517,10 @@ def export_neighborhood_income_tables(
                     "SETORES_CENSITARIOS",
                     "SETORES_FORA_1DP",
                     "RENDAS_FORA_1DP",
+                    "SETORES_ABAIXO_1DP",
+                    "RENDAS_ABAIXO_1DP",
+                    "SETORES_ACIMA_1DP",
+                    "RENDAS_ACIMA_1DP",
                 }:
                     worksheet.set_column(
                         col_idx,
