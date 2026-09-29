@@ -16,7 +16,8 @@ Fluxo:
 5. Sobrepõe setores x bairros preservando a renda do SETOR.
 6. Constrói o limite municipal.
 7. Baixa os agregados básicos do Censo 2022.
-8. Gera GeoPackages e os três mapas do piloto.
+8. Gera tabelas estatísticas de renda por bairro e setor.
+9. Gera GeoPackages e os três mapas do piloto.
 
 Execute a partir de qualquer diretório:
     python scripts/downloads.py
@@ -56,6 +57,7 @@ from src.downloads.downloadNetwork import (
     download_neighborhood_network,
     download_network,
 )
+from src.income_statistics import export_neighborhood_income_tables
 from src.visualization import generate_pilot_maps
 
 
@@ -100,11 +102,13 @@ GRAPH_DIR = PROJECT_ROOT / config.get("paths", {}).get(
     "graphs", "data/graph"
 )
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
+TABLES_DIR = OUTPUT_DIR / "tabelas"
 
 for directory in [
     CENSUS_DIR,
     GRAPH_DIR,
     OUTPUT_DIR,
+    TABLES_DIR,
 ]:
     directory.mkdir(parents=True, exist_ok=True)
 
@@ -371,7 +375,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 1. REDE VIÁRIA
     # --------------------------------------------------------
-    print("\n[1/8] Rede viária")
+    print("\n[1/9] Rede viária")
 
     network_graph = download_network(
         crs=CRS,
@@ -411,7 +415,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 2. MALHA DE SETORES + RENDA POR SETOR
     # --------------------------------------------------------
-    print("\n[2/8] Malha de setores + renda por setor")
+    print("\n[2/9] Malha de setores + renda por setor")
 
     sectors_dir = CENSUS_DIR / "setores"
     sectors_zip = sectors_dir / f"{UF.lower()}_setores.zip"
@@ -472,7 +476,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 3. MALHA DE BAIRROS
     # --------------------------------------------------------
-    print("\n[3/8] Malha de bairros")
+    print("\n[3/9] Malha de bairros")
 
     neighborhoods_dir = CENSUS_DIR / "bairros"
     neighborhoods_zip = (
@@ -493,7 +497,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 4. SETORES x BAIRROS
     # --------------------------------------------------------
-    print("\n[4/8] Sobreposição setores x bairros")
+    print("\n[4/9] Sobreposição setores x bairros")
 
     sectors_neighborhood_income = overlay_sectors_neighborhoods(
         sectors_with_income,
@@ -503,7 +507,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 5. LIMITE MUNICIPAL
     # --------------------------------------------------------
-    print("\n[5/8] Limite municipal")
+    print("\n[5/9] Limite municipal")
 
     municipal_boundary = build_municipal_boundary(
         sectors_with_income,
@@ -514,7 +518,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 6. AGREGADOS BÁSICOS
     # --------------------------------------------------------
-    print("\n[6/8] Agregados básicos")
+    print("\n[6/9] Agregados básicos")
 
     basic_dir = CENSUS_DIR / "agregados_basicos"
     basic_zip = basic_dir / "agregados_basicos.zip"
@@ -550,7 +554,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 7. EXPORTAÇÃO
     # --------------------------------------------------------
-    print("\n[7/8] Exportação")
+    print("\n[7/9] Exportação")
 
     save_individual_outputs(
         sectors_with_income=sectors_with_income,
@@ -566,9 +570,23 @@ def main() -> None:
     )
 
     # --------------------------------------------------------
-    # 8. MAPAS DO PILOTO
+    # 8. TABELAS ESTATÍSTICAS
     # --------------------------------------------------------
-    print("\n[8/8] Geração dos mapas")
+    print("\n[8/9] Tabelas de renda por bairro e setor")
+
+    generated_tables = export_neighborhood_income_tables(
+        sector_neighborhood_fragments=sectors_neighborhood_income,
+        output_dir=TABLES_DIR,
+    )
+
+    print("\nTabelas geradas/atualizadas:")
+    for table_name, table_path in generated_tables.items():
+        print(f" - {table_name}: {table_path}")
+
+    # --------------------------------------------------------
+    # 9. MAPAS DO PILOTO
+    # --------------------------------------------------------
+    print("\n[9/9] Geração dos mapas")
 
     generated_maps = generate_pilot_maps(
         income_regions=sectors_with_income,
