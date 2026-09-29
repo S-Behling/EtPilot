@@ -17,7 +17,8 @@ Fluxo:
 6. Constrói o limite municipal.
 7. Exporta os GeoPackages do piloto.
 8. Gera tabelas estatísticas de renda por bairro e setor.
-9. Gera os três mapas do piloto.
+9. Gera uma tabela-resumo de todos os JSONs da pasta config.
+10. Gera os três mapas do piloto.
 
 Execute a partir de qualquer diretório:
     python scripts/downloads.py
@@ -44,6 +45,7 @@ import osmnx as ox
 import pandas as pd
 
 from src import converters
+from src.config_summary import export_config_summary
 from src.data_utils import (
     build_municipal_boundary,
     download_file,
@@ -65,7 +67,8 @@ from src.visualization import generate_pilot_maps
 # CONFIGURAÇÃO
 # ============================================================
 
-CONFIG_PATH = PROJECT_ROOT / "config" / "config.json"
+CONFIG_DIR = PROJECT_ROOT / "config"
+CONFIG_PATH = CONFIG_DIR / "config.json"
 
 with CONFIG_PATH.open("r", encoding="utf-8") as config_file:
     config = json.load(config_file)
@@ -375,7 +378,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 1. REDE VIÁRIA
     # --------------------------------------------------------
-    print("\n[1/9] Rede viária")
+    print("\n[1/10] Rede viária")
 
     network_graph = download_network(
         crs=CRS,
@@ -415,7 +418,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 2. MALHA DE SETORES + RENDA POR SETOR
     # --------------------------------------------------------
-    print("\n[2/9] Malha de setores + renda por setor")
+    print("\n[2/10] Malha de setores + renda por setor")
 
     sectors_dir = CENSUS_DIR / "setores"
     sectors_zip = sectors_dir / f"{UF.lower()}_setores.zip"
@@ -476,7 +479,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 3. MALHA DE BAIRROS
     # --------------------------------------------------------
-    print("\n[3/9] Malha de bairros")
+    print("\n[3/10] Malha de bairros")
 
     neighborhoods_dir = CENSUS_DIR / "bairros"
     neighborhoods_zip = (
@@ -497,7 +500,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 4. SETORES x BAIRROS
     # --------------------------------------------------------
-    print("\n[4/9] Sobreposição setores x bairros")
+    print("\n[4/10] Sobreposição setores x bairros")
 
     sectors_neighborhood_income = overlay_sectors_neighborhoods(
         sectors_with_income,
@@ -507,7 +510,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 5. LIMITE MUNICIPAL
     # --------------------------------------------------------
-    print("\n[5/9] Limite municipal")
+    print("\n[5/10] Limite municipal")
 
     municipal_boundary = build_municipal_boundary(
         sectors_with_income,
@@ -518,7 +521,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 6. AGREGADOS BÁSICOS
     # --------------------------------------------------------
-    print("\n[6/9] Agregados básicos")
+    print("\n[6/10] Agregados básicos")
 
     basic_dir = CENSUS_DIR / "agregados_basicos"
     basic_zip = basic_dir / "agregados_basicos.zip"
@@ -554,7 +557,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 7. EXPORTAÇÃO
     # --------------------------------------------------------
-    print("\n[7/9] Exportação")
+    print("\n[7/10] Exportação")
 
     save_individual_outputs(
         sectors_with_income=sectors_with_income,
@@ -572,7 +575,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 8. TABELAS ESTATÍSTICAS
     # --------------------------------------------------------
-    print("\n[8/9] Tabelas de renda por bairro e setor")
+    print("\n[8/10] Tabelas de renda por bairro e setor")
 
     generated_tables = export_neighborhood_income_tables(
         sector_neighborhood_fragments=sectors_neighborhood_income,
@@ -584,9 +587,23 @@ def main() -> None:
         print(f" - {table_name}: {table_path}")
 
     # --------------------------------------------------------
-    # 9. MAPAS DO PILOTO
+    # 9. RESUMO DAS CONFIGURAÇÕES JSON
     # --------------------------------------------------------
-    print("\n[9/9] Geração dos mapas")
+    print("\n[9/10] Resumo das configurações JSON")
+
+    generated_config_tables = export_config_summary(
+        config_dir=CONFIG_DIR,
+        output_dir=TABLES_DIR,
+    )
+
+    print("\nResumo de configurações gerado/atualizado:")
+    for table_name, table_path in generated_config_tables.items():
+        print(f" - {table_name}: {table_path}")
+
+    # --------------------------------------------------------
+    # 10. MAPAS DO PILOTO
+    # --------------------------------------------------------
+    print("\n[10/10] Geração dos mapas")
 
     generated_maps = generate_pilot_maps(
         income_regions=sectors_with_income,
