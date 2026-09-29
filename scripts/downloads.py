@@ -15,7 +15,7 @@ Fluxo:
 5. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
 6. Constrói o limite municipal.
 7. Baixa os agregados básicos do Censo 2022.
-8. Gera um GeoPackage consolidado.
+8. Gera um GeoPackage consolidado e os três mapas do piloto.
 
 Execute a partir de qualquer diretório:
     python scripts/downloads.py
@@ -57,6 +57,7 @@ from src.downloads.downloadNetwork import (
     download_neighborhood_network,
     download_network,
 )
+from src.visualization import generate_pilot_maps
 
 
 # ============================================================
@@ -102,6 +103,8 @@ CENSUS_DIR.mkdir(parents=True, exist_ok=True)
 GRAPH_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_GPKG = CENSUS_DIR / "bairros_setores_renda.gpkg"
+OUTPUT_DIR = PROJECT_ROOT / "outputs"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -144,19 +147,40 @@ URL_BASIC_AGGREGATES = (
 # FUNÇÕES AUXILIARES DO PIPELINE
 # ============================================================
 
-def download_if_missing(url: str, destination: Path) -> Path:
-    """Baixa o arquivo apenas quando ele ainda não existe localmente."""
+def download_overwrite(url: str, destination: Path) -> Path:
+    """
+    Baixa o arquivo sempre e sobrescreve a cópia local existente.
+
+    O download é feito para um arquivo temporário e substitui o destino
+    somente depois de concluído, reduzindo o risco de deixar um arquivo
+    parcial caso a transferência seja interrompida.
+    """
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    if destination.exists() and destination.stat().st_size > 0:
-        print(f"[OK] Já existe: {destination}")
-        return destination
+    temporary = destination.with_suffix(
+        destination.suffix + ".download"
+    )
 
-    print(f"[DOWNLOAD] {destination.name}")
-    download_file(url=url, destination=destination)
+    if temporary.exists():
+        temporary.unlink()
+
+    if destination.exists():
+        print(f"[OVERWRITE] Atualizando: {destination.name}")
+    else:
+        print(f"[DOWNLOAD] {destination.name}")
+
+    try:
+        download_file(
+            url=url,
+            destination=temporary,
+        )
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
     print(f"[OK] Salvo em: {destination}")
-
     return destination
 
 
@@ -300,24 +324,34 @@ def save_individual_outputs(
     neighborhoods_with_income: gpd.GeoDataFrame,
     municipal_boundary: gpd.GeoDataFrame,
 ) -> None:
-    """Mantém arquivos individuais para uso nos notebooks."""
-    sectors.to_file(
-        CENSUS_DIR / "setores_poa.gpkg",
-        layer="setores_poa",
-        driver="GPKG",
-    )
+    """Sobrescreve os GeoPackages individuais usados nos notebooks."""
+    output_specs = [
+        (
+            CENSUS_DIR / "setores_poa.gpkg",
+            sectors,
+            "setores_poa",
+        ),
+        (
+            CENSUS_DIR / "bairros_poa.gpkg",
+            neighborhoods_with_income,
+            "bairros_renda",
+        ),
+        (
+            CENSUS_DIR / "limite_poa.gpkg",
+            municipal_boundary,
+            "limite_poa",
+        ),
+    ]
 
-    neighborhoods_with_income.to_file(
-        CENSUS_DIR / "bairros_poa.gpkg",
-        layer="bairros_renda",
-        driver="GPKG",
-    )
+    for output_path, gdf, layer in output_specs:
+        if output_path.exists():
+            output_path.unlink()
 
-    municipal_boundary.to_file(
-        CENSUS_DIR / "limite_poa.gpkg",
-        layer="limite_poa",
-        driver="GPKG",
-    )
+        gdf.to_file(
+            output_path,
+            layer=layer,
+            driver="GPKG",
+        )
 
 
 # ============================================================
@@ -337,7 +371,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 1. REDE VIÁRIA
     # --------------------------------------------------------
-    print("\n[1/7] Rede viária")
+    print("\n[1/8] Rede viária")
 
     network_graph = download_network(
         crs=CRS,
@@ -355,6 +389,13 @@ def main() -> None:
     city_graph_path = GRAPH_DIR / "rede-poa.graphml"
     neighborhood_graph_path = GRAPH_DIR / "rede-bomFim.graphml"
 
+    for graph_path in [
+        city_graph_path,
+        neighborhood_graph_path,
+    ]:
+        if graph_path.exists():
+            graph_path.unlink()
+
     ox.save_graphml(
         network_graph,
         filepath=city_graph_path,
@@ -370,12 +411,12 @@ def main() -> None:
     # --------------------------------------------------------
     # 2. MALHA DE SETORES
     # --------------------------------------------------------
-    print("\n[2/7] Malha de setores")
+    print("\n[2/8] Malha de setores")
 
     sectors_dir = CENSUS_DIR / "setores"
     sectors_zip = sectors_dir / f"{UF.lower()}_setores.zip"
 
-    download_if_missing(
+    download_overwrite(
         URL_SECTORS,
         sectors_zip,
     )
@@ -393,14 +434,14 @@ def main() -> None:
     # --------------------------------------------------------
     # 3. MALHA + RENDA POR BAIRRO
     # --------------------------------------------------------
-    print("\n[3/7] Bairros e renda oficial por bairro")
+    print("\n[3/8] Bairros e renda oficial por bairro")
 
     neighborhoods_dir = CENSUS_DIR / "bairros"
     neighborhoods_zip = (
         neighborhoods_dir / f"{UF.lower()}_bairros.zip"
     )
 
-    download_if_missing(
+    download_overwrite(
         URL_NEIGHBORHOODS,
         neighborhoods_zip,
     )
@@ -416,7 +457,7 @@ def main() -> None:
         income_neighborhoods_dir / "renda_bairros.zip"
     )
 
-    download_if_missing(
+    download_overwrite(
         URL_INCOME_NEIGHBORHOODS,
         income_neighborhoods_zip,
     )
@@ -441,7 +482,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 4. SETORES x BAIRROS
     # --------------------------------------------------------
-    print("\n[4/7] Sobreposição setores x bairros")
+    print("\n[4/8] Sobreposição setores x bairros")
 
     sectors_neighborhood_income = overlay_sectors_neighborhoods(
         sectors,
@@ -451,7 +492,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 5. LIMITE MUNICIPAL
     # --------------------------------------------------------
-    print("\n[5/7] Limite municipal")
+    print("\n[5/8] Limite municipal")
 
     municipal_boundary = build_municipal_boundary(
         sectors,
@@ -462,13 +503,13 @@ def main() -> None:
     # --------------------------------------------------------
     # 6. AGREGADOS BÁSICOS
     # --------------------------------------------------------
-    print("\n[6/7] Agregados básicos")
+    print("\n[6/8] Agregados básicos")
 
     basic_dir = CENSUS_DIR / "agregados_basicos"
     basic_zip = basic_dir / "agregados_basicos.zip"
     basic_extract = basic_dir / "extracted"
 
-    download_if_missing(
+    download_overwrite(
         URL_BASIC_AGGREGATES,
         basic_zip,
     )
@@ -476,6 +517,7 @@ def main() -> None:
     extract_zip(
         basic_zip,
         basic_extract,
+        overwrite=True,
     )
 
     basic = load_basic_sector_data(
@@ -497,7 +539,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 7. EXPORTAÇÃO
     # --------------------------------------------------------
-    print("\n[7/7] Exportação")
+    print("\n[7/8] Exportação")
 
     save_individual_outputs(
         sectors=sectors,
@@ -511,6 +553,25 @@ def main() -> None:
         setores=sectors,
         inter=sectors_neighborhood_income,
     )
+
+    # --------------------------------------------------------
+    # 8. MAPAS DO PILOTO
+    # --------------------------------------------------------
+    print("\n[8/8] Geração dos mapas")
+
+    generated_maps = generate_pilot_maps(
+        income_regions=neighborhoods_with_income,
+        neighborhoods=neighborhoods_with_income,
+        sectors=sectors,
+        city_graph=network_graph,
+        output_dir=OUTPUT_DIR,
+        income_column="RENDA_MED_BAIRRO",
+        boundary=municipal_boundary,
+    )
+
+    print("\nMapas gerados/atualizados:")
+    for map_name, map_path in generated_maps.items():
+        print(f" - {map_name}: {map_path}")
 
     print("\n" + "=" * 70)
     print("PIPELINE FINALIZADO")
