@@ -7,6 +7,9 @@
 # python -m venv .venv
 # ativar o ambiente virtual (Windows): .venv\Scripts\activate
 
+# PARA PROBLEMAS COM O PIP, TENTE:
+#python -m pip install --upgrade pip setuptools wheel
+
 # DEPENDENCIAS
 # Análise de dados
 pandas

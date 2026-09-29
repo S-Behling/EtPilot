@@ -16,7 +16,7 @@ def _soft_colormap(
     cmap_name: str,
     start: float = 0.10,
     end: float = 0.95,
-    white_mix: float = 0.15,
+    white_mix: float = 0.05,
 ) -> LinearSegmentedColormap:
     """
     Retorna uma versão suavizada de um colormap contínuo.

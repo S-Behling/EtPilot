@@ -1,0 +1,118 @@
+﻿ARQUIVO,SECAO,PARAMETRO,CAMINHO,VALOR,TIPO
+config.json,analysis,buffer,analysis.buffer,500,integer
+config.json,analysis,entropy_base,analysis.entropy_base,2,integer
+config.json,analysis,max_trip_distance,analysis.max_trip_distance,30000,integer
+config.json,basic_avg_household_size_variable,basic_avg_household_size_variable,basic_avg_household_size_variable,v0005,string
+config.json,basic_households_variable,basic_households_variable,basic_households_variable,v0007,string
+config.json,basic_population_variable,basic_population_variable,basic_population_variable,v0001,string
+config.json,income,max,income.groups.high.max,,null
+config.json,income,min,income.groups.high.min,12000.0,float
+config.json,income,share,income.groups.high.share,0.17857621,float
+config.json,income,max,income.groups.low.max,4800.0,float
+config.json,income,min,income.groups.low.min,,null
+config.json,income,share,income.groups.low.share,0.20997644,float
+config.json,income,max,income.groups.middle.max,12000.0,float
+config.json,income,min,income.groups.middle.min,4800.0,float
+config.json,income,share,income.groups.middle.share,0.61144735,float
+config.json,income,variable,income.variable,renda_media_responsavel,string
+config.json,income_variable,income_variable,income_variable,V06004,string
+config.json,income_weight,income_weight,income_weight,V06001,string
+config.json,paths,data,paths.data,data,string
+config.json,paths,destinations,paths.destinations,data/o-d/destinos_cnefe_classificados_porto_alegre.gpkg,string
+config.json,paths,destinationsIBGE,paths.destinationsIBGE,data/o-d/destinos_porto_alegre.gpkg,string
+config.json,paths,edges,paths.edges,data/01-edges.gpkg,string
+config.json,paths,graph_bomfim,paths.graph_bomfim,data/graph/rede-bomFim.graphml,string
+config.json,paths,graph_file,paths.graph_file,data/graph/rede-poa.graphml,string
+config.json,paths,graphs,paths.graphs,data/graph,string
+config.json,paths,nodes,paths.nodes,data/01-nodes.gpkg,string
+config.json,paths,od,paths.od,data/o-d,string
+config.json,paths,od_pairs,paths.od_pairs,data/o-d/od_pairs.gpkg,string
+config.json,paths,origins,paths.origins,data/o-d/origens_porto_alegre.gpkg,string
+config.json,paths,origins_bomfim,paths.origins_bomfim,data/o-d/origens_bomfim.gpkg,string
+config.json,paths,origins_income,paths.origins_income,data/o-d/origens_porto_alegre_income.gpkg,string
+config.json,residents_variable,residents_variable,residents_variable,V06002,string
+config.json,study_area,cod_municipio,study_area.cod_municipio,4314902,string
+config.json,study_area,crs,study_area.crs,EPSG:31982,string
+config.json,study_area,districts,study_area.districts,Bom Fim; Farroupilha; Santana; Centro Histórico,list
+config.json,study_area,network_type,study_area.network_type,drive,string
+config.json,study_area,place,study_area.place,"Porto Alegre, Rio Grande do Sul, Brasil",string
+config.json,study_area_code,study_area_code,study_area_code,4314902,string
+config.json,uf,uf,uf,RS,string
+config_agents.json,destination_choice,attractiveness_exponent,destination_choice.attractiveness_exponent,1.0,float
+config_agents.json,destination_choice,high,destination_choice.distance_decay_per_km.education.high,0.1,float
+config_agents.json,destination_choice,low,destination_choice.distance_decay_per_km.education.low,0.18,float
+config_agents.json,destination_choice,middle,destination_choice.distance_decay_per_km.education.middle,0.14,float
+config_agents.json,destination_choice,high,destination_choice.distance_decay_per_km.health.high,0.1,float
+config_agents.json,destination_choice,low,destination_choice.distance_decay_per_km.health.low,0.16,float
+config_agents.json,destination_choice,middle,destination_choice.distance_decay_per_km.health.middle,0.13,float
+config_agents.json,destination_choice,high,destination_choice.distance_decay_per_km.leisure.high,0.08,float
+config_agents.json,destination_choice,low,destination_choice.distance_decay_per_km.leisure.low,0.28,float
+config_agents.json,destination_choice,middle,destination_choice.distance_decay_per_km.leisure.middle,0.16,float
+config_agents.json,destination_choice,high,destination_choice.distance_decay_per_km.shopping.high,0.08,float
+config_agents.json,destination_choice,low,destination_choice.distance_decay_per_km.shopping.low,0.25,float
+config_agents.json,destination_choice,middle,destination_choice.distance_decay_per_km.shopping.middle,0.15,float
+config_agents.json,destination_choice,high,destination_choice.distance_decay_per_km.work.high,0.08,float
+config_agents.json,destination_choice,low,destination_choice.distance_decay_per_km.work.low,0.1,float
+config_agents.json,destination_choice,middle,destination_choice.distance_decay_per_km.work.middle,0.09,float
+config_agents.json,destination_choice,education,destination_choice.purpose_categories.education,education,list
+config_agents.json,destination_choice,health,destination_choice.purpose_categories.health,health,list
+config_agents.json,destination_choice,leisure,destination_choice.purpose_categories.leisure,leisure,list
+config_agents.json,destination_choice,shopping,destination_choice.purpose_categories.shopping,shopping,list
+config_agents.json,destination_choice,work,destination_choice.purpose_categories.work,work,list
+config_agents.json,mode_choice,bike,mode_choice.baseline.high.bike,0.2,float
+config_agents.json,mode_choice,car,mode_choice.baseline.high.car,0.25,float
+config_agents.json,mode_choice,transit,mode_choice.baseline.high.transit,0.3,float
+config_agents.json,mode_choice,walk,mode_choice.baseline.high.walk,0.25,float
+config_agents.json,mode_choice,bike,mode_choice.baseline.low.bike,0.2,float
+config_agents.json,mode_choice,car,mode_choice.baseline.low.car,0.25,float
+config_agents.json,mode_choice,transit,mode_choice.baseline.low.transit,0.3,float
+config_agents.json,mode_choice,walk,mode_choice.baseline.low.walk,0.25,float
+config_agents.json,mode_choice,bike,mode_choice.baseline.middle.bike,0.2,float
+config_agents.json,mode_choice,car,mode_choice.baseline.middle.car,0.25,float
+config_agents.json,mode_choice,transit,mode_choice.baseline.middle.transit,0.3,float
+config_agents.json,mode_choice,walk,mode_choice.baseline.middle.walk,0.25,float
+config_agents.json,mode_choice,bike,mode_choice.differentiated.high.bike,0.1,float
+config_agents.json,mode_choice,car,mode_choice.differentiated.high.car,0.7,float
+config_agents.json,mode_choice,transit,mode_choice.differentiated.high.transit,0.1,float
+config_agents.json,mode_choice,walk,mode_choice.differentiated.high.walk,0.1,float
+config_agents.json,mode_choice,bike,mode_choice.differentiated.low.bike,0.1,float
+config_agents.json,mode_choice,car,mode_choice.differentiated.low.car,0.1,float
+config_agents.json,mode_choice,transit,mode_choice.differentiated.low.transit,0.55,float
+config_agents.json,mode_choice,walk,mode_choice.differentiated.low.walk,0.25,float
+config_agents.json,mode_choice,bike,mode_choice.differentiated.middle.bike,0.15,float
+config_agents.json,mode_choice,car,mode_choice.differentiated.middle.car,0.4,float
+config_agents.json,mode_choice,transit,mode_choice.differentiated.middle.transit,0.3,float
+config_agents.json,mode_choice,walk,mode_choice.differentiated.middle.walk,0.15,float
+config_agents.json,purpose_choice,education,purpose_choice.high.education,0.2,float
+config_agents.json,purpose_choice,health,purpose_choice.high.health,0.1,float
+config_agents.json,purpose_choice,leisure,purpose_choice.high.leisure,0.15,float
+config_agents.json,purpose_choice,shopping,purpose_choice.high.shopping,0.2,float
+config_agents.json,purpose_choice,work,purpose_choice.high.work,0.35,float
+config_agents.json,purpose_choice,education,purpose_choice.low.education,0.1,float
+config_agents.json,purpose_choice,health,purpose_choice.low.health,0.15,float
+config_agents.json,purpose_choice,leisure,purpose_choice.low.leisure,0.05,float
+config_agents.json,purpose_choice,shopping,purpose_choice.low.shopping,0.15,float
+config_agents.json,purpose_choice,work,purpose_choice.low.work,0.55,float
+config_agents.json,purpose_choice,education,purpose_choice.middle.education,0.15,float
+config_agents.json,purpose_choice,health,purpose_choice.middle.health,0.05,float
+config_agents.json,purpose_choice,leisure,purpose_choice.middle.leisure,0.1,float
+config_agents.json,purpose_choice,shopping,purpose_choice.middle.shopping,0.2,float
+config_agents.json,purpose_choice,work,purpose_choice.middle.work,0.5,float
+road_classification.json,en,busway,en.busway,Bus Corridor,string
+road_classification.json,en,living_street,en.living_street,Living Street,string
+road_classification.json,en,motorway,en.motorway,Motorway,string
+road_classification.json,en,primary,en.primary,Arterial Road,string
+road_classification.json,en,residential,en.residential,Residential Street,string
+road_classification.json,en,secondary,en.secondary,Collector Road,string
+road_classification.json,en,service,en.service,Service Road,string
+road_classification.json,en,tertiary,en.tertiary,Local Collector,string
+road_classification.json,en,trunk,en.trunk,Trunk Road,string
+road_classification.json,pt,busway,pt.busway,Corredor de Ônibus,string
+road_classification.json,pt,living_street,pt.living_street,Via Local,string
+road_classification.json,pt,motorway,pt.motorway,Via Expressa,string
+road_classification.json,pt,primary,pt.primary,Via Arterial,string
+road_classification.json,pt,residential,pt.residential,Via Local,string
+road_classification.json,pt,secondary,pt.secondary,Via Coletora,string
+road_classification.json,pt,service,pt.service,Via de Serviço,string
+road_classification.json,pt,tertiary,pt.tertiary,Via Local,string
+road_classification.json,pt,trunk,pt.trunk,Via Expressa,string
