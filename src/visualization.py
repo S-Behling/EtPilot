@@ -14,16 +14,17 @@ from matplotlib.lines import Line2D
 
 def _soft_colormap(
     cmap_name: str,
-    start: float = 0.08,
-    end: float = 0.78,
-    white_mix: float = 0.38,
+    start: float = 0.10,
+    end: float = 0.95,
+    white_mix: float = 0.15,
 ) -> LinearSegmentedColormap:
     """
-    Retorna uma versão suave/pastel de um colormap contínuo.
+    Retorna uma versão suavizada de um colormap contínuo.
 
-    Além de evitar os extremos mais saturados da paleta, mistura as cores
-    com branco. O resultado preserva as diferenças relativas de renda,
-    mas reduz bastante o peso visual do gradiente.
+    Por padrão, mantém contraste suficiente para o mapa de renda,
+    misturando apenas uma pequena quantidade de branco. Os parâmetros
+    podem ser aumentados pontualmente quando uma representação mais
+    pastel for desejada, como no mapa categórico de bairros.
     """
     base = plt.get_cmap(cmap_name)
 
@@ -333,10 +334,13 @@ def plot_neighborhoods_sectors_map(
     bairros = bairros.reset_index(drop=True)
     bairros["_BAIRRO_PLOT_ID"] = range(len(bairros))
 
-    # Colormap categórico com uma posição para cada bairro.
-    cmap_bairros = plt.get_cmap(
+    # Mantém uma cor diferente para cada bairro, mas reduz a saturação
+    # para que o mapa categórico não concorra visualmente com os setores.
+    cmap_bairros = _soft_colormap(
         "turbo",
-        max(len(bairros), 2),
+        start=0.05,
+        end=0.95,
+        white_mix=0.55,
     )
 
     figure, axes = plt.subplots(figsize=(12, 12))
@@ -347,7 +351,8 @@ def plot_neighborhoods_sectors_map(
         cmap=cmap_bairros,
         legend=False,
         edgecolor="white",
-        linewidth=0.7,
+        linewidth=0.55,
+        alpha=0.85,
     )
 
     # Setores desenhados por cima para permanecerem legíveis sobre
