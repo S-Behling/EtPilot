@@ -1,39 +1,12 @@
 from __future__ import annotations
 
 import io
-import shutil
-import urllib.request
 import zipfile
 from pathlib import Path
 from urllib.request import urlretrieve
 from zipfile import ZipFile
 
-import geopandas as gpd
 import pandas as pd
-
-
-def download(url: str, destino: Path) -> Path:
-    """Baixa um arquivo apenas se ele ainda não existir."""
-    destino = Path(destino)
-    destino.parent.mkdir(parents=True, exist_ok=True)
-
-    if destino.exists() and destino.stat().st_size > 0:
-        print(f"[OK] Já existe: {destino.name}")
-        return destino
-
-    print(f"[DOWNLOAD] {destino.name}")
-
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Mozilla/5.0"},
-    )
-
-    with urllib.request.urlopen(req, timeout=180) as resposta:
-        with destino.open("wb") as arquivo:
-            shutil.copyfileobj(resposta, arquivo)
-
-    print(f"[OK] Baixado: {destino}")
-    return destino
 
 
 def normalizar_codigo(serie: pd.Series) -> pd.Series:
@@ -84,35 +57,6 @@ def achar_coluna(
         f"Nenhuma das colunas esperadas foi encontrada: {candidatas}\n"
         f"Colunas disponíveis: {list(dataframe.columns)}"
     )
-
-
-def filtrar_municipio(
-    gdf: gpd.GeoDataFrame,
-    tipo: str,
-    cod_city: str,
-) -> gpd.GeoDataFrame:
-    """Filtra um GeoDataFrame para o município informado."""
-    cod_city = str(cod_city)
-
-    if "CD_MUN" in gdf.columns:
-        codigos = normalizar_codigo(gdf["CD_MUN"])
-        return gdf.loc[codigos.eq(cod_city)].copy()
-
-    if tipo == "bairro":
-        coluna = achar_coluna(gdf, ["CD_BAIRRO"])
-        codigos = normalizar_codigo(gdf[coluna])
-        return gdf.loc[
-            codigos.str.startswith(cod_city, na=False)
-        ].copy()
-
-    if tipo == "setor":
-        coluna = achar_coluna(gdf, ["CD_SETOR"])
-        codigos = normalizar_codigo(gdf[coluna])
-        return gdf.loc[
-            codigos.str.startswith(cod_city, na=False)
-        ].copy()
-
-    raise ValueError("tipo deve ser 'bairro' ou 'setor'")
 
 
 def ler_renda_bairros(
@@ -192,162 +136,20 @@ def ler_renda_bairros(
     return renda
 
 
-def preparar_bairros(
-    income: pd.DataFrame,
-    crs: str,
-    arq_bairros: str | Path,
-    cod_city: str,
-) -> gpd.GeoDataFrame:
-    """Carrega a malha, filtra o município e associa renda por bairro."""
-    print("[LEITURA] Malha de bairros...")
-
-    bairros = gpd.read_file(arq_bairros)
-    bairros = filtrar_municipio(
-        bairros,
-        "bairro",
-        cod_city,
-    )
-
-    if bairros.empty:
-        raise RuntimeError(
-            f"Nenhum bairro encontrado para {cod_city}."
-        )
-
-    coluna_bairro = achar_coluna(
-        bairros,
-        ["CD_BAIRRO"],
-    )
-
-    bairros[coluna_bairro] = normalizar_codigo(
-        bairros[coluna_bairro]
-    )
-
-    if coluna_bairro != "CD_BAIRRO":
-        bairros = bairros.rename(
-            columns={coluna_bairro: "CD_BAIRRO"}
-        )
-
-    income = income.copy()
-    income["CD_BAIRRO"] = normalizar_codigo(
-        income["CD_BAIRRO"]
-    )
-
-    cols_renda = [
-        coluna
-        for coluna in income.columns
-        if coluna == "CD_BAIRRO"
-        or coluna.startswith("V06")
-        or coluna.startswith("RENDA_")
-    ]
-
-    bairros = bairros.merge(
-        income[cols_renda],
-        on="CD_BAIRRO",
-        how="left",
-        validate="one_to_one",
-    )
-
-    bairros = bairros.to_crs(crs)
-    bairros["AREA_BAIRRO_M2"] = bairros.geometry.area
-
-    return bairros
-
-
-def preparar_setores(
-    crs: str,
-    arq_setores: str | Path,
-    cod_city: str,
-) -> gpd.GeoDataFrame:
-    """Carrega a malha, filtra o município e prepara áreas dos setores."""
-    print("[LEITURA] Malha de setores censitários...")
-
-    setores = gpd.read_file(arq_setores)
-    setores = filtrar_municipio(
-        setores,
-        "setor",
-        cod_city,
-    )
-
-    if setores.empty:
-        raise RuntimeError(
-            f"Nenhum setor encontrado para {cod_city}."
-        )
-
-    coluna_setor = achar_coluna(
-        setores,
-        ["CD_SETOR"],
-    )
-
-    setores[coluna_setor] = normalizar_codigo(
-        setores[coluna_setor]
-    )
-
-    if coluna_setor != "CD_SETOR":
-        setores = setores.rename(
-            columns={coluna_setor: "CD_SETOR"}
-        )
-
-    setores = setores.to_crs(crs)
-    setores["AREA_SETOR_M2"] = setores.geometry.area
-
-    return setores
-
-
-def sobrepor_setores_bairros(
-    setores: gpd.GeoDataFrame,
-    bairros: gpd.GeoDataFrame,
-) -> gpd.GeoDataFrame:
-    """Recorta setores pelos bairros e anexa a renda do bairro."""
-    print("[OVERLAY] Intersectando setores x bairros...")
-
-    cols_bairro = [
-        "CD_BAIRRO",
-        "RENDA_MED_BAIRRO",
-        "geometry",
-    ]
-
-    if "NM_BAIRRO" in bairros.columns:
-        cols_bairro.insert(1, "NM_BAIRRO")
-
-    cols_setor = [
-        "CD_SETOR",
-        "AREA_SETOR_M2",
-        "geometry",
-    ]
-
-    inter = gpd.overlay(
-        setores[cols_setor],
-        bairros[cols_bairro],
-        how="intersection",
-        keep_geom_type=False,
-    )
-
-    inter = inter.loc[
-        inter.geometry.geom_type.isin(
-            ["Polygon", "MultiPolygon"]
-        )
-    ].copy()
-
-    inter["AREA_FRAG_M2"] = inter.geometry.area
-    inter["FRAC_AREA_SETOR"] = (
-        inter["AREA_FRAG_M2"]
-        / inter["AREA_SETOR_M2"]
-    )
-
-    return inter.loc[
-        inter["AREA_FRAG_M2"] > 1.0
-    ].copy()
-
-
 def download_cnefe(
     url: str,
-    cod_uf: str = "43",
-    cod_municipio: str = "4314902",
-    municipio_nome: str = "PORTO_ALEGRE",
-    output_dir: str | Path = "data/cnefe",
+    cod_uf: str,
+    uf: str,
+    cod_municipio: str,
+    municipio_nome: str,
+    output_dir: str | Path,
     overwrite: bool = False,
 ) -> Path:
-    """Baixa e extrai o CNEFE 2022 para um município."""
+    """
+    Baixa e extrai o CNEFE 2022 para um município.
+
+    Retorna o caminho do CSV extraído.
+    """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -355,7 +157,7 @@ def download_cnefe(
 
     final_url = (
         f"{url}/"
-        f"{cod_uf}_RS/"
+        f"{cod_uf}_{uf}/"
         f"{filename}"
     )
 
@@ -366,7 +168,7 @@ def download_cnefe(
         urlretrieve(final_url, zip_path)
         print(f"Arquivo salvo em: {zip_path}")
     else:
-        print(f"Arquivo já existente: {zip_path}")
+        print(f"[OK] CNEFE já existe: {zip_path}")
 
     extract_dir = output_dir / cod_municipio
     extract_dir.mkdir(
@@ -374,8 +176,13 @@ def download_cnefe(
         exist_ok=True,
     )
 
-    with ZipFile(zip_path, "r") as zip_file:
-        zip_file.extractall(extract_dir)
+    csv_existentes = list(
+        extract_dir.rglob("*.csv")
+    )
+
+    if not csv_existentes or overwrite:
+        with ZipFile(zip_path, "r") as zip_file:
+            zip_file.extractall(extract_dir)
 
     csv_files = list(
         extract_dir.rglob("*.csv")
@@ -387,7 +194,7 @@ def download_cnefe(
         )
 
     if len(csv_files) > 1:
-        print("Mais de um CSV encontrado:")
+        print("Mais de um CSV encontrado no CNEFE:")
         for file in csv_files:
             print(f"  - {file}")
 
