@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -44,12 +45,72 @@ def _soft_colormap(
         colors,
     )
 
+def _versioned_output_path(output_path: str | Path) -> Path:
+    """
+    Retorna um caminho de saída sem sobrescrever imagens existentes.
 
-def _prepare_output_path(output_path: str | Path) -> Path:
-    """Cria o diretório de saída e retorna o caminho normalizado."""
+    Regras:
+    - se o arquivo ainda não existir, usa o nome original;
+    - se já existir, cria versões com sufixo -01, -02, -03, etc.;
+    - para identificar "a mesma imagem", compara a parte do nome
+      antes do primeiro hífen "-".
+    """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    return output_path
+
+    if not output_path.exists():
+        return output_path
+
+    stem = output_path.stem
+    suffix = output_path.suffix
+
+    # critério pedido: tudo antes do primeiro "-"
+    base_key = stem.split("-")[0]
+
+    pattern = re.compile(
+        rf"^{re.escape(base_key)}(?:-(\d+))?$"
+    )
+
+    max_index = 0
+
+    for existing in output_path.parent.iterdir():
+        if not existing.is_file():
+            continue
+
+        if existing.suffix.lower() != suffix.lower():
+            continue
+
+        existing_stem = existing.stem
+        existing_key = existing_stem.split("-")[0]
+
+        if existing_key != base_key:
+            continue
+
+        match = pattern.match(existing_stem)
+        if not match:
+            continue
+
+        version = match.group(1)
+
+        if version is None:
+            max_index = max(max_index, 0)
+        else:
+            max_index = max(
+                max_index,
+                int(version),
+            )
+
+    next_index = max_index + 1
+    return output_path.with_name(
+        f"{base_key}-{next_index:02d}{suffix}"
+    )
+
+def _prepare_output_path(output_path: str | Path) -> Path:
+    """
+    Cria o diretório de saída e retorna um caminho versionado
+    quando já existir arquivo com o mesmo nome-base.
+    """
+    return _versioned_output_path(output_path)
 
 
 def _finish_map(
