@@ -173,13 +173,13 @@ IBGE_CNEFE_BASE_URL = (
     "Arquivos_CNEFE/CSV/Municipio"
 )
 
-URL_MICRODATA_RS = (
+URL_MICRODATA_UF = (
     "https://ftp.ibge.gov.br/"
     "Censos/Censo_Demografico_2022/"
     "Microdados_e_Areas_de_Ponderacao/"
     "Microdados_de_acesso_Publico/"
     "csv/"
-    "43_RS.zip"
+    f"{UF_CODE}_{UF}.zip"
 )
 
 URL_WEIGHTING_AREAS_TABLES = (
@@ -553,6 +553,7 @@ def main() -> None:
     cnefe_csv_path = download_cnefe(
         url=IBGE_CNEFE_BASE_URL,
         cod_uf=UF_CODE,
+        uf=UF,
         cod_municipio=MUNICIPALITY_CODE,
         municipio_nome=MUNICIPALITY_CNEFE_NAME,
         output_dir=CNEFE_DIR,
@@ -565,11 +566,12 @@ def main() -> None:
     # --------------------------------------------------------
     print("\n[8/11] Microdados públicos do RS")
 
-    microdata_zip = MICRODATA_DIR / "43_RS.zip"
-    microdata_extract = MICRODATA_DIR / "43_RS"
+    microdata_name = f"{UF_CODE}_{UF}"
+    microdata_zip = MICRODATA_DIR / f"{microdata_name}.zip"
+    microdata_extract = MICRODATA_DIR / microdata_name
 
     download_if_missing(
-        URL_MICRODATA_RS,
+        URL_MICRODATA_UF,
         microdata_zip,
     )
 
