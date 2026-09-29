@@ -1,140 +1,541 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Pipeline de download e preparação dos dados do piloto EtPilot.
+
+Este script unifica os antigos scripts/downloadData.py e scripts/downloads.py.
+
+Fluxo:
+1. Carrega a configuração do projeto.
+2. Baixa e salva a rede viária de Porto Alegre e do bairro-piloto.
+3. Baixa a renda por setor do Censo 2022.
+4. Baixa a malha de setores e associa a renda setorial.
+5. Baixa a malha de bairros.
+6. Baixa a renda oficial por bairro e associa à malha de bairros.
+7. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
+8. Constrói o limite municipal.
+9. Baixa os agregados básicos do Censo 2022.
+10. Gera um GeoPackage consolidado.
+
+Execute a partir de qualquer diretório:
+    python scripts/downloads.py
+"""
+
 from __future__ import annotations
 
-import sys
-import io
-import re
-import shutil
-import urllib.request
-import zipfile
 import json
+import sys
 from pathlib import Path
-import osmnx as ox
-import src
 
-import src
+# ============================================================
+# RAIZ DO PROJETO
+# ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+# Permite que "src" seja importado mesmo quando este arquivo
+# é executado diretamente a partir de scripts/.
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# Imports locais devem vir depois da inclusão da raiz no sys.path.
 import geopandas as gpd
+import osmnx as ox
 import pandas as pd
-from src.downloads.downloadDataCNEFE import (
-    download,
-    download_cnefe,
-    ler_renda_bairros,
-    preparar_bairros,
-    preparar_setores,
-    sobrepor_setores_bairros
-)
 
 from src import converters
+from src.data_utils import (
+    build_municipal_boundary,
+    download_file,
+    extract_zip,
+    load_basic_sector_data,
+    load_income_neighborhoods,
+    load_income_sectors,
+    load_neighborhood_geometry,
+    load_sector_geometry,
+)
+from src.downloads.downloadNetwork import (
+    download_neighborhood_network,
+    download_network,
+)
+
 
 # ============================================================
-# CONFIGURAÇÕES
+# CONFIGURAÇÃO
 # ============================================================
 
-# Carrega o arquivo de json de configuração
-#   open -> inputs: arquivo, modo de abertura, codificação
-with open("../config/config.json", "r", encoding="utf-8") as config_file:
+CONFIG_PATH = PROJECT_ROOT / "config" / "config.json"
+
+with CONFIG_PATH.open("r", encoding="utf-8") as config_file:
     config = json.load(config_file)
 
-# Configurações
-study_area = config["study_area"]
-crs = study_area["crs"]
+STUDY_AREA = config["study_area"]
+MUNICIPALITY_CODE = str(
+    config.get("study_area_code", STUDY_AREA["cod_municipio"])
+)
+UF = config["uf"]
 
-city = study_area["place"]
-cod_city = study_area["cod_municipio"]
-network_type = study_area["network_type"]
+CRS = STUDY_AREA["crs"]
+CITY = STUDY_AREA["place"]
+NETWORK_TYPE = STUDY_AREA.get("network_type", "drive")
+NEIGHBORHOOD = STUDY_AREA["districts"][0]
 
-# Escolha do bairro (primeiro da lista), se quiser
-neighborhood = study_area["districts"][0]
+INCOME_VARIABLE = config["income_variable"]
+INCOME_WEIGHT = config["income_weight"]
+RESIDENTS_VARIABLE = config["residents_variable"]
+
+BASIC_POPULATION_VARIABLE = config["basic_population_variable"]
+BASIC_AVG_HOUSEHOLD_SIZE_VARIABLE = (
+    config["basic_avg_household_size_variable"]
+)
+BASIC_HOUSEHOLDS_VARIABLE = config["basic_households_variable"]
+
 
 # ============================================================
-# URLS
+# DIRETÓRIOS
 # ============================================================
 
-URL_BAIRROS = (
-    "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
-    "Agregados_por_Setores_Censitarios/malha_com_atributos/"
-    "bairros/gpkg/UF/RS/RS_bairros_CD2022.gpkg"
+DATA_DIR = PROJECT_ROOT / config.get("paths", {}).get("data", "data")
+CENSUS_DIR = DATA_DIR / "censo_2022"
+GRAPH_DIR = PROJECT_ROOT / config.get("paths", {}).get(
+    "graphs", "data/graph"
 )
 
-URL_SETORES = (
+CENSUS_DIR.mkdir(parents=True, exist_ok=True)
+GRAPH_DIR.mkdir(parents=True, exist_ok=True)
+
+OUTPUT_GPKG = CENSUS_DIR / "bairros_setores_renda.gpkg"
+
+
+# ============================================================
+# URLS — IBGE CENSO 2022
+# ============================================================
+
+URL_INCOME_SECTORS = (
     "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
-    "Agregados_por_Setores_Censitarios/malha_com_atributos/"
-    "setores/gpkg/UF/RS/RS_setores_CD2022.gpkg"
+    "Agregados_por_Setores_Censitarios_Rendimento_do_Responsavel/"
+    "Agregados_por_setores_renda_responsavel_BR_20260508_csv.zip"
 )
 
-URL_RENDA_BAIRROS = (
+URL_INCOME_NEIGHBORHOODS = (
     "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
     "Agregados_por_Setores_Censitarios_Rendimento_do_Responsavel/"
     "Agregados_por_bairros_renda_responsavel_BR_20260508_csv.zip"
 )
 
-IBGE_CNEFE_BASE_URL = (
-    "https://ftp.ibge.gov.br/"
-    "Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/"
-    "Censo_Demografico_2022/"
-    "Arquivos_CNEFE/CSV/Municipio"
+URL_SECTORS = (
+    "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
+    "Agregados_por_Setores_Censitarios/"
+    f"malha_com_atributos/setores/shp/UF/{UF}/"
+    f"{UF}_setores_CD2022.zip"
 )
 
-CSV_RENDA_NO_ZIP = "Agregados_por_bairros_renda_responsavel_BR.csv"
+URL_NEIGHBORHOODS = (
+    "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
+    "Agregados_por_Setores_Censitarios/"
+    f"malha_com_atributos/bairros/shp/UF/{UF}/"
+    f"{UF}_bairros_CD2022.zip"
+)
 
-# ============================================================
-# DIRETORIOS DE SAÍDA
-# ============================================================
-BASE_DIR = Path(__file__).resolve().parent
-DIR_DADOS = BASE_DIR / "data"
-DIR_CENSO = BASE_DIR / "data" /"censo_2022"
-print(DIR_CENSO)
-ARQ_BAIRROS = "bairros_poa.gpkg"
-ARQ_SETORES = "setores_poa.gpkg"    
-ARQ_RENDA_BAIRROS = "renda_bairros_poa.gpkg"
-
-
-# ============================================================
-# DOWNLOADS
-# ============================================================
-
-# Rede
-network_graph = src.downloadNetwork.download_network(study_area, crs, city)
-# Rede bairro
-neighborhood_network_graph = src.download_neighborhood_network(neighborhood, crs, city)
-# Bairro
-neighborhood = src.downloadDataCNEFE.download(URL_BAIRROS, DIR_CENSO / ARQ_BAIRROS)
-# Setores
-setores = src.downloadDataCNEFE.download(URL_SETORES, DIR_CENSO / ARQ_SETORES)
-# Renda por bairro
-#neighborhood_income = src.downloadDataCNEFE.download(URL_RENDA_BAIRROS, DIR_CENSO / ARQ_RENDA_BAIRROS)
-neighborhood_income = gpd.read_file("../data/censo_2022/renda_bairros.gpkg")
-print("[LEITURA] Renda oficial por bairro...")
-
-income = ler_renda_bairros(neighborhood_income, CSV_RENDA_NO_ZIP, cod_city)
-print(f"[OK] Registros de renda de Porto Alegre: {len(income)}")
-bairros = preparar_bairros(income, crs, ARQ_BAIRROS)
-setores = preparar_setores(crs, ARQ_SETORES)
-inter = sobrepor_setores_bairros(setores, bairros)
-
-converters.export_gpkg(bairros, setores, inter)
-# ============================================================
-# INFORMACOES
-# ============================================================
-
-# Informacoes da rede/grafo
-print(network_graph)
-print(f"Nós: {len(network_graph.nodes)}")
-print(f"Arestas: {len(network_graph.edges)}")
-
-print(neighborhood_network_graph)
-print(f"Nós: {len(neighborhood_network_graph.nodes)}")
-print(f"Arestas: {len(neighborhood_network_graph.edges)}")
-
+URL_BASIC_AGGREGATES = (
+    "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/"
+    "Agregados_por_Setores_Censitarios/"
+    "Agregados_por_Setor_csv/"
+    "Agregados_por_setores_basico_BR_20260520.zip"
+)
 
 
 # ============================================================
-# SAVES
+# FUNÇÕES AUXILIARES DO PIPELINE
 # ============================================================
 
-DIR_DADOS.mkdir(parents=True, exist_ok=True)
+def download_if_missing(url: str, destination: Path) -> Path:
+    """Baixa o arquivo apenas quando ele ainda não existe localmente."""
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
 
-ox.save_graphml(network_graph, "../data/graph/rede-poa.graphml")
-ox.save_graphml(neighborhood_network_graph, "../data/graph/rede-bomFim.graphml")
+    if destination.exists() and destination.stat().st_size > 0:
+        print(f"[OK] Já existe: {destination}")
+        return destination
+
+    print(f"[DOWNLOAD] {destination.name}")
+    download_file(url=url, destination=destination)
+    print(f"[OK] Salvo em: {destination}")
+    return destination
+
+
+def normalize_code(series: pd.Series) -> pd.Series:
+    """Normaliza códigos do IBGE como texto, removendo eventual sufixo .0."""
+    return (
+        series.astype("string")
+        .str.strip()
+        .str.replace(r"\.0$", "", regex=True)
+    )
+
+
+def merge_neighborhood_income(
+    neighborhoods: gpd.GeoDataFrame,
+    income: pd.DataFrame,
+) -> gpd.GeoDataFrame:
+    """Associa o agregado oficial de renda por bairro à malha de bairros."""
+    neighborhoods = neighborhoods.copy()
+    income = income.copy()
+
+    neighborhoods["CD_BAIRRO"] = normalize_code(
+        neighborhoods["CD_BAIRRO"]
+    )
+    income["CD_BAIRRO"] = normalize_code(income["CD_BAIRRO"])
+
+    income_columns = [
+        "CD_BAIRRO",
+        *(
+            ["NM_BAIRRO"]
+            if "NM_BAIRRO" in income.columns
+            and "NM_BAIRRO" not in neighborhoods.columns
+            else []
+        ),
+        INCOME_VARIABLE,
+        INCOME_WEIGHT,
+        RESIDENTS_VARIABLE,
+    ]
+
+    neighborhoods = neighborhoods.merge(
+        income[income_columns],
+        on="CD_BAIRRO",
+        how="left",
+        validate="one_to_one",
+    )
+
+    neighborhoods["RENDA_MED_BAIRRO"] = pd.to_numeric(
+        neighborhoods[INCOME_VARIABLE],
+        errors="coerce",
+    )
+    neighborhoods["AREA_BAIRRO_M2"] = neighborhoods.geometry.area
+
+    missing = neighborhoods["RENDA_MED_BAIRRO"].isna().sum()
+    if missing:
+        print(
+            f"[AVISO] {missing} bairro(s) sem valor de renda "
+            "após a junção."
+        )
+
+    return neighborhoods
+
+
+def overlay_sectors_neighborhoods(
+    sectors: gpd.GeoDataFrame,
+    neighborhoods: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    """
+    Recorta os setores pelos limites dos bairros.
+
+    A renda associada a cada fragmento é a renda oficial do bairro.
+    Não há interpolação da renda do setor pela proporção de área.
+    """
+    sectors = sectors.copy()
+    neighborhoods = neighborhoods.copy()
+
+    sectors["CD_SETOR"] = normalize_code(sectors["CD_SETOR"])
+    sectors["AREA_SETOR_M2"] = sectors.geometry.area
+
+    neighborhood_columns = [
+        "CD_BAIRRO",
+        "RENDA_MED_BAIRRO",
+        INCOME_VARIABLE,
+        INCOME_WEIGHT,
+        RESIDENTS_VARIABLE,
+        "geometry",
+    ]
+
+    if "NM_BAIRRO" in neighborhoods.columns:
+        neighborhood_columns.insert(1, "NM_BAIRRO")
+
+    sector_columns = [
+        "CD_SETOR",
+        "AREA_SETOR_M2",
+        "geometry",
+    ]
+
+    print("[OVERLAY] Intersectando setores x bairros...")
+
+    result = gpd.overlay(
+        sectors[sector_columns],
+        neighborhoods[neighborhood_columns],
+        how="intersection",
+        keep_geom_type=False,
+    )
+
+    result = result.loc[
+        result.geometry.geom_type.isin(["Polygon", "MultiPolygon"])
+    ].copy()
+
+    result["AREA_FRAG_M2"] = result.geometry.area
+    result["FRAC_AREA_SETOR"] = (
+        result["AREA_FRAG_M2"] / result["AREA_SETOR_M2"]
+    )
+
+    # Remove apenas resíduos geométricos de borda.
+    result = result.loc[result["AREA_FRAG_M2"] > 1.0].copy()
+
+    return result
+
+
+def save_individual_outputs(
+    sectors_with_income: gpd.GeoDataFrame,
+    neighborhoods_with_income: gpd.GeoDataFrame,
+    municipal_boundary: gpd.GeoDataFrame,
+) -> None:
+    """Mantém também os arquivos individuais usados nos notebooks."""
+    sectors_with_income.to_file(
+        CENSUS_DIR / "setores_poa.gpkg",
+        layer="setores_poa",
+        driver="GPKG",
+    )
+
+    neighborhoods_with_income.to_file(
+        CENSUS_DIR / "bairros_poa.gpkg",
+        layer="bairros_renda",
+        driver="GPKG",
+    )
+
+    municipal_boundary.to_file(
+        CENSUS_DIR / "limite_poa.gpkg",
+        layer="limite_poa",
+        driver="GPKG",
+    )
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+def main() -> None:
+    print("=" * 70)
+    print("ETPILOT | DOWNLOAD E PREPARAÇÃO DOS DADOS")
+    print("=" * 70)
+    print(f"Área de estudo: {CITY}")
+    print(f"Código IBGE: {MUNICIPALITY_CODE}")
+    print(f"Bairro-piloto: {NEIGHBORHOOD}")
+    print(f"CRS: {CRS}")
+    print()
+
+    # --------------------------------------------------------
+    # 1. REDE VIÁRIA
+    # --------------------------------------------------------
+    print("\n[1/8] Rede viária")
+
+    network_graph = download_network(
+        crs=CRS,
+        city=CITY,
+        network_type=NETWORK_TYPE,
+    )
+
+    neighborhood_graph = download_neighborhood_network(
+        neighborhood=NEIGHBORHOOD,
+        crs=CRS,
+        city=CITY,
+        network_type=NETWORK_TYPE,
+    )
+
+    city_graph_path = GRAPH_DIR / "rede-poa.graphml"
+    neighborhood_graph_path = GRAPH_DIR / "rede-bomFim.graphml"
+
+    ox.save_graphml(network_graph, filepath=city_graph_path)
+    ox.save_graphml(
+        neighborhood_graph,
+        filepath=neighborhood_graph_path,
+    )
+
+    print(f"[OK] Grafo municipal: {city_graph_path}")
+    print(f"[OK] Grafo do bairro: {neighborhood_graph_path}")
+
+    # --------------------------------------------------------
+    # 2. RENDA POR SETOR
+    # --------------------------------------------------------
+    print("\n[2/8] Renda por setor")
+
+    income_sectors_dir = CENSUS_DIR / "renda_setores"
+    income_sectors_zip = income_sectors_dir / "renda_setores.zip"
+    income_sectors_extract = income_sectors_dir / "extracted"
+
+    download_if_missing(URL_INCOME_SECTORS, income_sectors_zip)
+    extract_zip(income_sectors_zip, income_sectors_extract)
+
+    income_sectors = load_income_sectors(
+        source_dir=income_sectors_extract,
+        municipality_code=MUNICIPALITY_CODE,
+        income_variable=INCOME_VARIABLE,
+        income_weight=INCOME_WEIGHT,
+        residents_variable=RESIDENTS_VARIABLE,
+    )
+
+    income_sectors.to_csv(
+        CENSUS_DIR / "renda_setores_poa.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # --------------------------------------------------------
+    # 3. MALHA DE SETORES
+    # --------------------------------------------------------
+    print("\n[3/8] Malha de setores")
+
+    sectors_dir = CENSUS_DIR / "setores"
+    sectors_zip = sectors_dir / f"{UF.lower()}_setores.zip"
+
+    download_if_missing(URL_SECTORS, sectors_zip)
+
+    sectors = load_sector_geometry(
+        zip_path=sectors_zip,
+        municipality_code=MUNICIPALITY_CODE,
+        target_crs=CRS,
+    )
+
+    sectors["CD_SETOR"] = normalize_code(sectors["CD_SETOR"])
+    income_sectors["CD_SETOR"] = normalize_code(
+        income_sectors["CD_SETOR"]
+    )
+
+    sectors_with_income = sectors.merge(
+        income_sectors,
+        on="CD_SETOR",
+        how="left",
+        validate="one_to_one",
+    )
+
+    # --------------------------------------------------------
+    # 4. MALHA + RENDA POR BAIRRO
+    # --------------------------------------------------------
+    print("\n[4/8] Bairros e renda oficial por bairro")
+
+    neighborhoods_dir = CENSUS_DIR / "bairros"
+    neighborhoods_zip = neighborhoods_dir / f"{UF.lower()}_bairros.zip"
+
+    download_if_missing(URL_NEIGHBORHOODS, neighborhoods_zip)
+
+    neighborhoods = load_neighborhood_geometry(
+        zip_path=neighborhoods_zip,
+        municipality_code=MUNICIPALITY_CODE,
+        target_crs=CRS,
+    )
+
+    income_neighborhoods_dir = CENSUS_DIR / "renda_bairros"
+    income_neighborhoods_zip = (
+        income_neighborhoods_dir / "renda_bairros.zip"
+    )
+    income_neighborhoods_extract = (
+        income_neighborhoods_dir / "extracted"
+    )
+
+    download_if_missing(
+        URL_INCOME_NEIGHBORHOODS,
+        income_neighborhoods_zip,
+    )
+    extract_zip(
+        income_neighborhoods_zip,
+        income_neighborhoods_extract,
+    )
+
+    income_neighborhoods = load_income_neighborhoods(
+        source_dir=income_neighborhoods_extract,
+        municipality_code=MUNICIPALITY_CODE,
+        income_variable=INCOME_VARIABLE,
+        income_weight=INCOME_WEIGHT,
+        residents_variable=RESIDENTS_VARIABLE,
+    )
+
+    income_neighborhoods.to_csv(
+        CENSUS_DIR / "renda_bairros_poa.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    neighborhoods_with_income = merge_neighborhood_income(
+        neighborhoods,
+        income_neighborhoods,
+    )
+
+    # --------------------------------------------------------
+    # 5. SETORES x BAIRROS
+    # --------------------------------------------------------
+    print("\n[5/8] Sobreposição setores x bairros")
+
+    sectors_neighborhood_income = overlay_sectors_neighborhoods(
+        sectors,
+        neighborhoods_with_income,
+    )
+
+    # --------------------------------------------------------
+    # 6. LIMITE MUNICIPAL
+    # --------------------------------------------------------
+    print("\n[6/8] Limite municipal")
+
+    municipal_boundary = build_municipal_boundary(
+        sectors,
+        municipality_code=MUNICIPALITY_CODE,
+        municipality_name=CITY,
+    )
+
+    # --------------------------------------------------------
+    # 7. AGREGADOS BÁSICOS
+    # --------------------------------------------------------
+    print("\n[7/8] Agregados básicos")
+
+    basic_dir = CENSUS_DIR / "agregados_basicos"
+    basic_zip = basic_dir / "agregados_basicos.zip"
+    basic_extract = basic_dir / "extracted"
+
+    download_if_missing(URL_BASIC_AGGREGATES, basic_zip)
+    extract_zip(basic_zip, basic_extract)
+
+    basic = load_basic_sector_data(
+        source_dir=basic_extract,
+        municipality_code=MUNICIPALITY_CODE,
+        population_variable=BASIC_POPULATION_VARIABLE,
+        avg_household_size_variable=(
+            BASIC_AVG_HOUSEHOLD_SIZE_VARIABLE
+        ),
+        households_variable=BASIC_HOUSEHOLDS_VARIABLE,
+    )
+
+    basic.to_csv(
+        CENSUS_DIR / "agregados_basicos_poa.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # --------------------------------------------------------
+    # 8. EXPORTAÇÃO
+    # --------------------------------------------------------
+    print("\n[8/8] Exportação")
+
+    save_individual_outputs(
+        sectors_with_income=sectors_with_income,
+        neighborhoods_with_income=neighborhoods_with_income,
+        municipal_boundary=municipal_boundary,
+    )
+
+    converters.export_gpkg(
+        output_file=OUTPUT_GPKG,
+        bairros=neighborhoods_with_income,
+        setores=sectors_with_income,
+        inter=sectors_neighborhood_income,
+    )
+
+    print("\n" + "=" * 70)
+    print("PIPELINE FINALIZADO")
+    print("=" * 70)
+    print(f"GeoPackage consolidado: {OUTPUT_GPKG}")
+    print(f"Setores: {len(sectors_with_income)}")
+    print(f"Bairros: {len(neighborhoods_with_income)}")
+    print(
+        "Fragmentos setor-bairro: "
+        f"{len(sectors_neighborhood_income)}"
+    )
+    print(f"Nós da rede municipal: {len(network_graph.nodes)}")
+    print(f"Arestas da rede municipal: {len(network_graph.edges)}")
+
+
+if __name__ == "__main__":
+    main()
