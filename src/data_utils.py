@@ -117,27 +117,56 @@ def load_income_sectors(
     income_variable,
     income_weight,
     residents_variable,
-    ):
+):
+    """
+    Lê os agregados de rendimento por setor censitário e
+    retorna apenas os registros do município de estudo.
+    """
+    source_dir = Path(source_dir)
+
     csv_files = list(
         source_dir.rglob("*.csv")
     )
 
     if not csv_files:
         raise FileNotFoundError(
-            "Nenhum CSV encontrado."
+            f"Nenhum CSV encontrado em {source_dir}."
         )
 
     csv_path = csv_files[0]
 
-    df = pd.read_csv(
-        csv_path,
-        sep=";",
-        quotechar='"',
-        encoding="utf-8-sig",
-        dtype={
-            "CD_SETOR": str
-        },
-        low_memory=False
+    encodings = [
+        "utf-8-sig",
+        "cp1252",
+        "latin-1",
+    ]
+
+    df = None
+
+    for encoding in encodings:
+        try:
+            df = pd.read_csv(
+                csv_path,
+                sep=";",
+                quotechar='"',
+                encoding=encoding,
+                dtype=str,
+                low_memory=False,
+            )
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if df is None:
+        raise UnicodeError(
+            "Não foi possível ler o arquivo de renda por setor "
+            "com utf-8-sig, cp1252 ou latin-1."
+        )
+
+    df.columns = (
+        df.columns
+        .str.replace("\ufeff", "", regex=False)
+        .str.strip()
     )
 
     required = [
@@ -155,15 +184,24 @@ def load_income_sectors(
 
     if missing:
         raise KeyError(
-            f"Colunas ausentes: {missing}"
+            f"Colunas ausentes na renda por setor: {missing}"
         )
 
-    poa = df.loc[
+    df["CD_SETOR"] = (
+        df["CD_SETOR"]
+        .astype("string")
+        .str.strip()
+        .str.replace(r"\.0$", "", regex=True)
+    )
+
+    municipality_code = str(municipality_code)
+
+    municipality = df.loc[
         df["CD_SETOR"].str.startswith(
-            str(municipality_code),
-            na=False
+            municipality_code,
+            na=False,
         ),
-        required
+        required,
     ].copy()
 
     numeric_columns = [
@@ -173,12 +211,57 @@ def load_income_sectors(
     ]
 
     for col in numeric_columns:
-        poa[col] = pd.to_numeric(
-            poa[col],
-            errors="coerce"
+        values = (
+            municipality[col]
+            .astype("string")
+            .str.strip()
+            .replace(
+                {
+                    "": pd.NA,
+                    "-": pd.NA,
+                    "X": pd.NA,
+                    "x": pd.NA,
+                    "NA": pd.NA,
+                    "N/A": pd.NA,
+                    "nan": pd.NA,
+                }
+            )
         )
 
-    return poa
+        # O IBGE pode disponibilizar números com vírgula decimal.
+        contains_comma = values.str.contains(
+            ",",
+            regex=False,
+            na=False,
+        ).any()
+
+        if contains_comma:
+            values = (
+                values
+                .str.replace(".", "", regex=False)
+                .str.replace(",", ".", regex=False)
+            )
+
+        municipality[col] = pd.to_numeric(
+            values,
+            errors="coerce",
+        )
+
+    duplicated = municipality["CD_SETOR"].duplicated().sum()
+
+    if duplicated:
+        raise ValueError(
+            f"Foram encontrados {duplicated} CD_SETOR duplicados "
+            "na base de renda por setor."
+        )
+
+    print(
+        f"Setores com renda encontrados para "
+        f"{municipality_code}: {len(municipality)}"
+    )
+
+    return municipality
+
 
 # ==========
 # Extracao de arquivos zip

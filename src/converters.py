@@ -43,19 +43,19 @@ def export_gpkg(
 
     bairros.to_file(
         output_file,
-        layer="bairros_renda",
+        layer="bairros",
         driver="GPKG",
     )
 
     setores.to_file(
         output_file,
-        layer="setores_poa",
+        layer="setores_renda",
         driver="GPKG",
     )
 
     inter.to_file(
         output_file,
-        layer="setores_bairro_renda",
+        layer="setores_bairros_renda",
         driver="GPKG",
     )
 
@@ -67,8 +67,8 @@ def export_gpkg(
     print(f"Setores: {len(setores)}")
     print(f"Fragmentos setor-bairro: {len(inter)}")
     print("\nCamadas:")
-    print("  - bairros_renda")
-    print("  - setores_poa")
-    print("  - setores_bairro_renda")
+    print("  - bairros")
+    print("  - setores_renda")
+    print("  - setores_bairros_renda")
 
     return output_file

@@ -80,7 +80,7 @@ def plot_income_map(
     regions: gpd.GeoDataFrame,
     value_column: str,
     output_path: str | Path,
-    title: str = "Renda média por bairro",
+    title: str = "Renda média por setor censitário",
     cmap: str = "YlOrRd",
     boundary: gpd.GeoDataFrame | None = None,
     dpi: int = 300,
@@ -91,7 +91,7 @@ def plot_income_map(
     Parameters
     ----------
     regions
-        Regiões a serem coloridas. No piloto, bairros de Porto Alegre.
+        Regiões a serem coloridas. No piloto, setores censitários.
     value_column
         Coluna numérica usada no gradiente.
     output_path
@@ -415,6 +415,130 @@ def preview_income_map_with_labels(
 
 
 # ============================================================
+# PRÉ-VISUALIZAÇÃO — RENDA SETORIAL + NOMES DOS BAIRROS
+# ============================================================
+
+def preview_sector_income_with_neighborhood_labels(
+    sectors: gpd.GeoDataFrame,
+    neighborhoods: gpd.GeoDataFrame,
+    value_column: str = "RENDA_MED_SETOR",
+    name_column: str = "NM_BAIRRO",
+    title: str = "Renda média por setor censitário",
+    cmap: str = "YlOrRd",
+    boundary: gpd.GeoDataFrame | None = None,
+    figsize: tuple[int, int] = (16, 16),
+    label_fontsize: float = 5.5,
+):
+    """
+    Pré-visualiza a renda por setor censitário e escreve os nomes dos
+    bairros por cima.
+
+    A função não salva arquivo nem fecha a figura. Foi criada para uso
+    exploratório em notebook.
+    """
+    if value_column not in sectors.columns:
+        raise KeyError(
+            f"A coluna '{value_column}' não existe nos setores. "
+            f"Colunas disponíveis: {list(sectors.columns)}"
+        )
+
+    if name_column not in neighborhoods.columns:
+        raise KeyError(
+            f"A coluna '{name_column}' não existe nos bairros. "
+            f"Colunas disponíveis: {list(neighborhoods.columns)}"
+        )
+
+    setores = sectors.copy()
+    bairros = neighborhoods.copy()
+
+    if bairros.crs != setores.crs:
+        bairros = bairros.to_crs(setores.crs)
+
+    setores[value_column] = setores[value_column].astype("float64")
+
+    if "CD_BAIRRO" in bairros.columns:
+        bairros = bairros.dissolve(
+            by="CD_BAIRRO",
+            aggfunc={name_column: "first"},
+            as_index=False,
+        )
+
+    figure, axes = plt.subplots(figsize=figsize)
+
+    setores.plot(
+        ax=axes,
+        column=value_column,
+        cmap=cmap,
+        legend=True,
+        linewidth=0.20,
+        edgecolor="white",
+        missing_kwds={
+            "color": "lightgray",
+            "edgecolor": "white",
+            "label": "Sem dado",
+        },
+        legend_kwds={
+            "label": "Renda média do responsável pelo domicílio (R$)",
+            "shrink": 0.72,
+        },
+    )
+
+    bairros.boundary.plot(
+        ax=axes,
+        linewidth=0.75,
+        color="0.15",
+    )
+
+    if boundary is not None and not boundary.empty:
+        limite = boundary
+
+        if limite.crs != setores.crs:
+            limite = limite.to_crs(setores.crs)
+
+        limite.boundary.plot(
+            ax=axes,
+            linewidth=1.1,
+            color="black",
+        )
+
+    pontos_rotulo = bairros.geometry.representative_point()
+
+    for (_, row), point in zip(
+        bairros.iterrows(),
+        pontos_rotulo,
+    ):
+        nome = str(row[name_column]).strip()
+
+        texto = axes.annotate(
+            nome,
+            xy=(point.x, point.y),
+            ha="center",
+            va="center",
+            fontsize=label_fontsize,
+            color="black",
+        )
+
+        texto.set_path_effects([
+            path_effects.Stroke(
+                linewidth=1.5,
+                foreground="white",
+            ),
+            path_effects.Normal(),
+        ])
+
+    axes.set_title(
+        title,
+        fontsize=15,
+        pad=12,
+    )
+    axes.set_axis_off()
+    axes.set_aspect("equal")
+    figure.tight_layout()
+
+    return figure, axes
+
+
+# ============================================================
 # ORQUESTRADOR
 # ============================================================
 
@@ -424,7 +548,7 @@ def generate_pilot_maps(
     sectors: gpd.GeoDataFrame,
     city_graph,
     output_dir: str | Path,
-    income_column: str = "RENDA_MED_BAIRRO",
+    income_column: str = "RENDA_MED_SETOR",
     neighborhood_graph=None,
     boundary: gpd.GeoDataFrame | None = None,
 ) -> dict[str, Path]:
@@ -443,7 +567,7 @@ def generate_pilot_maps(
         regions=income_regions,
         value_column=income_column,
         output_path=output_dir / "mapa_renda_gradiente.png",
-        title="Distribuição da renda média por bairro",
+        title="Distribuição da renda média por setor censitário",
         boundary=boundary,
     )
 
