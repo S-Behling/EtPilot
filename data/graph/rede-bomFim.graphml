@@ -749,7 +749,7 @@
     <edge source="314674236" target="295523686" id="0">
       <data key="d8">[927264665, 928628673, 350274430]</data>
       <data key="d9">tertiary</data>
-      <data key="d10">['2', '1', '3']</data>
+      <data key="d10">['1', '3', '2']</data>
       <data key="d11">30</data>
       <data key="d12">Rua Fernandes Vieira</data>
       <data key="d13">True</data>
@@ -850,7 +850,7 @@
     <edge source="356073053" target="295747331" id="0">
       <data key="d8">[48151468, 218830717, 444002078]</data>
       <data key="d9">tertiary</data>
-      <data key="d10">['2', '3']</data>
+      <data key="d10">['3', '2']</data>
       <data key="d11">40</data>
       <data key="d12">Rua Ramiro Barcelos</data>
       <data key="d13">True</data>
@@ -947,7 +947,7 @@
     <edge source="686599378" target="295523697" id="0">
       <data key="d8">[132938714, 928549100]</data>
       <data key="d9">tertiary</data>
-      <data key="d10">['2', '3']</data>
+      <data key="d10">['3', '2']</data>
       <data key="d11">40</data>
       <data key="d12">Rua Santo Antônio</data>
       <data key="d13">True</data>
@@ -978,7 +978,7 @@
     <edge source="912962040" target="295523329" id="0">
       <data key="d8">[928452115, 26967543]</data>
       <data key="d9">primary</data>
-      <data key="d10">['2', '3']</data>
+      <data key="d10">['3', '2']</data>
       <data key="d11">60</data>
       <data key="d12">Avenida Osvaldo Aranha</data>
       <data key="d13">True</data>
@@ -1021,7 +1021,7 @@
     <edge source="1446704613" target="297615759" id="0">
       <data key="d8">[131451536, 926881268]</data>
       <data key="d9">secondary</data>
-      <data key="d10">['3', '4']</data>
+      <data key="d10">['4', '3']</data>
       <data key="d11">60</data>
       <data key="d12">Rua Sarmento Leite</data>
       <data key="d13">True</data>
@@ -1123,7 +1123,7 @@
     <edge source="3244510687" target="314673852" id="0">
       <data key="d8">[27089936, 356396078]</data>
       <data key="d9">primary</data>
-      <data key="d10">['2', '1']</data>
+      <data key="d10">['1', '2']</data>
       <data key="d11">60</data>
       <data key="d12">Avenida Osvaldo Aranha</data>
       <data key="d13">True</data>
@@ -1222,7 +1222,7 @@
       <data key="d14">False</data>
       <data key="d15">8.599604196795314</data>
     </edge>
-    <data key="d0">2026-09-29 19:51:07</data>
+    <data key="d0">2026-09-29 19:53:10</data>
     <data key="d1">OSMnx 2.0.2</data>
     <data key="d2">EPSG:31982</data>
     <data key="d3">True</data>
