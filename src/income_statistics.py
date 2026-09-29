@@ -429,117 +429,134 @@ def export_neighborhood_income_tables(
         encoding="utf-8-sig",
     )
 
-    with pd.ExcelWriter(
-        xlsx_path,
-        engine="xlsxwriter",
-    ) as writer:
-        summary.to_excel(
-            writer,
-            sheet_name="resumo_bairros",
-            index=False,
-        )
-        detail.to_excel(
-            writer,
-            sheet_name="setores_detalhe",
-            index=False,
-        )
+    generated = {
+        "summary_csv": summary_csv,
+        "detail_csv": detail_csv,
+    }
 
-        workbook = writer.book
-
-        currency_format = workbook.add_format(
-            {"num_format": 'R$ #,##0.00'}
+    try:
+        import xlsxwriter  # noqa: F401
+    except ModuleNotFoundError:
+        print(
+            "[AVISO] Pacote 'xlsxwriter' não instalado. "
+            "Os CSVs foram gerados normalmente e o pipeline continuará. "
+            "Para gerar também o Excel, execute: "
+            "python -m pip install xlsxwriter"
         )
-        decimal_format = workbook.add_format(
-            {"num_format": "0.00"}
-        )
-        wrap_format = workbook.add_format(
-            {
-                "text_wrap": True,
-                "valign": "top",
-            }
-        )
-        header_format = workbook.add_format(
-            {
-                "bold": True,
-                "text_wrap": True,
-                "valign": "top",
-                "border": 1,
-            }
-        )
-
-        for sheet_name, dataframe in [
-            ("resumo_bairros", summary),
-            ("setores_detalhe", detail),
-        ]:
-            worksheet = writer.sheets[sheet_name]
-            worksheet.freeze_panes(1, 0)
-            worksheet.autofilter(
-                0,
-                0,
-                len(dataframe),
-                len(dataframe.columns) - 1,
+    else:
+        with pd.ExcelWriter(
+            xlsx_path,
+            engine="xlsxwriter",
+        ) as writer:
+            summary.to_excel(
+                writer,
+                sheet_name="resumo_bairros",
+                index=False,
+            )
+            detail.to_excel(
+                writer,
+                sheet_name="setores_detalhe",
+                index=False,
             )
 
-            for col_idx, column in enumerate(
-                dataframe.columns
-            ):
-                worksheet.write(
+            workbook = writer.book
+
+            currency_format = workbook.add_format(
+                {"num_format": 'R$ #,##0.00'}
+            )
+            decimal_format = workbook.add_format(
+                {"num_format": "0.00"}
+            )
+            wrap_format = workbook.add_format(
+                {
+                    "text_wrap": True,
+                    "valign": "top",
+                }
+            )
+            header_format = workbook.add_format(
+                {
+                    "bold": True,
+                    "text_wrap": True,
+                    "valign": "top",
+                    "border": 1,
+                }
+            )
+
+            for sheet_name, dataframe in [
+                ("resumo_bairros", summary),
+                ("setores_detalhe", detail),
+            ]:
+                worksheet = writer.sheets[sheet_name]
+                worksheet.freeze_panes(1, 0)
+                worksheet.autofilter(
                     0,
-                    col_idx,
-                    column,
-                    header_format,
+                    0,
+                    len(dataframe),
+                    len(dataframe.columns) - 1,
                 )
 
-                if column in {
-                    "MEDIA_RENDA_SETOR",
-                    "DESVIO_PADRAO_RENDA",
-                    "MIN_RENDA_SETOR",
-                    "MAX_RENDA_SETOR",
-                    "LIMITE_INFERIOR_1DP",
-                    "LIMITE_SUPERIOR_1DP",
-                    "RENDA_MED_SETOR",
-                    "DESVIO_DA_MEDIA",
-                }:
-                    worksheet.set_column(
+                for col_idx, column in enumerate(
+                    dataframe.columns
+                ):
+                    worksheet.write(
+                        0,
                         col_idx,
-                        col_idx,
-                        18,
-                        currency_format,
+                        column,
+                        header_format,
                     )
-                elif column == "Z_SCORE_BAIRRO":
-                    worksheet.set_column(
-                        col_idx,
-                        col_idx,
-                        14,
-                        decimal_format,
-                    )
-                elif column in {
-                    "SETORES_CENSITARIOS",
-                    "SETORES_FORA_1DP",
-                    "RENDAS_FORA_1DP",
-                    "SETORES_ABAIXO_1DP",
-                    "RENDAS_ABAIXO_1DP",
-                    "SETORES_ACIMA_1DP",
-                    "RENDAS_ACIMA_1DP",
-                }:
-                    worksheet.set_column(
-                        col_idx,
-                        col_idx,
-                        45,
-                        wrap_format,
-                    )
-                elif column == "NM_BAIRRO":
-                    worksheet.set_column(
-                        col_idx,
-                        col_idx,
-                        24,
-                    )
-                else:
-                    worksheet.set_column(
-                        col_idx,
-                        col_idx,
-                        18,
-                    )
+
+                    if column in {
+                        "MEDIA_RENDA_SETOR",
+                        "DESVIO_PADRAO_RENDA",
+                        "MIN_RENDA_SETOR",
+                        "MAX_RENDA_SETOR",
+                        "LIMITE_INFERIOR_1DP",
+                        "LIMITE_SUPERIOR_1DP",
+                        "RENDA_MED_SETOR",
+                        "DESVIO_DA_MEDIA",
+                    }:
+                        worksheet.set_column(
+                            col_idx,
+                            col_idx,
+                            18,
+                            currency_format,
+                        )
+                    elif column == "Z_SCORE_BAIRRO":
+                        worksheet.set_column(
+                            col_idx,
+                            col_idx,
+                            14,
+                            decimal_format,
+                        )
+                    elif column in {
+                        "SETORES_CENSITARIOS",
+                        "SETORES_FORA_1DP",
+                        "RENDAS_FORA_1DP",
+                        "SETORES_ABAIXO_1DP",
+                        "RENDAS_ABAIXO_1DP",
+                        "SETORES_ACIMA_1DP",
+                        "RENDAS_ACIMA_1DP",
+                    }:
+                        worksheet.set_column(
+                            col_idx,
+                            col_idx,
+                            45,
+                            wrap_format,
+                        )
+                    elif column == "NM_BAIRRO":
+                        worksheet.set_column(
+                            col_idx,
+                            col_idx,
+                            24,
+                        )
+                    else:
+                        worksheet.set_column(
+                            col_idx,
+                            col_idx,
+                            18,
+                        )
+
+        generated["xlsx"] = xlsx_path
 
     print(
         f"[TABELA] Resumo por bairro: {summary_csv}"
@@ -547,12 +564,10 @@ def export_neighborhood_income_tables(
     print(
         f"[TABELA] Detalhe por setor: {detail_csv}"
     )
-    print(
-        f"[TABELA] Excel: {xlsx_path}"
-    )
 
-    return {
-        "summary_csv": summary_csv,
-        "detail_csv": detail_csv,
-        "xlsx": xlsx_path,
-    }
+    if "xlsx" in generated:
+        print(
+            f"[TABELA] Excel: {xlsx_path}"
+        )
+
+    return generated
