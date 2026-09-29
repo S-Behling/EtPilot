@@ -4,23 +4,18 @@
 """
 Pipeline de download e preparação dos dados do piloto EtPilot.
 
-Este script unifica os antigos scripts/downloadData.py e scripts/downloads.py
-e passa a usar a RENDA OFICIAL POR BAIRRO como atributo socioeconômico do
+Este script passa a usar a RENDA OFICIAL POR BAIRRO como atributo socioeconômico do
 piloto, em vez de atribuir a renda do setor censitário aos recortes.
 
 Fluxo:
-- Carrega a configuração do projeto.
-1. Baixa e salva a rede viária de Porto Alegre e do bairro-piloto.
-2. Baixa a malha de setores censitários.
-3. Baixa a malha de bairros e a renda oficial por bairro.
-4. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
-5. Constrói o limite municipal.
-6. Baixa os agregados básicos do Censo 2022.
-7. Baixa e extrai o CNEFE do município.
-8. Baixa e extrai os microdados públicos da UF.
-9. Baixa e extrai as tabelas das áreas de ponderação.
-10. Gera um GeoPackage consolidado.
-11. Gera os três mapas finais do piloto.
+1. Carrega a configuração do projeto.
+2. Baixa e salva a rede viária de Porto Alegre e do bairro-piloto.
+3. Baixa a malha de setores censitários.
+4. Baixa a malha de bairros e a renda oficial por bairro.
+5. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
+6. Constrói o limite municipal.
+7. Baixa os agregados básicos do Censo 2022.
+8. Gera um GeoPackage consolidado.
 
 Execute a partir de qualquer diretório:
     python scripts/downloads.py
@@ -57,15 +52,11 @@ from src.data_utils import (
     load_neighborhood_geometry,
     load_sector_geometry,
 )
-from src.downloads.downloadDataCNEFE import (
-    download_cnefe,
-    ler_renda_bairros,
-)
+from src.downloads.downloadDataCNEFE import ler_renda_bairros
 from src.downloads.downloadNetwork import (
     download_neighborhood_network,
     download_network,
 )
-from src.visualization import generate_pilot_maps
 
 
 # ============================================================
@@ -87,13 +78,6 @@ CRS = STUDY_AREA["crs"]
 CITY = STUDY_AREA["place"]
 NETWORK_TYPE = STUDY_AREA.get("network_type", "drive")
 NEIGHBORHOOD = STUDY_AREA["districts"][0]
-UF_CODE = MUNICIPALITY_CODE[:2]
-MUNICIPALITY_CNEFE_NAME = (
-    CITY.split(",")[0]
-    .strip()
-    .upper()
-    .replace(" ", "_")
-)
 
 INCOME_VARIABLE = config["income_variable"]
 
@@ -114,22 +98,10 @@ GRAPH_DIR = PROJECT_ROOT / config.get("paths", {}).get(
     "graphs", "data/graph"
 )
 
-MICRODATA_DIR = CENSUS_DIR / "microdados_publicos"
-WEIGHTING_AREAS_DIR = CENSUS_DIR / "areas_ponderacao"
-CNEFE_DIR = CENSUS_DIR / "cnefe"
-
-for directory in [
-    CENSUS_DIR,
-    GRAPH_DIR,
-    MICRODATA_DIR,
-    WEIGHTING_AREAS_DIR,
-    CNEFE_DIR,
-]:
-    directory.mkdir(parents=True, exist_ok=True)
+CENSUS_DIR.mkdir(parents=True, exist_ok=True)
+GRAPH_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_GPKG = CENSUS_DIR / "bairros_setores_renda.gpkg"
-OUTPUT_DIR = PROJECT_ROOT / "outputs"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -165,30 +137,6 @@ URL_BASIC_AGGREGATES = (
     "Agregados_por_Setores_Censitarios/"
     "Agregados_por_Setor_csv/"
     "Agregados_por_setores_basico_BR_20260520.zip"
-)
-
-IBGE_CNEFE_BASE_URL = (
-    "https://ftp.ibge.gov.br/"
-    "Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/"
-    "Censo_Demografico_2022/"
-    "Arquivos_CNEFE/CSV/Municipio"
-)
-
-URL_MICRODATA_UF = (
-    "https://ftp.ibge.gov.br/"
-    "Censos/Censo_Demografico_2022/"
-    "Microdados_e_Areas_de_Ponderacao/"
-    "Microdados_de_acesso_Publico/"
-    "csv/"
-    f"{UF_CODE}_{UF}.zip"
-)
-
-URL_WEIGHTING_AREAS_TABLES = (
-    "https://ftp.ibge.gov.br/"
-    "Censos/Censo_Demografico_2022/"
-    "Microdados_e_Areas_de_Ponderacao/"
-    "Areas_de_Ponderacao/"
-    "tabelas_xlsx.zip"
 )
 
 
@@ -389,7 +337,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 1. REDE VIÁRIA
     # --------------------------------------------------------
-    print("\n[1/11] Rede viária")
+    print("\n[1/7] Rede viária")
 
     network_graph = download_network(
         crs=CRS,
@@ -422,7 +370,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 2. MALHA DE SETORES
     # --------------------------------------------------------
-    print("\n[2/11] Malha de setores")
+    print("\n[2/7] Malha de setores")
 
     sectors_dir = CENSUS_DIR / "setores"
     sectors_zip = sectors_dir / f"{UF.lower()}_setores.zip"
@@ -445,7 +393,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 3. MALHA + RENDA POR BAIRRO
     # --------------------------------------------------------
-    print("\n[3/11] Bairros e renda oficial por bairro")
+    print("\n[3/7] Bairros e renda oficial por bairro")
 
     neighborhoods_dir = CENSUS_DIR / "bairros"
     neighborhoods_zip = (
@@ -493,7 +441,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 4. SETORES x BAIRROS
     # --------------------------------------------------------
-    print("\n[4/11] Sobreposição setores x bairros")
+    print("\n[4/7] Sobreposição setores x bairros")
 
     sectors_neighborhood_income = overlay_sectors_neighborhoods(
         sectors,
@@ -503,7 +451,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 5. LIMITE MUNICIPAL
     # --------------------------------------------------------
-    print("\n[5/11] Limite municipal")
+    print("\n[5/7] Limite municipal")
 
     municipal_boundary = build_municipal_boundary(
         sectors,
@@ -514,7 +462,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 6. AGREGADOS BÁSICOS
     # --------------------------------------------------------
-    print("\n[6/11] Agregados básicos")
+    print("\n[6/7] Agregados básicos")
 
     basic_dir = CENSUS_DIR / "agregados_basicos"
     basic_zip = basic_dir / "agregados_basicos.zip"
@@ -547,89 +495,9 @@ def main() -> None:
     )
 
     # --------------------------------------------------------
-    # 7. CNEFE
+    # 7. EXPORTAÇÃO
     # --------------------------------------------------------
-    print("\n[7/11] CNEFE")
-
-    cnefe_csv_path = download_cnefe(
-        url=IBGE_CNEFE_BASE_URL,
-        cod_uf=UF_CODE,
-        uf=UF,
-        cod_municipio=MUNICIPALITY_CODE,
-        municipio_nome=MUNICIPALITY_CNEFE_NAME,
-        output_dir=CNEFE_DIR,
-    )
-
-    print(f"[OK] CNEFE extraído: {cnefe_csv_path}")
-
-    # --------------------------------------------------------
-    # 8. MICRODADOS PÚBLICOS DO RS
-    # --------------------------------------------------------
-    print("\n[8/11] Microdados públicos do RS")
-
-    microdata_name = f"{UF_CODE}_{UF}"
-    microdata_zip = MICRODATA_DIR / f"{microdata_name}.zip"
-    microdata_extract = MICRODATA_DIR / microdata_name
-
-    download_if_missing(
-        URL_MICRODATA_UF,
-        microdata_zip,
-    )
-
-    extract_zip(
-        microdata_zip,
-        microdata_extract,
-    )
-
-    microdata_files = sorted(
-        path
-        for path in microdata_extract.rglob("*")
-        if path.is_file()
-    )
-
-    print(
-        f"[OK] Microdados extraídos: "
-        f"{len(microdata_files)} arquivo(s) em {microdata_extract}"
-    )
-
-    # --------------------------------------------------------
-    # 9. ÁREAS DE PONDERAÇÃO
-    # --------------------------------------------------------
-    print("\n[9/11] Tabelas das áreas de ponderação")
-
-    weighting_areas_zip = (
-        WEIGHTING_AREAS_DIR / "tabelas_xlsx.zip"
-    )
-    weighting_areas_extract = (
-        WEIGHTING_AREAS_DIR / "tabelas_xlsx"
-    )
-
-    download_if_missing(
-        URL_WEIGHTING_AREAS_TABLES,
-        weighting_areas_zip,
-    )
-
-    extract_zip(
-        weighting_areas_zip,
-        weighting_areas_extract,
-    )
-
-    weighting_area_files = sorted(
-        path
-        for path in weighting_areas_extract.rglob("*")
-        if path.is_file()
-    )
-
-    print(
-        f"[OK] Tabelas APOND extraídas: "
-        f"{len(weighting_area_files)} arquivo(s) em "
-        f"{weighting_areas_extract}"
-    )
-
-    # --------------------------------------------------------
-    # 10. EXPORTAÇÃO
-    # --------------------------------------------------------
-    print("\n[10/11] Exportação")
+    print("\n[7/7] Exportação")
 
     save_individual_outputs(
         sectors=sectors,
@@ -644,26 +512,6 @@ def main() -> None:
         inter=sectors_neighborhood_income,
     )
 
-    # --------------------------------------------------------
-    # 11. MAPAS DO PILOTO
-    # --------------------------------------------------------
-    print("\n[11/11] Geração dos mapas")
-
-    generated_maps = generate_pilot_maps(
-        income_regions=neighborhoods_with_income,
-        neighborhoods=neighborhoods_with_income,
-        sectors=sectors,
-        city_graph=network_graph,
-        neighborhood_graph=neighborhood_graph,
-        output_dir=OUTPUT_DIR,
-        income_column="RENDA_MED_BAIRRO",
-        boundary=municipal_boundary,
-    )
-
-    print("\nMapas gerados:")
-    for map_name, map_path in generated_maps.items():
-        print(f" - {map_name}: {map_path}")
-
     print("\n" + "=" * 70)
     print("PIPELINE FINALIZADO")
     print("=" * 70)
@@ -676,9 +524,6 @@ def main() -> None:
     )
     print(f"Nós da rede municipal: {len(network_graph.nodes)}")
     print(f"Arestas da rede municipal: {len(network_graph.edges)}")
-    print(f"CNEFE: {cnefe_csv_path}")
-    print(f"Microdados RS: {microdata_extract}")
-    print(f"Tabelas APOND: {weighting_areas_extract}")
 
 
 if __name__ == "__main__":
