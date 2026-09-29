@@ -14,7 +14,7 @@ def assign_sectors_to_neighborhoods(
 
     Quando um setor intersecta mais de um bairro, ele é associado ao
     bairro que contém a maior área do setor. Isso evita dupla contagem
-    nas estatísticas por bairro.
+    nas estatísticas agregadas por bairro.
     """
     required = {
         "CD_SETOR",
@@ -24,7 +24,9 @@ def assign_sectors_to_neighborhoods(
         "AREA_FRAG_M2",
     }
 
-    missing = required - set(sector_neighborhood_fragments.columns)
+    missing = required - set(
+        sector_neighborhood_fragments.columns
+    )
 
     if missing:
         raise KeyError(
@@ -42,18 +44,39 @@ def assign_sectors_to_neighborhoods(
         ]
     ].copy()
 
-    base["CD_SETOR"] = base["CD_SETOR"].astype("string")
-    base["CD_BAIRRO"] = base["CD_BAIRRO"].astype("string")
+    base["CD_SETOR"] = (
+        base["CD_SETOR"]
+        .astype("string")
+        .str.strip()
+    )
+    base["CD_BAIRRO"] = (
+        base["CD_BAIRRO"]
+        .astype("string")
+        .str.strip()
+    )
     base["RENDA_MED_SETOR"] = pd.to_numeric(
         base["RENDA_MED_SETOR"],
         errors="coerce",
     )
+    base["AREA_FRAG_M2"] = pd.to_numeric(
+        base["AREA_FRAG_M2"],
+        errors="coerce",
+    )
 
     # Maior interseção espacial = bairro atribuído ao setor.
+    # CD_BAIRRO serve apenas como critério determinístico em caso de empate.
     base = (
         base.sort_values(
-            ["CD_SETOR", "AREA_FRAG_M2"],
-            ascending=[True, False],
+            [
+                "CD_SETOR",
+                "AREA_FRAG_M2",
+                "CD_BAIRRO",
+            ],
+            ascending=[
+                True,
+                False,
+                True,
+            ],
         )
         .drop_duplicates(
             subset="CD_SETOR",
@@ -69,16 +92,33 @@ def build_neighborhood_income_tables(
     sector_neighborhood_fragments,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Gera duas tabelas:
-    1. resumo por bairro;
+    Gera:
+    1. resumo estatístico por bairro;
     2. detalhe por setor censitário.
 
-    O desvio padrão é calculado entre os valores de RENDA_MED_SETOR dos
-    setores atribuídos a cada bairro. Setores com renda fora do intervalo
-    média ± 1 desvio padrão são sinalizados.
+    A média e o desvio padrão descrevem a distribuição dos valores de
+    RENDA_MED_SETOR entre os setores associados a cada bairro.
+
+    Um setor é marcado como FORA_1_DESVIO_PADRAO quando sua renda setorial
+    está abaixo de média - 1 DP ou acima de média + 1 DP do bairro.
     """
     detail = assign_sectors_to_neighborhoods(
         sector_neighborhood_fragments
+    )
+
+    group_keys = [
+        "CD_BAIRRO",
+        "NM_BAIRRO",
+    ]
+
+    total_counts = (
+        detail.groupby(
+            group_keys,
+            dropna=False,
+        )["CD_SETOR"]
+        .nunique()
+        .rename("N_SETORES")
+        .reset_index()
     )
 
     valid = detail.dropna(
@@ -87,11 +127,11 @@ def build_neighborhood_income_tables(
 
     stats = (
         valid.groupby(
-            ["CD_BAIRRO", "NM_BAIRRO"],
+            group_keys,
             dropna=False,
         )["RENDA_MED_SETOR"]
         .agg(
-            N_SETORES="count",
+            N_SETORES_COM_RENDA="count",
             MEDIA_RENDA_SETOR="mean",
             DESVIO_PADRAO_RENDA="std",
             MIN_RENDA_SETOR="min",
@@ -100,27 +140,33 @@ def build_neighborhood_income_tables(
         .reset_index()
     )
 
-    stats["LIMITE_INFERIOR_1DP"] = (
-        stats["MEDIA_RENDA_SETOR"]
-        - stats["DESVIO_PADRAO_RENDA"]
+    summary = total_counts.merge(
+        stats,
+        on=group_keys,
+        how="left",
+        validate="one_to_one",
     )
-    stats["LIMITE_SUPERIOR_1DP"] = (
-        stats["MEDIA_RENDA_SETOR"]
-        + stats["DESVIO_PADRAO_RENDA"]
+
+    summary["LIMITE_INFERIOR_1DP"] = (
+        summary["MEDIA_RENDA_SETOR"]
+        - summary["DESVIO_PADRAO_RENDA"]
+    )
+    summary["LIMITE_SUPERIOR_1DP"] = (
+        summary["MEDIA_RENDA_SETOR"]
+        + summary["DESVIO_PADRAO_RENDA"]
     )
 
     detail = detail.merge(
-        stats[
-            [
-                "CD_BAIRRO",
-                "NM_BAIRRO",
+        summary[
+            group_keys
+            + [
                 "MEDIA_RENDA_SETOR",
                 "DESVIO_PADRAO_RENDA",
                 "LIMITE_INFERIOR_1DP",
                 "LIMITE_SUPERIOR_1DP",
             ]
         ],
-        on=["CD_BAIRRO", "NM_BAIRRO"],
+        on=group_keys,
         how="left",
         validate="many_to_one",
     )
@@ -138,33 +184,44 @@ def build_neighborhood_income_tables(
     )
 
     detail["FORA_1_DESVIO_PADRAO"] = (
-        detail["RENDA_MED_SETOR"].lt(
-            detail["LIMITE_INFERIOR_1DP"]
-        )
-        | detail["RENDA_MED_SETOR"].gt(
-            detail["LIMITE_SUPERIOR_1DP"]
+        detail["RENDA_MED_SETOR"].notna()
+        & detail["DESVIO_PADRAO_RENDA"].notna()
+        & (
+            detail["RENDA_MED_SETOR"].lt(
+                detail["LIMITE_INFERIOR_1DP"]
+            )
+            | detail["RENDA_MED_SETOR"].gt(
+                detail["LIMITE_SUPERIOR_1DP"]
+            )
         )
     )
 
-    def join_sectors(group: pd.DataFrame) -> str:
-        return "; ".join(
-            sorted(
-                group["CD_SETOR"]
-                .dropna()
-                .astype(str)
-                .unique()
-            )
-        )
+    list_rows = []
 
-    def join_outlier_sectors(group: pd.DataFrame) -> str:
+    for keys, group in detail.groupby(
+        group_keys,
+        dropna=False,
+        sort=True,
+    ):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+
         outliers = group.loc[
             group["FORA_1_DESVIO_PADRAO"]
-        ]
+        ].sort_values(
+            "RENDA_MED_SETOR"
+        )
 
-        if outliers.empty:
-            return ""
+        sector_codes = (
+            group["CD_SETOR"]
+            .dropna()
+            .astype(str)
+            .sort_values()
+            .unique()
+            .tolist()
+        )
 
-        return "; ".join(
+        outlier_sector_codes = (
             outliers["CD_SETOR"]
             .dropna()
             .astype(str)
@@ -172,46 +229,40 @@ def build_neighborhood_income_tables(
             .tolist()
         )
 
-    def join_outlier_incomes(group: pd.DataFrame) -> str:
-        outliers = group.loc[
-            group["FORA_1_DESVIO_PADRAO"]
-            & group["RENDA_MED_SETOR"].notna()
-        ].sort_values("RENDA_MED_SETOR")
-
-        if outliers.empty:
-            return ""
-
-        return "; ".join(
-            f"{row.CD_SETOR}: R$ {row.RENDA_MED_SETOR:,.2f}"
+        outlier_incomes = [
+            (
+                f"{row.CD_SETOR}: "
+                f"R$ {row.RENDA_MED_SETOR:,.2f}"
+            )
             for row in outliers.itertuples()
-        )
+            if pd.notna(row.RENDA_MED_SETOR)
+        ]
 
-    grouped = (
-        detail.groupby(
-            ["CD_BAIRRO", "NM_BAIRRO"],
-            dropna=False,
-            sort=True,
-        )
-    )
-
-    lists = grouped.apply(
-        lambda group: pd.Series(
+        list_rows.append(
             {
-                "SETORES_CENSITARIOS": join_sectors(group),
-                "N_SETORES_FORA_1DP": int(
-                    group["FORA_1_DESVIO_PADRAO"].sum()
+                "CD_BAIRRO": keys[0],
+                "NM_BAIRRO": keys[1],
+                "SETORES_CENSITARIOS": "; ".join(
+                    sector_codes
                 ),
-                "SETORES_FORA_1DP": join_outlier_sectors(group),
-                "RENDAS_FORA_1DP": join_outlier_incomes(group),
+                "N_SETORES_FORA_1DP": int(
+                    len(outliers)
+                ),
+                "SETORES_FORA_1DP": "; ".join(
+                    outlier_sector_codes
+                ),
+                "RENDAS_FORA_1DP": "; ".join(
+                    outlier_incomes
+                ),
             }
-        ),
-        include_groups=False,
-    ).reset_index()
+        )
 
-    summary = stats.merge(
+    lists = pd.DataFrame(list_rows)
+
+    summary = summary.merge(
         lists,
-        on=["CD_BAIRRO", "NM_BAIRRO"],
-        how="outer",
+        on=group_keys,
+        how="left",
         validate="one_to_one",
     )
 
@@ -219,6 +270,7 @@ def build_neighborhood_income_tables(
         "CD_BAIRRO",
         "NM_BAIRRO",
         "N_SETORES",
+        "N_SETORES_COM_RENDA",
         "SETORES_CENSITARIOS",
         "MEDIA_RENDA_SETOR",
         "DESVIO_PADRAO_RENDA",
@@ -265,7 +317,7 @@ def export_neighborhood_income_tables(
     output_dir: str | Path,
 ) -> dict[str, Path]:
     """
-    Exporta resumo e detalhe em CSV e em um único arquivo XLSX.
+    Exporta o resumo e o detalhe em CSV e em um arquivo XLSX.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(
@@ -322,7 +374,10 @@ def export_neighborhood_income_tables(
             {"num_format": "0.00"}
         )
         wrap_format = workbook.add_format(
-            {"text_wrap": True, "valign": "top"}
+            {
+                "text_wrap": True,
+                "valign": "top",
+            }
         )
         header_format = workbook.add_format(
             {
