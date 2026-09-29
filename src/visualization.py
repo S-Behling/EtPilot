@@ -14,13 +14,15 @@ from matplotlib.lines import Line2D
 def _soft_colormap(
     cmap_name: str,
     start: float = 0.08,
-    end: float = 0.72,
+    end: float = 0.78,
+    white_mix: float = 0.38,
 ) -> LinearSegmentedColormap:
     """
-    Retorna uma versão mais suave de um colormap contínuo.
+    Retorna uma versão suave/pastel de um colormap contínuo.
 
-    O corte evita os extremos muito claros e muito saturados da paleta,
-    preservando a leitura do gradiente sem deixar o mapa visualmente forte.
+    Além de evitar os extremos mais saturados da paleta, mistura as cores
+    com branco. O resultado preserva as diferenças relativas de renda,
+    mas reduz bastante o peso visual do gradiente.
     """
     base = plt.get_cmap(cmap_name)
 
@@ -30,6 +32,11 @@ def _soft_colormap(
             end,
             256,
         )
+    )
+
+    colors[:, :3] = (
+        colors[:, :3] * (1.0 - white_mix)
+        + white_mix
     )
 
     return LinearSegmentedColormap.from_list(
