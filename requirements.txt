@@ -1,5 +1,8 @@
 # Terminal commands to set up the virtual environment and install dependencies:
 
+# INSTALACAO DEPENDENCIAS
+# no terminal: pip install -r requirements.txt
+
 # CONFIGURACAO DO AMBIENTE VIRTUAL
 # python -m venv .venv
 # ativar o ambiente virtual (Windows): .venv\Scripts\activate

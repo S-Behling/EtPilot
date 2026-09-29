@@ -3,6 +3,7 @@
         "network_type": "drive",
         "crs": "EPSG:31982",
         "place": "Porto Alegre, Rio Grande do Sul, Brasil",
+        "cod_municipio": "4314902",
         "districts": [
             "Bom Fim",
             "Farroupilha",
