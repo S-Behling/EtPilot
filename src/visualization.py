@@ -159,15 +159,15 @@ def plot_networks_map(
     output_path: str | Path,
     neighborhood_graph=None,
     boundary: gpd.GeoDataFrame | None = None,
-    title: str = "Redes viárias do piloto",
+    title: str = "Rede viária",
     dpi: int = 300,
 ) -> Path:
     """
-    Gera mapa da rede municipal e, quando fornecida, destaca a rede
-    do bairro-piloto.
+    Gera um mapa uniforme da rede viária municipal.
 
-    O grafo municipal é desenhado como contexto e a rede do bairro
-    recebe maior espessura para evidenciar o recorte piloto.
+    O parâmetro neighborhood_graph é mantido apenas por compatibilidade
+    com chamadas antigas, mas não é desenhado. Assim nenhum bairro ou
+    conjunto de ruas recebe destaque no mapa final.
     """
     _, city_edges = ox.graph_to_gdfs(city_graph)
 
@@ -177,33 +177,15 @@ def plot_networks_map(
         boundary.plot(
             ax=axes,
             facecolor="white",
-            edgecolor="black",
+            edgecolor="0.15",
             linewidth=0.8,
         )
 
     city_edges.plot(
         ax=axes,
         linewidth=0.35,
-        color="0.55",
-        label="Rede municipal",
+        color="0.35",
     )
-
-    if neighborhood_graph is not None:
-        _, neighborhood_edges = ox.graph_to_gdfs(
-            neighborhood_graph
-        )
-
-        neighborhood_edges.plot(
-            ax=axes,
-            linewidth=1.0,
-            color="black",
-            label="Rede do bairro-piloto",
-        )
-
-        axes.legend(
-            loc="lower left",
-            frameon=True,
-        )
 
     return _finish_map(
         figure=figure,
@@ -226,12 +208,11 @@ def plot_neighborhoods_sectors_map(
     dpi: int = 300,
 ) -> Path:
     """
-    Gera mapa comparando os limites administrativos dos bairros
-    com a malha fina dos setores censitários.
+    Gera mapa em que cada bairro recebe uma cor e os setores
+    censitários aparecem com contorno mais espesso.
 
-    As geometrias são dissolvidas antes do desenho das bordas para
-    evitar que um bairro pareça mais destacado por sobreposição de
-    limites ou registros duplicados.
+    As geometrias são dissolvidas por código antes da plotagem para
+    evitar sobreposição visual de registros duplicados.
     """
     bairros = neighborhoods.copy()
     setores = sectors.copy()
@@ -239,7 +220,6 @@ def plot_neighborhoods_sectors_map(
     if bairros.crs != setores.crs:
         setores = setores.to_crs(bairros.crs)
 
-    # Remove possíveis duplicidades lógicas antes de montar a linework.
     if "CD_BAIRRO" in bairros.columns:
         bairros = bairros.dissolve(
             by="CD_BAIRRO",
@@ -252,29 +232,31 @@ def plot_neighborhoods_sectors_map(
             as_index=False,
         )
 
-    # union_all dissolve segmentos coincidentes. Assim cada limite é
-    # desenhado uma única vez e todos os bairros têm o mesmo peso visual.
-    linhas_setores = gpd.GeoSeries(
-        [setores.geometry.boundary.union_all()],
-        crs=setores.crs,
-    )
+    bairros = bairros.reset_index(drop=True)
+    bairros["_BAIRRO_PLOT_ID"] = range(len(bairros))
 
-    linhas_bairros = gpd.GeoSeries(
-        [bairros.geometry.boundary.union_all()],
-        crs=bairros.crs,
+    # Colormap categórico com uma posição para cada bairro.
+    cmap_bairros = plt.get_cmap(
+        "turbo",
+        max(len(bairros), 2),
     )
 
     figure, axes = plt.subplots(figsize=(12, 12))
 
-    linhas_setores.plot(
+    bairros.plot(
         ax=axes,
-        linewidth=0.25,
-        color="0.72",
+        column="_BAIRRO_PLOT_ID",
+        cmap=cmap_bairros,
+        legend=False,
+        edgecolor="white",
+        linewidth=0.7,
     )
 
-    linhas_bairros.plot(
+    # Setores desenhados por cima para permanecerem legíveis sobre
+    # qualquer cor de bairro.
+    setores.boundary.plot(
         ax=axes,
-        linewidth=0.85,
+        linewidth=0.65,
         color="0.15",
     )
 
@@ -282,15 +264,15 @@ def plot_neighborhoods_sectors_map(
         Line2D(
             [0],
             [0],
-            linewidth=0.85,
-            color="0.15",
-            label="Bairros",
+            linewidth=6,
+            color="0.55",
+            label="Bairros (cores distintas)",
         ),
         Line2D(
             [0],
             [0],
-            linewidth=0.25,
-            color="0.72",
+            linewidth=0.65,
+            color="0.15",
             label="Setores censitários",
         ),
     ]
@@ -467,10 +449,9 @@ def generate_pilot_maps(
 
     network_map = plot_networks_map(
         city_graph=city_graph,
-        neighborhood_graph=neighborhood_graph,
         boundary=boundary,
         output_path=output_dir / "mapa_redes.png",
-        title="Rede viária de Porto Alegre e recorte piloto",
+        title="Rede viária de Porto Alegre",
     )
 
     neighborhoods_sectors_map = plot_neighborhoods_sectors_map(
