@@ -6,7 +6,7 @@ import zipfile
 #sys.path.append(str(Path.cwd().parent))
 
 # Importa metodos
-import data_utils as dwl
+from src import data_utils as dwl
 
 # ============================================================
 # 1. DIRETÓRIOS DO PROJETO

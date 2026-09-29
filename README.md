@@ -88,6 +88,7 @@ Install dependencies
 pip install -r requirements.txt
 ```
 
+python -m src.analysis.article_v01 --workers 2
 ---
 
 ## Main Libraries
