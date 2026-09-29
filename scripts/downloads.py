@@ -16,7 +16,7 @@ Fluxo:
 5. Sobrepõe setores x bairros, atribuindo a renda do BAIRRO aos fragmentos.
 6. Constrói o limite municipal.
 7. Baixa os agregados básicos do Censo 2022.
-8. Gera um GeoPackage consolidado.
+8. Gera um GeoPackage consolidado e os três mapas finais do piloto.
 
 Execute a partir de qualquer diretório:
     python scripts/downloads.py
@@ -58,6 +58,7 @@ from src.downloads.downloadNetwork import (
     download_neighborhood_network,
     download_network,
 )
+from src.visualization import generate_pilot_maps
 
 
 # ============================================================
@@ -103,6 +104,8 @@ CENSUS_DIR.mkdir(parents=True, exist_ok=True)
 GRAPH_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_GPKG = CENSUS_DIR / "bairros_setores_renda.gpkg"
+OUTPUT_DIR = PROJECT_ROOT / "outputs"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
@@ -338,7 +341,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 1. REDE VIÁRIA
     # --------------------------------------------------------
-    print("\n[1/7] Rede viária")
+    print("\n[1/8] Rede viária")
 
     network_graph = download_network(
         crs=CRS,
@@ -371,7 +374,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 2. MALHA DE SETORES
     # --------------------------------------------------------
-    print("\n[2/7] Malha de setores")
+    print("\n[2/8] Malha de setores")
 
     sectors_dir = CENSUS_DIR / "setores"
     sectors_zip = sectors_dir / f"{UF.lower()}_setores.zip"
@@ -394,7 +397,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 3. MALHA + RENDA POR BAIRRO
     # --------------------------------------------------------
-    print("\n[3/7] Bairros e renda oficial por bairro")
+    print("\n[3/8] Bairros e renda oficial por bairro")
 
     neighborhoods_dir = CENSUS_DIR / "bairros"
     neighborhoods_zip = (
@@ -442,7 +445,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 4. SETORES x BAIRROS
     # --------------------------------------------------------
-    print("\n[4/7] Sobreposição setores x bairros")
+    print("\n[4/8] Sobreposição setores x bairros")
 
     sectors_neighborhood_income = overlay_sectors_neighborhoods(
         sectors,
@@ -452,7 +455,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 5. LIMITE MUNICIPAL
     # --------------------------------------------------------
-    print("\n[5/7] Limite municipal")
+    print("\n[5/8] Limite municipal")
 
     municipal_boundary = build_municipal_boundary(
         sectors,
@@ -463,7 +466,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 6. AGREGADOS BÁSICOS
     # --------------------------------------------------------
-    print("\n[6/7] Agregados básicos")
+    print("\n[6/8] Agregados básicos")
 
     basic_dir = CENSUS_DIR / "agregados_basicos"
     basic_zip = basic_dir / "agregados_basicos.zip"
@@ -498,7 +501,7 @@ def main() -> None:
     # --------------------------------------------------------
     # 7. EXPORTAÇÃO
     # --------------------------------------------------------
-    print("\n[7/7] Exportação")
+    print("\n[7/8] Exportação")
 
     save_individual_outputs(
         sectors=sectors,
@@ -512,6 +515,26 @@ def main() -> None:
         setores=sectors,
         inter=sectors_neighborhood_income,
     )
+
+    # --------------------------------------------------------
+    # 8. MAPAS DO PILOTO
+    # --------------------------------------------------------
+    print("\n[8/8] Geração dos mapas")
+
+    generated_maps = generate_pilot_maps(
+        income_regions=neighborhoods_with_income,
+        neighborhoods=neighborhoods_with_income,
+        sectors=sectors,
+        city_graph=network_graph,
+        neighborhood_graph=neighborhood_graph,
+        output_dir=OUTPUT_DIR,
+        income_column="RENDA_MED_BAIRRO",
+        boundary=municipal_boundary,
+    )
+
+    print("\nMapas gerados:")
+    for map_name, map_path in generated_maps.items():
+        print(f" - {map_name}: {map_path}")
 
     print("\n" + "=" * 70)
     print("PIPELINE FINALIZADO")
