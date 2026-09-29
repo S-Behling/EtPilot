@@ -4,7 +4,9 @@ from pathlib import Path
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 import osmnx as ox
+from matplotlib.lines import Line2D
 
 
 def _prepare_output_path(output_path: str | Path) -> Path:
@@ -226,6 +228,10 @@ def plot_neighborhoods_sectors_map(
     """
     Gera mapa comparando os limites administrativos dos bairros
     com a malha fina dos setores censitários.
+
+    As geometrias são dissolvidas antes do desenho das bordas para
+    evitar que um bairro pareça mais destacado por sobreposição de
+    limites ou registros duplicados.
     """
     bairros = neighborhoods.copy()
     setores = sectors.copy()
@@ -233,23 +239,64 @@ def plot_neighborhoods_sectors_map(
     if bairros.crs != setores.crs:
         setores = setores.to_crs(bairros.crs)
 
+    # Remove possíveis duplicidades lógicas antes de montar a linework.
+    if "CD_BAIRRO" in bairros.columns:
+        bairros = bairros.dissolve(
+            by="CD_BAIRRO",
+            as_index=False,
+        )
+
+    if "CD_SETOR" in setores.columns:
+        setores = setores.dissolve(
+            by="CD_SETOR",
+            as_index=False,
+        )
+
+    # union_all dissolve segmentos coincidentes. Assim cada limite é
+    # desenhado uma única vez e todos os bairros têm o mesmo peso visual.
+    linhas_setores = gpd.GeoSeries(
+        [setores.geometry.boundary.union_all()],
+        crs=setores.crs,
+    )
+
+    linhas_bairros = gpd.GeoSeries(
+        [bairros.geometry.boundary.union_all()],
+        crs=bairros.crs,
+    )
+
     figure, axes = plt.subplots(figsize=(12, 12))
 
-    setores.boundary.plot(
+    linhas_setores.plot(
         ax=axes,
         linewidth=0.25,
-        color="0.70",
-        label="Setores censitários",
+        color="0.72",
     )
 
-    bairros.boundary.plot(
+    linhas_bairros.plot(
         ax=axes,
-        linewidth=1.1,
-        color="black",
-        label="Bairros",
+        linewidth=0.85,
+        color="0.15",
     )
+
+    legend_handles = [
+        Line2D(
+            [0],
+            [0],
+            linewidth=0.85,
+            color="0.15",
+            label="Bairros",
+        ),
+        Line2D(
+            [0],
+            [0],
+            linewidth=0.25,
+            color="0.72",
+            label="Setores censitários",
+        ),
+    ]
 
     axes.legend(
+        handles=legend_handles,
         loc="lower left",
         frameon=True,
     )
@@ -261,6 +308,128 @@ def plot_neighborhoods_sectors_map(
         title=title,
         dpi=dpi,
     )
+
+
+# ============================================================
+# PRÉ-VISUALIZAÇÃO — RENDA + NOMES DOS BAIRROS
+# ============================================================
+
+def preview_income_map_with_labels(
+    neighborhoods: gpd.GeoDataFrame,
+    value_column: str = "RENDA_MED_BAIRRO",
+    name_column: str = "NM_BAIRRO",
+    title: str = "Renda média por bairro",
+    cmap: str = "YlOrRd",
+    boundary: gpd.GeoDataFrame | None = None,
+    figsize: tuple[int, int] = (16, 16),
+    label_fontsize: float = 5.5,
+):
+    """
+    Monta um mapa exploratório de renda com o nome de todos os bairros.
+
+    Esta função NÃO salva arquivo e NÃO fecha a figura. Ela foi pensada
+    para uso em notebook, permitindo visualizar o resultado antes de
+    decidir o estilo final dos mapas exportados.
+
+    Returns
+    -------
+    tuple
+        (figure, axes)
+    """
+    required = [value_column, name_column, "geometry"]
+    missing = [
+        column
+        for column in required
+        if column not in neighborhoods.columns
+    ]
+
+    if missing:
+        raise KeyError(
+            f"Colunas ausentes para a pré-visualização: {missing}. "
+            f"Disponíveis: {list(neighborhoods.columns)}"
+        )
+
+    bairros = neighborhoods.copy()
+
+    if "CD_BAIRRO" in bairros.columns:
+        # Evita rótulos e bordas duplicados.
+        aggregation = {
+            value_column: "first",
+            name_column: "first",
+        }
+        bairros = bairros.dissolve(
+            by="CD_BAIRRO",
+            aggfunc=aggregation,
+            as_index=False,
+        )
+
+    bairros[value_column] = bairros[value_column].astype("float64")
+
+    figure, axes = plt.subplots(figsize=figsize)
+
+    bairros.plot(
+        ax=axes,
+        column=value_column,
+        cmap=cmap,
+        legend=True,
+        linewidth=0.45,
+        edgecolor="white",
+        missing_kwds={
+            "color": "lightgray",
+            "edgecolor": "white",
+            "label": "Sem dado",
+        },
+        legend_kwds={
+            "label": "Renda média do responsável pelo domicílio (R$)",
+            "shrink": 0.72,
+        },
+    )
+
+    if boundary is not None and not boundary.empty:
+        boundary.boundary.plot(
+            ax=axes,
+            linewidth=0.9,
+            color="0.15",
+        )
+
+    # representative_point() mantém o rótulo dentro do polígono,
+    # inclusive para bairros com geometrias côncavas.
+    pontos_rotulo = bairros.geometry.representative_point()
+
+    for (_, row), point in zip(
+        bairros.iterrows(),
+        pontos_rotulo,
+    ):
+        nome = str(row[name_column]).strip()
+
+        texto = axes.annotate(
+            nome,
+            xy=(point.x, point.y),
+            ha="center",
+            va="center",
+            fontsize=label_fontsize,
+            color="black",
+        )
+
+        # Halo branco melhora a leitura sem criar caixas sobre o mapa.
+        texto.set_path_effects([
+            path_effects.Stroke(
+                linewidth=1.5,
+                foreground="white",
+            ),
+            path_effects.Normal(),
+        ])
+
+    axes.set_title(
+        title,
+        fontsize=15,
+        pad=12,
+    )
+    axes.set_axis_off()
+    axes.set_aspect("equal")
+    figure.tight_layout()
+
+    return figure, axes
 
 
 # ============================================================
