@@ -15,9 +15,9 @@ Fluxo:
 4. Baixa a malha de bairros.
 5. Sobrepõe setores x bairros preservando a renda do SETOR.
 6. Constrói o limite municipal.
-7. Baixa os agregados básicos do Censo 2022.
+7. Exporta os GeoPackages do piloto.
 8. Gera tabelas estatísticas de renda por bairro e setor.
-9. Gera GeoPackages e os três mapas do piloto.
+9. Gera os três mapas do piloto.
 
 Execute a partir de qualquer diretório:
     python scripts/downloads.py
