@@ -259,7 +259,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     agents = assign_purpose(
         agents=agents,
         purpose_probabilities=config_agents["purpose_choice"],
-        seed=args.seed,
+        seed=run_config.seed,
     )
 
     print("6/10 - Escolhendo destinos...")
@@ -269,7 +269,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         origins=origins,
         destinations=destinations,
         choice_config=config_agents["destination_choice"],
-        seed=args.seed,
+        seed=run_config.seed,
         max_trip_distance_m=config["analysis"]["max_trip_distance"],
     )
 
@@ -465,7 +465,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         sample_size=min(50, len(agents)),
         title=(
             f"Rotas transit — {region_name} — "
-            f"{args.scenario}"
+            f"{run_config.scenario}"
         ),
     )
     save_plot(
@@ -482,7 +482,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
             ),
             title=(
                 f"Uso das redes — {region_name} — "
-                f"{args.scenario}"
+                f"{run_config.scenario}"
             ),
         )
         save_plot(
@@ -559,7 +559,7 @@ def main() -> None:
             unit=args.period_unit,
         ),
         n_agents=args.n_agents,
-        seed=args.seed,
+        seed=run_config.seed,
         scenario=args.scenario,
         prepare_networks=False,
         prepare_region=False,
