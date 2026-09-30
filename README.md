@@ -30,6 +30,101 @@ pip install -r requirements.txt
 
 ---
 
+# Execução recomendada — fluxo completo
+
+O ponto de entrada principal agora é:
+
+```powershell
+python scripts/run_pipeline.py
+```
+
+Esse comando chama, na ordem correta:
+
+```text
+preparação das redes
+        ↓
+preparação da região
+        ↓
+simulação dos agentes
+        ↓
+roteamento multimodal
+        ↓
+uso das arestas
+        ↓
+plots e outputs
+```
+
+A configuração pode ser alterada diretamente pelo terminal sem modificar o
+código. Exemplos:
+
+Somente classe de baixa renda:
+
+```powershell
+python scripts/run_pipeline.py --income low
+```
+
+Duas classes sociais:
+
+```powershell
+python scripts/run_pipeline.py --income low middle
+```
+
+Todas as classes, período de 3 dias:
+
+```powershell
+python scripts/run_pipeline.py --income low middle high --period-value 3 --period-unit days
+```
+
+Período de 8 horas:
+
+```powershell
+python scripts/run_pipeline.py --period-value 8 --period-unit hours
+```
+
+Configuração completa:
+
+```powershell
+python scripts/run_pipeline.py --region city --income low middle high --period-value 24 --period-unit hours --n-agents 100 --seed 42 --scenario differentiated
+```
+
+Para reutilizar redes e cache regional já preparados:
+
+```powershell
+python scripts/run_pipeline.py --skip-network-preparation --skip-region-preparation
+```
+
+Para limpar outputs antes da rodada:
+
+```powershell
+python scripts/run_pipeline.py --clear-outputs
+```
+
+As opções territoriais previstas são:
+
+```text
+city
+center
+north
+south
+east
+```
+
+No estado atual, `center`, `north`, `south` e `east` só podem ser
+executadas depois que os respectivos bairros forem definidos e habilitados em
+`config/regions.json`. O pipeline falha explicitamente caso uma região ainda
+não esteja configurada, evitando inventar uma divisão territorial.
+
+A janela temporal é representada por `SimulationPeriod`. Cada agente recebe
+um horário de partida dentro do período configurado; assim, o mesmo modelo
+pode trabalhar com janelas em horas ou em dias.
+
+A configuração é armazenada em `PilotRunConfig`, separada da interface.
+Isso permite que futuramente uma janela gráfica com seletores, caixas de
+marcação e menus suspensos monte a mesma configuração sem alterar a lógica do
+pipeline.
+
+---
+
 # Ordem de execução no terminal
 
 Execute os comandos abaixo a partir da raiz do repositório.
@@ -193,14 +288,18 @@ número de conexões programadas.
 
 ## Sequência cotidiana resumida
 
-Depois que as redes urbanas já estiverem disponíveis, a rotina normal é:
+Depois que as redes urbanas já estiverem disponíveis, a rotina normal pode ser reduzida a:
 
 ```powershell
 git pull
-python scripts/check_setup.py
-python scripts/clear_outputs.py
-python scripts/prepare_region.py --region city
-python -m src.simulation.run_pilot --region city --n-agents 100 --seed 42 --scenario differentiated
+python scripts/run_pipeline.py --skip-network-preparation
+```
+
+Ou, reutilizando também o cache regional:
+
+```powershell
+git pull
+python scripts/run_pipeline.py --skip-network-preparation --skip-region-preparation
 ```
 
 Se as redes `car/walk/bike` ainda não existirem, insira antes do
