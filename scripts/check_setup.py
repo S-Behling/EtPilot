@@ -6,6 +6,10 @@ Uso:
 
 from __future__ import annotations
 
+from _bootstrap import add_project_root_to_path
+
+add_project_root_to_path()
+
 from src.core.config import load_project_config, project_path
 from src.network.multimodal import SUPPORTED_MODES, graph_path_for_mode
 
