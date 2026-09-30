@@ -44,7 +44,8 @@
         "od_pairs": "data/o-d/od_pairs.gpkg",
         "origins_income": "data/o-d/origens_porto_alegre_income.gpkg",
         "regional_cache": "cache/regions",
-        "outputs": "outputs"
+        "outputs": "outputs",
+        "neighborhoods": "data/bairros/Bairros_LC12112_16.gpkg"
     },
     "routing": {
         "scope": "within_region",
