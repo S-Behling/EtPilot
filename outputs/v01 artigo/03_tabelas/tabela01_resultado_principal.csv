@@ -1,0 +1,7 @@
+metric,point_estimate_seed_median,bootstrap_median,ci95_low,ci95_high,seed_sign_consistency,bootstrap_reps_valid,inference_unit,segments_treated_as_independent
+H_soc_baseline_length_weighted,0.6510073975496967,0.3721590751999977,0.21692184798817588,0.5404573502767573,,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+H_soc_differentiated_length_weighted,0.615976748085952,0.4028934717048456,0.25391922514687754,0.5540031541909082,,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+delta_H_soc_length_weighted,0.1020684358351986,0.01716019838829945,-0.09490062032150136,0.1533213033696966,0.8,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+length_share_decrease,0.4069516439139091,0.2218979535853115,0.07502382512290633,0.41967865924351233,,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+length_share_stable,0.20711696336754426,0.44728460312933194,0.2444731263490768,0.6451557575095516,,1000,hierarchical bootstrap: seed + complete agent trajectory,False
+length_share_increase,0.4983919768441046,0.28529858036153155,0.12222949396487719,0.513916415383234,,1000,hierarchical bootstrap: seed + complete agent trajectory,False

@@ -1,0 +1,9 @@
+{
+  "n_agents": 100,
+  "seed": 23,
+  "runtime_s": 1519.6285035,
+  "experiment": "nominal_seed",
+  "destination_decay_multiplier": 1.0,
+  "mode_decay_multiplier": 1.0,
+  "homogenize_differentiated_mode": false
+}

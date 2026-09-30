@@ -1,0 +1,5 @@
+spatial_change_class,segments,length_m,length_share
+decrease_diversity,1,162.88445495558034,0.08256226587020898
+stable,1,109.58961538974458,0.055548376085916104
+increase_diversity,32,1700.3939613005227,0.8618893580438749
+top_10pct_abs_change_concentration,4,,0.33631134660802803

@@ -1,0 +1,18 @@
+{
+  "version": "article_v02",
+  "preserves": [
+    "src/analysis/article_v01.py",
+    "outputs/v01 artigo"
+  ],
+  "nominal_seeds_used": [
+    11,
+    23,
+    42,
+    73,
+    101
+  ],
+  "reference_seed_requested": 42,
+  "temporal_scope": "daily_aggregate_proxy_one_trip_per_agent",
+  "temporal_warning": "The current pilot is not a 24-hour activity schedule. Maps aggregate the complete simulated trip set.",
+  "figures_generated": 24
+}

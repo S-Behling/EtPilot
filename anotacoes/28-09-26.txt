@@ -19,3 +19,5 @@ python -m src.downloads.downloadGTFS
 
 git rm --cached nome-do-arquivo
 
+git checkout align-pilot-experimental-design
+python -m src.analysis.final_pilot_sensitivity --resume
