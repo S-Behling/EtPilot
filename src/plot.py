@@ -283,6 +283,87 @@ def plot_modal_snapping(
 
     return fig, ax
 
+
+def plot_agent_routes(
+    *,
+    agents,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    sample_size: int = 100,
+    title: str = "Rotas dos agentes",
+):
+    """Plota as rotas OSM já calculadas para uma amostra de agentes."""
+
+    from shapely.geometry import LineString
+
+    if sample_size <= 0:
+        raise ValueError("sample_size precisa ser maior que zero.")
+
+    fig, ax = plt.subplots()
+
+    plotted = 0
+
+    for agent in agents:
+        if plotted >= sample_size:
+            break
+
+        if not getattr(agent, "route_edges", None):
+            continue
+
+        mode = getattr(agent, "mode", None)
+
+        if mode is None:
+            continue
+
+        mode_name = mode.value if hasattr(mode, "value") else str(mode)
+
+        if mode_name not in graphs:
+            continue
+
+        graph = graphs[mode_name]
+        route_geometries = []
+
+        for u, v, key in agent.route_edges:
+            attributes = graph.get_edge_data(
+                int(u),
+                int(v),
+                int(key),
+            )
+
+            if not attributes:
+                continue
+
+            geometry = attributes.get("geometry")
+
+            if geometry is None:
+                origin = graph.nodes[int(u)]
+                destination = graph.nodes[int(v)]
+                geometry = LineString(
+                    [
+                        (origin["x"], origin["y"]),
+                        (destination["x"], destination["y"]),
+                    ]
+                )
+
+            route_geometries.append(geometry)
+
+        if not route_geometries:
+            continue
+
+        gpd.GeoSeries(
+            route_geometries,
+            crs=graph.graph.get("crs"),
+        ).plot(
+            ax=ax,
+            linewidth=0.9,
+        )
+
+        plotted += 1
+
+    ax.set_title(f"{title} — n={plotted}")
+    ax.set_axis_off()
+
+    return fig, ax
+
 def save_plot(
     fig,
     path: str | Path,
