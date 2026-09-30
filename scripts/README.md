@@ -82,10 +82,9 @@ Execute os comandos a partir da raiz do repositório.
    python -m src.simulation.run_pilot --region city --n-agents 100 --seed 42 --scenario differentiated
    ```
 
-   O modo transit já participa da escolha modal e usa os nós da rede de
-   caminhada para acesso/egresso. O roteamento temporal GTFS será integrado
-   na etapa seguinte; até lá, agentes transit aparecem com
-   `route_status=unsupported_mode`.
+   O modo transit participa da escolha modal e já usa roteamento temporal
+   GTFS com acesso e egresso pela rede de caminhada. A data representativa de
+   serviço é selecionada automaticamente a partir do cache regional.
 
 ## Execução cotidiana
 
