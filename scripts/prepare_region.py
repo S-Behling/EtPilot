@@ -17,7 +17,10 @@ Uso:
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+
+from _bootstrap import add_project_root_to_path
+
+add_project_root_to_path()
 
 import geopandas as gpd
 import osmnx as ox
@@ -153,16 +156,13 @@ def main() -> None:
         exist_ok=True,
     )
 
-    origins_out = cache_dir / "origins.gpkg"
-    destinations_out = cache_dir / "destinations.gpkg"
-
     regional_origins.to_file(
-        origins_out,
+        cache_dir / "origins.gpkg",
         driver="GPKG",
         engine="pyogrio",
     )
     regional_destinations.to_file(
-        destinations_out,
+        cache_dir / "destinations.gpkg",
         driver="GPKG",
         engine="pyogrio",
     )
@@ -200,14 +200,14 @@ def main() -> None:
         index=False,
     )
 
-    fig, _ = plot_regional_data(
-        regional.__class__(
-            study_area=regional.study_area,
-            origins=regional_origins,
-            destinations=regional_destinations,
-            graphs=regional.graphs,
-        )
+    regional_with_nodes = regional.__class__(
+        study_area=regional.study_area,
+        origins=regional_origins,
+        destinations=regional_destinations,
+        graphs=regional.graphs,
     )
+
+    fig, _ = plot_regional_data(regional_with_nodes)
     save_plot(
         fig,
         plots_dir / "01_regional_data.png",
