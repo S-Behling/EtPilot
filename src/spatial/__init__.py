@@ -10,12 +10,18 @@ from src.spatial.regional_data import (
     prepare_regional_data,
 )
 from src.spatial.study_area import StudyArea
+from src.spatial.transit_filter import (
+    RegionalTransitData,
+    filter_transit_to_study_area,
+)
 
 __all__ = [
     "StudyArea",
     "RegionalData",
+    "RegionalTransitData",
     "filter_points_to_study_area",
     "clip_graph_to_study_area",
     "clip_modal_graphs",
     "prepare_regional_data",
+    "filter_transit_to_study_area",
 ]
