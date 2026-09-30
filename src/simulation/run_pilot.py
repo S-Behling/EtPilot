@@ -1,12 +1,11 @@
-"""
-Executa o pipeline piloto do EtPilot até a escolha modal
+"""Executa o pipeline piloto do EtPilot até a escolha modal.
 
-Fluxo:
+Fluxo atual:
 1. carrega configurações;
 2. carrega origens e destinos;
 3. gera população sintética;
 4. atribui origens;
-5. atribui razão de deslocamento (proposito);
+5. atribui propósito;
 6. atribui destinos;
 7. atribui modo de transporte;
 8. imprime um resumo.
@@ -17,13 +16,15 @@ Uso:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from src.core.config import (
+    load_agent_config,
+    load_project_config,
+    project_path,
+)
 from src.domain.enums import IncomeGroup, TravelMode
 from src.simulation.destination_choice import (
     assign_destinations,
@@ -35,27 +36,21 @@ from src.simulation.population import generate_population
 from src.simulation.purpose_choice import assign_purpose
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-CONFIG_PATH = PROJECT_ROOT / "config" / "config.json"
-CONFIG_AGENTS_PATH = PROJECT_ROOT / "config" / "config_agents.json"
-
 N_AGENTS = 100
 SEED = 42
 MODE_SCENARIO = "differentiated"
 
 
-def load_json(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
 def main() -> None:
-    config = load_json(CONFIG_PATH)
-    config_agents = load_json(CONFIG_AGENTS_PATH)
+    config = load_project_config()
+    config_agents = load_agent_config()
 
-    origins_path = PROJECT_ROOT / config["paths"]["origins_income"]
-    destinations_path = PROJECT_ROOT / config["paths"]["destinations"]
+    origins_path = project_path(
+        config["paths"]["origins_income"]
+    )
+    destinations_path = project_path(
+        config["paths"]["destinations"]
+    )
 
     print("1/7 - Carregando dados...")
 
@@ -171,46 +166,22 @@ def main() -> None:
     ]
 
     print("\n=== DISTRIBUIÇÃO POR RENDA ===")
-    print(
-        summary["income_group"]
-        .value_counts()
-        .sort_index()
-    )
+    print(summary["income_group"].value_counts().sort_index())
 
     print("\n=== DISTRIBUIÇÃO POR PROPÓSITO ===")
-    print(
-        summary["purpose"]
-        .value_counts()
-        .sort_index()
-    )
+    print(summary["purpose"].value_counts().sort_index())
 
     print("\n=== DISTRIBUIÇÃO POR MODO ===")
-    print(
-        summary["mode"]
-        .value_counts()
-        .sort_index()
-    )
+    print(summary["mode"].value_counts().sort_index())
 
     print("\n=== RENDA x PROPÓSITO ===")
-    print(
-        pd.crosstab(
-            summary["income_group"],
-            summary["purpose"],
-        )
-    )
+    print(pd.crosstab(summary["income_group"], summary["purpose"]))
 
     print("\n=== RENDA x MODO ===")
-    print(
-        pd.crosstab(
-            summary["income_group"],
-            summary["mode"],
-        )
-    )
+    print(pd.crosstab(summary["income_group"], summary["mode"]))
 
     print("\n=== PRIMEIROS 10 AGENTES ===")
-    print(
-        summary.head(10).to_string(index=False)
-    )
+    print(summary.head(10).to_string(index=False))
 
     missing = {
         "origem": sum(agent.origin_id is None for agent in agents),

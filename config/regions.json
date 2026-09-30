@@ -1,0 +1,36 @@
+{
+    "schema_version": 1,
+    "default": "city",
+    "name_field": "NM_BAIRRO",
+    "regions": {
+        "city": {
+            "enabled": true,
+            "strategy": "municipality",
+            "label": "Porto Alegre"
+        },
+        "center": {
+            "enabled": false,
+            "strategy": "neighborhood_group",
+            "label": "Centro",
+            "neighborhoods": []
+        },
+        "north": {
+            "enabled": false,
+            "strategy": "neighborhood_group",
+            "label": "Norte",
+            "neighborhoods": []
+        },
+        "south": {
+            "enabled": false,
+            "strategy": "neighborhood_group",
+            "label": "Sul",
+            "neighborhoods": []
+        },
+        "east": {
+            "enabled": false,
+            "strategy": "neighborhood_group",
+            "label": "Leste",
+            "neighborhoods": []
+        }
+    }
+}

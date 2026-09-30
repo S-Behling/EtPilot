@@ -1,16 +1,11 @@
-# Terminal commands to set up the virtual environment and install dependencies:
+# EtPilot - dependências de execução e desenvolvimento
+#
+# Ambiente recomendado:
+#   python -m venv .venv
+#   .venv\Scripts\activate        # Windows
+#   source .venv/bin/activate      # Linux/macOS
+#   python -m pip install -r requirements.txt
 
-# INSTALACAO DEPENDENCIAS
-# no terminal: pip install -r requirements.txt
-
-# CONFIGURACAO DO AMBIENTE VIRTUAL
-# python -m venv .venv
-# ativar o ambiente virtual (Windows): .venv\Scripts\activate
-
-# PARA PROBLEMAS COM O PIP, TENTE:
-#python -m pip install --upgrade pip setuptools wheel
-
-# DEPENDENCIAS
 # Análise de dados
 pandas
 numpy
@@ -40,9 +35,5 @@ ipykernel
 pyarrow
 xlsxwriter
 
-# Arquivos geográficos
-pyogrio
-
 # Utilidades
 tqdm
-scipy

@@ -1,9 +1,16 @@
 {
     "study_area": {
         "network_type": "drive",
+        "network_types": {
+            "car": "drive",
+            "walk": "walk",
+            "bike": "bike"
+        },
         "crs": "EPSG:31982",
         "place": "Porto Alegre, Rio Grande do Sul, Brasil",
         "cod_municipio": "4314902",
+        "default_region": "city",
+        "regions_file": "config/regions.json",
         "districts": [
             "Bom Fim",
             "Farroupilha",
@@ -16,59 +23,57 @@
     "income_variable": "V06004",
     "income_weight": "V06001",
     "residents_variable": "V06002",
-
     "basic_population_variable": "v0001",
     "basic_avg_household_size_variable": "v0005",
     "basic_households_variable": "v0007",
-
     "paths": {
-         "data": "data",
-
+        "data": "data",
         "graphs": "data/graph",
         "graph_file": "data/graph/rede-poa.graphml",
+        "graph_car": "data/graph/rede-poa-car.graphml",
+        "graph_walk": "data/graph/rede-poa-walk.graphml",
+        "graph_bike": "data/graph/rede-poa-bike.graphml",
         "graph_bomfim": "data/graph/rede-bomFim.graphml",
-
         "nodes": "data/01-nodes.gpkg",
         "edges": "data/01-edges.gpkg",
-
         "od": "data/o-d",
         "origins": "data/o-d/origens_porto_alegre.gpkg",
         "origins_bomfim": "data/o-d/origens_bomfim.gpkg",
         "destinations": "data/o-d/destinos_cnefe_classificados_porto_alegre.gpkg",
         "destinationsIBGE": "data/o-d/destinos_porto_alegre.gpkg",
         "od_pairs": "data/o-d/od_pairs.gpkg",
-        "origins_income": "data/o-d/origens_porto_alegre_income.gpkg"
+        "origins_income": "data/o-d/origens_porto_alegre_income.gpkg",
+        "regional_cache": "cache/regions",
+        "outputs": "outputs"
     },
-
+    "routing": {
+        "scope": "within_region",
+        "weight": "length",
+        "regional_network_buffer_m": 250
+    },
     "analysis": {
         "entropy_base": 2,
         "buffer": 500,
         "max_trip_distance": 30000
     },
-
-    
     "income": {
         "variable": "renda_media_responsavel",
-
         "groups": {
             "low": {
                 "min": null,
                 "max": 4800.0,
                 "share": 0.20997644
             },
-
             "middle": {
                 "min": 4800.0,
                 "max": 12000.0,
                 "share": 0.61144735
             },
-
             "high": {
                 "min": 12000.0,
                 "max": null,
                 "share": 0.17857621
             }
-        
         }
     }
 }

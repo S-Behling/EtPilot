@@ -1,6 +1,4 @@
-# =========================
 # Python
-# =========================
 __pycache__/
 *.py[cod]
 *.pyo
@@ -11,58 +9,50 @@ __pycache__/
 venv/
 env/
 
+# Testes, type checking e cobertura
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
 # Jupyter
 .ipynb_checkpoints/
+notebooks/cache/
 
-# =========================
 # IDEs
-# =========================
 .vscode/
 .idea/
 
-# =========================
 # Sistema operacional
-# =========================
 .DS_Store
 Thumbs.db
 
-# =========================
 # Dados brutos do IBGE
-# =========================
 data/ibge/
-data/censo_2022
-data/cnefe
-data/bairros
-data/grade
+data/censo_2022/
+data/cnefe/
+data/bairros/
+data/grade/
 
-# =========================
-# Outputs gerados
-# =========================
+# Caches de processamento
+cache/
+.cache/
 interim/
 
-# =========================
+# Outputs gerados
+outputs/
+
 # Arquivos temporários
-# =========================
 *.tmp
 *.temp
 *.log
 
-# =========================
 # Arquivos compactados
-# =========================
 *.zip
 *.rar
 *.7z
 
-# =========================
 # Arquivos auxiliares de GeoPackage
-# =========================
 *.gpkg-shm
 *.gpkg-wal
-
-# =========================
-# Cache
-# =========================
-.cache/
-.pytest_cache/
-.mypy_cache/
