@@ -51,6 +51,26 @@
         "weight": "length",
         "regional_network_buffer_m": 250
     },
+    "transit": {
+        "data_dir": "data/gtfs",
+        "mode_scope": "bus",
+        "files": {
+            "stops_walk": "stops_walk_connected_processed.gpkg",
+            "stop_connectors": "transit_stop_walk_connectors_processed.parquet",
+            "connections": "transit_connections_spatial_routable_processed.parquet",
+            "physical_edges": "transit_physical_edges_processed.gpkg",
+            "connection_to_physical_edge": "transit_connection_to_physical_edge_processed.parquet",
+            "service_dates": "service_dates_processed.parquet"
+        },
+        "routing": {
+            "walk_speed_m_s": 1.4,
+            "max_access_walk_m": 1500,
+            "max_egress_walk_m": 1500,
+            "minimum_transfer_time_s": 60,
+            "max_total_travel_time_s": 14400,
+            "pilot_departure_time_s": 28800
+        }
+    },
     "analysis": {
         "entropy_base": 2,
         "buffer": 500,
@@ -61,16 +81,16 @@
         "groups": {
             "low": {
                 "min": null,
-                "max": 4800.0,
+                "max": 4800,
                 "share": 0.20997644
             },
             "middle": {
-                "min": 4800.0,
-                "max": 12000.0,
+                "min": 4800,
+                "max": 12000,
                 "share": 0.61144735
             },
             "high": {
-                "min": 12000.0,
+                "min": 12000,
                 "max": null,
                 "share": 0.17857621
             }
