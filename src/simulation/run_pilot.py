@@ -1,12 +1,8 @@
-"""Executa o pipeline piloto regional até o roteamento OSM.
+"""Executa o pipeline piloto regional com roteamento multimodal completo.
 
 Uso:
     python -m src.simulation.run_pilot --region city
     python -m src.simulation.run_pilot --region city --n-agents 100 --seed 42
-
-O transporte coletivo já participa da escolha modal, mas seu roteamento
-temporal GTFS será integrado na próxima etapa. Nesta versão, agentes transit
-recebem nós walk para acesso/egresso e status de rota 'unsupported_mode'.
 """
 
 from __future__ import annotations
@@ -14,7 +10,6 @@ from __future__ import annotations
 import argparse
 
 import numpy as np
-import pandas as pd
 
 from src.core.config import (
     load_agent_config,
@@ -22,11 +17,13 @@ from src.core.config import (
     project_path,
 )
 from src.domain.enums import IncomeGroup, TravelMode
-from src.plot import plot_agent_routes, save_plot
-from src.routing.multimodal_router import (
-    route_agents,
-    routing_summary,
+from src.plot import (
+    plot_agent_routes,
+    plot_transit_agent_routes,
+    save_plot,
 )
+from src.routing.multimodal_router import routing_summary
+from src.routing.pilot_router import route_pilot_agents
 from src.simulation.destination_choice import (
     assign_destinations,
     destination_choice_summary,
@@ -36,6 +33,11 @@ from src.simulation.origin_assignment import assign_origins
 from src.simulation.population import generate_population
 from src.simulation.purpose_choice import assign_purpose
 from src.spatial.regional_cache import load_regional_cache
+from src.transit.regional import (
+    load_regional_transit_cache,
+    select_representative_service_date,
+)
+from src.transit.router import TransitRouter
 
 
 DEFAULT_N_AGENTS = 100
@@ -84,7 +86,7 @@ def main() -> None:
         or config["study_area"]["default_region"]
     )
 
-    print("1/9 - Carregando cache regional...")
+    print("1/10 - Carregando cache regional...")
 
     regional = load_regional_cache(
         config,
@@ -101,7 +103,49 @@ def main() -> None:
         f"destinos={len(destinations):,}"
     )
 
-    print("2/9 - Gerando população...")
+    print("2/10 - Carregando transporte coletivo regional...")
+
+    regional_transit = load_regional_transit_cache(
+        config,
+        region_name,
+    )
+
+    representative_date = (
+        select_representative_service_date(
+            regional_transit
+        )
+    )
+
+    transit_config = config["transit"]["routing"]
+
+    transit_router = TransitRouter(
+        walk_graph=graphs["walk"],
+        connectors=regional_transit.connectors,
+        connections=regional_transit.connections,
+        service_dates=regional_transit.service_dates,
+        walk_speed_m_s=float(
+            transit_config["walk_speed_m_s"]
+        ),
+        max_access_walk_m=float(
+            transit_config["max_access_walk_m"]
+        ),
+        max_egress_walk_m=float(
+            transit_config["max_egress_walk_m"]
+        ),
+        minimum_transfer_time_s=int(
+            transit_config["minimum_transfer_time_s"]
+        ),
+        max_total_travel_time_s=int(
+            transit_config["max_total_travel_time_s"]
+        ),
+    )
+
+    print(
+        "Data GTFS representativa:",
+        representative_date.date().isoformat(),
+    )
+
+    print("3/10 - Gerando população...")
 
     income_shares = {
         IncomeGroup(group_name): group_data["share"]
@@ -117,7 +161,7 @@ def main() -> None:
 
     print(f"Agentes gerados: {len(agents)}")
 
-    print("3/9 - Atribuindo origens multimodais...")
+    print("4/10 - Atribuindo origens multimodais...")
 
     agents = assign_origins(
         agents=agents,
@@ -126,7 +170,7 @@ def main() -> None:
         seed=args.seed,
     )
 
-    print("4/9 - Atribuindo propósitos...")
+    print("5/10 - Atribuindo propósitos...")
 
     agents = assign_purpose(
         agents=agents,
@@ -134,7 +178,7 @@ def main() -> None:
         seed=args.seed,
     )
 
-    print("5/9 - Escolhendo destinos...")
+    print("6/10 - Escolhendo destinos...")
 
     agents = assign_destinations(
         agents=agents,
@@ -145,7 +189,7 @@ def main() -> None:
         max_trip_distance_m=config["analysis"]["max_trip_distance"],
     )
 
-    print("6/9 - Escolhendo modos...")
+    print("7/10 - Escolhendo modos...")
 
     rng = np.random.default_rng(args.seed)
 
@@ -167,11 +211,16 @@ def main() -> None:
         )
         agent.resolve_routing_nodes()
 
-    print("7/9 - Roteando walk/bike/car...")
+    print("8/10 - Roteando walk/bike/car/transit...")
 
-    agents = route_agents(
+    agents = route_pilot_agents(
         agents,
-        graphs,
+        graphs=graphs,
+        transit_router=transit_router,
+        transit_service_date=representative_date,
+        transit_departure_time_s=int(
+            transit_config["pilot_departure_time_s"]
+        ),
         weight=config["routing"].get(
             "weight",
             "length",
@@ -184,7 +233,7 @@ def main() -> None:
         ),
     )
 
-    print("8/9 - Gerando resumos e diagnósticos...")
+    print("9/10 - Gerando resumos e plots...")
 
     choice_summary = destination_choice_summary(agents)
     choice_summary["mode"] = [
@@ -193,6 +242,40 @@ def main() -> None:
     ]
 
     route_summary = routing_summary(agents)
+
+    transit_by_agent = {
+        agent.agent_id: agent
+        for agent in agents
+    }
+
+    route_summary["travel_time_s"] = route_summary[
+        "agent_id"
+    ].map(
+        lambda agent_id: transit_by_agent[
+            agent_id
+        ].travel_time
+    )
+    route_summary["transit_n_transfers"] = route_summary[
+        "agent_id"
+    ].map(
+        lambda agent_id: transit_by_agent[
+            agent_id
+        ].transit_n_transfers
+    )
+    route_summary["transit_access_stop_id"] = route_summary[
+        "agent_id"
+    ].map(
+        lambda agent_id: transit_by_agent[
+            agent_id
+        ].transit_access_stop_id
+    )
+    route_summary["transit_egress_stop_id"] = route_summary[
+        "agent_id"
+    ].map(
+        lambda agent_id: transit_by_agent[
+            agent_id
+        ].transit_egress_stop_id
+    )
 
     output_dir = (
         project_path(config["paths"]["outputs"])
@@ -229,7 +312,25 @@ def main() -> None:
         output_dir / "routes_osm.png",
     )
 
-    print("9/9 - Resumo final...")
+    fig, _ = plot_transit_agent_routes(
+        agents=agents,
+        walk_graph=graphs["walk"],
+        physical_edges=regional_transit.physical_edges,
+        connection_to_physical_edge=(
+            regional_transit.connection_to_physical_edge
+        ),
+        sample_size=min(50, len(agents)),
+        title=(
+            f"Rotas transit — {region_name} — "
+            f"{args.scenario}"
+        ),
+    )
+    save_plot(
+        fig,
+        output_dir / "routes_transit.png",
+    )
+
+    print("10/10 - Resumo final...")
 
     print("\n=== DISTRIBUIÇÃO POR RENDA ===")
     print(
@@ -259,15 +360,19 @@ def main() -> None:
         .sort_index()
     )
 
-    transit_count = int(
-        (choice_summary["mode"] == TravelMode.TRANSIT.value).sum()
+    transit_mask = (
+        route_summary["mode"] == TravelMode.TRANSIT.value
     )
 
-    if transit_count:
+    if transit_mask.any():
+        print("\n=== STATUS TRANSIT ===")
         print(
-            "\nATENÇÃO: "
-            f"{transit_count} agente(s) escolheram transit. "
-            "O roteamento GTFS temporal será integrado na próxima etapa."
+            route_summary.loc[
+                transit_mask,
+                "route_status",
+            ]
+            .value_counts(dropna=False)
+            .sort_index()
         )
 
     print(f"\nResultados salvos em: {output_dir}")
