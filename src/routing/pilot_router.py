@@ -19,8 +19,9 @@ def route_pilot_agents(
     *,
     graphs: Mapping[str, object],
     transit_router: TransitRouter,
-    transit_service_date,
-    transit_departure_time_s: int,
+    transit_service_date=None,
+    transit_departure_time_s: int | None = None,
+    transit_departures: Mapping[int, tuple[object, int]] | None = None,
     weight: str = "length",
     strict: bool = False,
 ) -> list[Agent]:
@@ -28,11 +29,29 @@ def route_pilot_agents(
 
     for agent in agents:
         if agent.mode is TravelMode.TRANSIT:
+            if transit_departures is not None:
+                try:
+                    service_date, departure_time_s = (
+                        transit_departures[agent.agent_id]
+                    )
+                except KeyError as exc:
+                    raise KeyError(
+                        f"Horário transit ausente para o agente {agent.agent_id}."
+                    ) from exc
+            else:
+                service_date = transit_service_date
+                departure_time_s = transit_departure_time_s
+
+            if service_date is None or departure_time_s is None:
+                raise ValueError(
+                    "Informe transit_departures ou uma data/hora transit padrão."
+                )
+
             _route_transit_agent(
                 agent=agent,
                 router=transit_router,
-                service_date=transit_service_date,
-                departure_time_s=transit_departure_time_s,
+                service_date=service_date,
+                departure_time_s=int(departure_time_s),
             )
         else:
             route_agent(
