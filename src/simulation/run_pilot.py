@@ -8,8 +8,10 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import json
 
 import numpy as np
+import pandas as pd
 
 from src.core.config import (
     load_agent_config,
@@ -17,6 +19,10 @@ from src.core.config import (
     project_path,
 )
 from src.domain.enums import IncomeGroup, TravelMode
+from src.pipeline.config import (
+    PilotRunConfig,
+    SimulationPeriod,
+)
 from src.plot import (
     plot_agent_routes,
     plot_edge_usage,
@@ -74,22 +80,96 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_MODE_SCENARIO,
         choices=("baseline", "differentiated"),
     )
+    parser.add_argument(
+        "--income",
+        nargs="+",
+        default=["low", "middle", "high"],
+        choices=("low", "middle", "high"),
+        help="Classes sociais incluídas na população sintética.",
+    )
+    parser.add_argument(
+        "--period-value",
+        type=int,
+        default=24,
+        help="Duração da janela temporal.",
+    )
+    parser.add_argument(
+        "--period-unit",
+        choices=("hours", "days"),
+        default="hours",
+        help="Unidade da janela temporal.",
+    )
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
+def _income_shares_for_selection(
+    config: dict,
+    selected_groups: tuple[IncomeGroup, ...],
+) -> dict[IncomeGroup, float]:
+    raw = {
+        group: float(
+            config["income"]["groups"][group.value]["share"]
+        )
+        for group in selected_groups
+    }
 
-    if args.n_agents <= 0:
-        raise ValueError("--n-agents precisa ser maior que zero.")
+    total = sum(raw.values())
 
+    if total <= 0:
+        raise ValueError(
+            "As classes sociais selecionadas não possuem participação válida."
+        )
+
+    return {
+        group: share / total
+        for group, share in raw.items()
+    }
+
+
+def _build_transit_departures(
+    *,
+    agents,
+    start_date,
+    start_time_s: int,
+    total_hours: int,
+    seed: int,
+) -> dict[int, tuple[pd.Timestamp, int]]:
+    rng = np.random.default_rng(seed)
+    horizon_s = int(total_hours * 3600)
+
+    offsets = rng.integers(
+        low=0,
+        high=max(horizon_s, 1),
+        size=len(agents),
+    )
+
+    schedule = {}
+
+    for agent, offset_s in zip(agents, offsets):
+        absolute_s = int(start_time_s) + int(offset_s)
+        day_offset, departure_s = divmod(
+            absolute_s,
+            24 * 3600,
+        )
+
+        service_date = (
+            pd.Timestamp(start_date).normalize()
+            + pd.Timedelta(days=int(day_offset))
+        )
+
+        schedule[agent.agent_id] = (
+            service_date,
+            int(departure_s),
+        )
+
+    return schedule
+
+
+def run_pilot(run_config: PilotRunConfig) -> None:
     config = load_project_config()
     config_agents = load_agent_config()
 
-    region_name = (
-        args.region
-        or config["study_area"]["default_region"]
-    )
+    region_name = run_config.region
 
     print("1/10 - Carregando cache regional...")
 
@@ -152,16 +232,15 @@ def main() -> None:
 
     print("3/10 - Gerando população...")
 
-    income_shares = {
-        IncomeGroup(group_name): group_data["share"]
-        for group_name, group_data
-        in config["income"]["groups"].items()
-    }
+    income_shares = _income_shares_for_selection(
+        config,
+        run_config.income_groups,
+    )
 
     agents = generate_population(
-        n_agents=args.n_agents,
+        n_agents=run_config.n_agents,
         income_shares=income_shares,
-        seed=args.seed,
+        seed=run_config.seed,
     )
 
     print(f"Agentes gerados: {len(agents)}")
@@ -172,7 +251,7 @@ def main() -> None:
         agents=agents,
         origins=origins,
         population_column="POP",
-        seed=args.seed,
+        seed=run_config.seed,
     )
 
     print("5/10 - Atribuindo propósitos...")
@@ -196,7 +275,7 @@ def main() -> None:
 
     print("7/10 - Escolhendo modos...")
 
-    rng = np.random.default_rng(args.seed)
+    rng = np.random.default_rng(run_config.seed)
 
     available_modes = {
         TravelMode.WALK,
@@ -205,7 +284,7 @@ def main() -> None:
         TravelMode.TRANSIT,
     }
 
-    mode_config = config_agents["mode_choice"][args.scenario]
+    mode_config = config_agents["mode_choice"][run_config.scenario]
 
     for agent in agents:
         agent.mode = choose_mode(
@@ -218,14 +297,21 @@ def main() -> None:
 
     print("8/10 - Roteando walk/bike/car/transit...")
 
+    transit_departures = _build_transit_departures(
+        agents=agents,
+        start_date=representative_date,
+        start_time_s=int(
+            transit_config["pilot_departure_time_s"]
+        ),
+        total_hours=run_config.period.total_hours,
+        seed=run_config.seed,
+    )
+
     agents = route_pilot_agents(
         agents,
         graphs=graphs,
         transit_router=transit_router,
-        transit_service_date=representative_date,
-        transit_departure_time_s=int(
-            transit_config["pilot_departure_time_s"]
-        ),
+        transit_departures=transit_departures,
         weight=config["routing"].get(
             "weight",
             "length",
@@ -296,8 +382,8 @@ def main() -> None:
         project_path(config["paths"]["outputs"])
         / "pilot"
         / region_name
-        / args.scenario
-        / f"seed_{args.seed}"
+        / run_config.scenario
+        / f"seed_{run_config.seed}"
     )
     output_dir.mkdir(
         parents=True,
@@ -308,6 +394,40 @@ def main() -> None:
         output_dir / "agent_choices.csv",
         index=False,
     )
+
+    metadata = {
+        "region": run_config.region,
+        "income_groups": list(
+            run_config.income_group_names
+        ),
+        "period": {
+            "value": run_config.period.value,
+            "unit": run_config.period.unit,
+            "total_hours": run_config.period.total_hours,
+        },
+        "n_agents": run_config.n_agents,
+        "seed": run_config.seed,
+        "scenario": run_config.scenario,
+        "gtfs_start_date": (
+            representative_date.date().isoformat()
+        ),
+        "pilot_departure_time_s": int(
+            transit_config["pilot_departure_time_s"]
+        ),
+    }
+
+    with (
+        output_dir / "run_config.json"
+    ).open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            metadata,
+            file,
+            indent=2,
+            ensure_ascii=False,
+        )
     route_summary.to_csv(
         output_dir / "routing_summary.csv",
         index=False,
@@ -327,7 +447,7 @@ def main() -> None:
         sample_size=min(100, len(agents)),
         title=(
             f"Rotas OSM — {region_name} — "
-            f"{args.scenario}"
+            f"{run_config.scenario}"
         ),
     )
     save_plot(
@@ -420,6 +540,32 @@ def main() -> None:
         len(edge_usage),
     )
     print(f"\nResultados salvos em: {output_dir}")
+
+
+def main() -> None:
+    args = parse_args()
+
+    run_config = PilotRunConfig(
+        region=(
+            args.region
+            or load_project_config()["study_area"]["default_region"]
+        ),
+        income_groups=tuple(
+            IncomeGroup(value)
+            for value in args.income
+        ),
+        period=SimulationPeriod(
+            value=args.period_value,
+            unit=args.period_unit,
+        ),
+        n_agents=args.n_agents,
+        seed=args.seed,
+        scenario=args.scenario,
+        prepare_networks=False,
+        prepare_region=False,
+    )
+
+    run_pilot(run_config)
 
 
 if __name__ == "__main__":
