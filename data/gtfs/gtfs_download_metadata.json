@@ -1,0 +1,10 @@
+{
+    "provider": "EPTC",
+    "city": "Porto Alegre",
+    "source_page": "https://dadosabertos.poa.br/dataset/gtfs",
+    "source_url": "https://dadosabertos.poa.br/dataset/1fe9c2c1-9fbe-48ea-841b-61e30597ecd6/resource/b3bce61f-78ee-49eb-be57-6236d82bd5e0/download/arquivo-gtfs.zip",
+    "downloaded_at_utc": "2026-09-28T06:02:20.880309+00:00",
+    "filename": "porto_alegre_gtfs.zip",
+    "size_bytes": 7745077,
+    "sha256": "7ad9c99183e7a867cacdd3fa0e6f813125cf0c5b772c2188bea03f4fa6a5d76f"
+}
