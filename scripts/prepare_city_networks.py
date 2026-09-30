@@ -3,8 +3,6 @@
 Uso:
     python scripts/prepare_city_networks.py
     python scripts/prepare_city_networks.py --force
-
-Por padrão, redes já existentes não são baixadas novamente.
 """
 
 from __future__ import annotations
@@ -24,20 +22,12 @@ from src.network.multimodal import (
 )
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Prepara as redes OSM multimodais da cidade."
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Baixa novamente mesmo quando o GraphML já existe.",
-    )
-    return parser.parse_args()
+def prepare_city_networks(
+    *,
+    force: bool = False,
+) -> None:
+    """Prepara as redes car, walk e bike configuradas para a cidade."""
 
-
-def main() -> None:
-    args = parse_args()
     config = load_project_config()
 
     place = config["study_area"]["place"]
@@ -47,7 +37,7 @@ def main() -> None:
     for mode in SUPPORTED_MODES:
         path = graph_path_for_mode(config, mode)
 
-        if path.exists() and not args.force:
+        if path.exists() and not force:
             print(f"[skip] {mode}: {path}")
             continue
 
@@ -78,6 +68,25 @@ def main() -> None:
             f"{graph.number_of_nodes():,} nós | "
             f"{graph.number_of_edges():,} arestas"
         )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Prepara as redes OSM multimodais da cidade."
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Baixa novamente mesmo quando o GraphML já existe.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    prepare_city_networks(
+        force=args.force,
+    )
 
 
 if __name__ == "__main__":
