@@ -1,62 +1,64 @@
 from dataclasses import dataclass, field
-from typing import Optional
+
 from .enums import IncomeGroup, TravelMode, TripPurpose
 
 
 @dataclass
 class Agent:
-    """
-    Representa um agente sintético da simulação de mobilidade
-
-    Cada agente pertence a um grupo socioeconômico e,
-    ao longo da simulação, recebe uma origem, um motivo
-    de viagem, um destino, um modo de transporte e uma rota.
-
-    # primeira versao
-    origin_node: Optional[int] = None
-    purpose: Optional[TripPurpose] = None
-    destination_id: Optional[int] = None
-    destination_node: Optional[int] = None
-    mode: Optional[TravelMode] = None
-
-    route_edges: list[tuple[int, int, int]] = field(default_factory=list)
-
-    travel_time: Optional[float] = None
-    travel_distance: Optional[float] = None
-
-    """
+    """Representa um agente sintético da simulação de mobilidade."""
 
     agent_id: int
     income_group: IncomeGroup
 
-    # Origem
     origin_id: int | str | None = None
-    origin_node: int | None = None
+    origin_nodes: dict[str, int] = field(default_factory=dict)
 
-    # Viagem
     purpose: TripPurpose | None = None
 
-    # Destino
     destination_id: int | str | None = None
-    destination_node: int | None = None
+    destination_nodes: dict[str, int] = field(default_factory=dict)
+    od_distance_m: float | None = None
 
-    # Modo
     mode: TravelMode | None = None
 
-    # Trajetória
-    route_edges: list[tuple[int, int, int]] = field(default_factory=list)
+    origin_node: int | None = None
+    destination_node: int | None = None
 
-    # Resultados da viagem
+    route_edges: list[tuple[int, int, int]] = field(default_factory=list)
+    route_status: str | None = None
+
     travel_distance: float | None = None
     travel_time: float | None = None
 
+    def resolve_routing_nodes(self) -> None:
+        """Define os nós efetivos conforme o modo escolhido."""
 
-    """
-    Observações:
-    Por que route_edges é uma lista de (u, v, key)? Porque a rede é um MultiDiGraph
-    Então uma rota não será armazenada apenas como:[10, 20, 30, 40]
-    mas como:
-    [(10, 20, 0),
-     (20, 30, 0),
-     (30, 40, 1)]
-    """
+        if self.mode is None:
+            raise ValueError(
+                f"Agente {self.agent_id} ainda não possui modo de viagem."
+            )
+
+        routing_mode = (
+            TravelMode.WALK.value
+            if self.mode is TravelMode.TRANSIT
+            else self.mode.value
+        )
+
+        if routing_mode not in self.origin_nodes:
+            raise ValueError(
+                f"Origem do agente {self.agent_id} não possui nó "
+                f"para '{routing_mode}'."
+            )
+
+        if routing_mode not in self.destination_nodes:
+            raise ValueError(
+                f"Destino do agente {self.agent_id} não possui nó "
+                f"para '{routing_mode}'."
+            )
+
+        self.origin_node = int(
+            self.origin_nodes[routing_mode]
+        )
+        self.destination_node = int(
+            self.destination_nodes[routing_mode]
+        )
