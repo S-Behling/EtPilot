@@ -19,6 +19,7 @@ from src.core.config import (
 from src.domain.enums import IncomeGroup, TravelMode
 from src.plot import (
     plot_agent_routes,
+    plot_edge_usage,
     plot_transit_agent_routes,
     save_plot,
 )
@@ -38,6 +39,10 @@ from src.transit.regional import (
     select_representative_service_date,
 )
 from src.transit.router import TransitRouter
+from src.trajectory.edge_usage import (
+    aggregate_edge_usage,
+    build_edge_usage,
+)
 
 
 DEFAULT_N_AGENTS = 100
@@ -233,7 +238,7 @@ def main() -> None:
         ),
     )
 
-    print("9/10 - Gerando resumos e plots...")
+    print("9/10 - Gerando uso de arestas, resumos e plots...")
 
     choice_summary = destination_choice_summary(agents)
     choice_summary["mode"] = [
@@ -242,6 +247,16 @@ def main() -> None:
     ]
 
     route_summary = routing_summary(agents)
+
+    edge_usage = build_edge_usage(
+        agents,
+        transit_connection_to_physical_edge=(
+            regional_transit.connection_to_physical_edge
+        ),
+    )
+    edge_usage_summary = aggregate_edge_usage(
+        edge_usage
+    )
 
     transit_by_agent = {
         agent.agent_id: agent
@@ -297,6 +312,14 @@ def main() -> None:
         output_dir / "routing_summary.csv",
         index=False,
     )
+    edge_usage.to_csv(
+        output_dir / "edge_usage.csv",
+        index=False,
+    )
+    edge_usage_summary.to_csv(
+        output_dir / "edge_usage_summary.csv",
+        index=False,
+    )
 
     fig, _ = plot_agent_routes(
         agents=agents,
@@ -329,6 +352,23 @@ def main() -> None:
         fig,
         output_dir / "routes_transit.png",
     )
+
+    if not edge_usage.empty:
+        fig, _ = plot_edge_usage(
+            edge_usage=edge_usage,
+            graphs=graphs,
+            transit_physical_edges=(
+                regional_transit.physical_edges
+            ),
+            title=(
+                f"Uso das redes — {region_name} — "
+                f"{args.scenario}"
+            ),
+        )
+        save_plot(
+            fig,
+            output_dir / "edge_usage.png",
+        )
 
     print("10/10 - Resumo final...")
 
@@ -375,6 +415,10 @@ def main() -> None:
             .sort_index()
         )
 
+    print(
+        "\nRegistros de uso de arestas:",
+        len(edge_usage),
+    )
     print(f"\nResultados salvos em: {output_dir}")
 
 
