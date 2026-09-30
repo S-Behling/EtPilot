@@ -229,8 +229,11 @@ Resultados do piloto:
 outputs/pilot/<region>/<scenario>/seed_<seed>/
 ├── agent_choices.csv
 ├── routing_summary.csv
+├── edge_usage.csv
+├── edge_usage_summary.csv
 ├── routes_osm.png
-└── routes_transit.png
+├── routes_transit.png
+└── edge_usage.png
 ```
 
 ---
@@ -263,6 +266,8 @@ src/
 │   ├── data.py
 │   ├── regional.py
 │   └── router.py
+├── trajectory/
+│   └── edge_usage.py
 └── plot.py
 ```
 
@@ -273,6 +278,7 @@ A separação segue o princípio de responsabilidade única:
 - `transit`: dados e roteamento temporal GTFS;
 - `routing`: orquestração das rotas;
 - `simulation`: comportamento dos agentes;
+- `trajectory`: transformação das rotas em registros de uso das redes;
 - `plot.py`: diagnósticos visuais do estado atual do pipeline.
 
 ---
@@ -290,7 +296,8 @@ Atualmente estão disponíveis diagnósticos para:
 - snapping modal;
 - transporte coletivo regional;
 - rotas OSM dos agentes;
-- rotas de transporte coletivo.
+- rotas de transporte coletivo;
+- intensidade de uso das arestas.
 
 ---
 
@@ -317,3 +324,22 @@ O EtPilot serve como base computacional para investigar como padrões de
 mobilidade cotidiana e diferenças socioeconômicas se manifestam ao longo da
 rede urbana, permitindo posteriormente calcular indicadores espaciais e
 espaço-temporais de segregação e diversidade socioeconômica.
+
+
+---
+
+## Arquivos mantidos no branch
+
+O branch operacional foi limpo para evitar duplicação entre notebooks,
+artefatos intermediários e o pipeline em Python. Permanecem versionados os
+insumos efetivamente consumidos pela execução atual e pequenos arquivos de
+proveniência do GTFS.
+
+Antes da limpeza foi criado o branch de segurança:
+
+```text
+EtPilot_v01_pre_prune_20260930
+```
+
+Ele preserva o estado anterior caso algum artefato legado precise ser
+consultado posteriormente.
