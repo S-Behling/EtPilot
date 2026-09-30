@@ -58,14 +58,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
-
+def prepare_region(region_name: str | None = None) -> None:
     config = load_project_config()
     regions_config = load_regions_config(config)
 
     region_name = (
-        args.region
+        region_name
         or config["study_area"]["default_region"]
     )
 
@@ -243,6 +241,13 @@ def main() -> None:
     )
     print(f"[cache] {cache_dir}")
     print(f"[plots] {plots_dir}")
+
+
+def main() -> None:
+    args = parse_args()
+    prepare_region(
+        region_name=args.region,
+    )
 
 
 if __name__ == "__main__":
