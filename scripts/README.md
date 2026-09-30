@@ -66,15 +66,26 @@ Execute os comandos a partir da raiz do repositório.
    - salva o cache regional;
    - gera plots de diagnóstico.
 
-6. Execute o piloto comportamental atual:
+6. Execute o piloto regional:
 
    ```bash
-   python -m src.simulation.run_pilot
+   python -m src.simulation.run_pilot --region city
    ```
 
-   Observação: neste estágio do desenvolvimento o `run_pilot.py` ainda usa
-   as bases urbanas originais. A próxima refatoração deverá fazê-lo consumir
-   diretamente o cache gerado por `prepare_region.py`.
+   O piloto agora consome diretamente o cache criado por
+   `prepare_region.py`, preserva `node_walk`, `node_bike` e `node_car`
+   e já calcula rotas OSM para caminhada, bicicleta e carro.
+
+   Também é possível controlar população, seed e cenário:
+
+   ```bash
+   python -m src.simulation.run_pilot --region city --n-agents 100 --seed 42 --scenario differentiated
+   ```
+
+   O modo transit já participa da escolha modal e usa os nós da rede de
+   caminhada para acesso/egresso. O roteamento temporal GTFS será integrado
+   na etapa seguinte; até lá, agentes transit aparecem com
+   `route_status=unsupported_mode`.
 
 ## Execução cotidiana
 
@@ -85,7 +96,7 @@ normal deve ser:
 python scripts/clear_outputs.py
 python scripts/check_setup.py
 python scripts/prepare_region.py --region city
-python -m src.simulation.run_pilot
+python -m src.simulation.run_pilot --region city
 ```
 
 Não é necessário baixar novamente as redes OSM nem reprocessar o GTFS em
