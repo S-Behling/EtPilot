@@ -216,15 +216,24 @@ def _validate_choice_config(
                 )
 
 
-def _prepare_destinations(destinations):
+def _prepare_destinations(
+    destinations,
+    modes: tuple[str, ...] | list[str],
+    node_prefix: str,
+):
     """Valida e prepara a base final de destinos CNEFE."""
+
+    node_columns = {
+        mode: f"{node_prefix}{mode}"
+        for mode in modes
+    }
 
     required_columns = {
         "destination_id",
         "category",
-        "node",
         "destination_weight",
         "geometry",
+        *node_columns.values(),
     }
 
     missing = required_columns - set(destinations.columns)
@@ -249,17 +258,24 @@ def _prepare_destinations(destinations):
         errors="coerce",
     )
 
-    result["node"] = pd.to_numeric(
-        result["node"],
-        errors="coerce",
-    )
+    for column in node_columns.values():
+        result[column] = pd.to_numeric(
+            result[column],
+            errors="coerce",
+        )
 
-    result = result[
+    valid_mask = (
         result["geometry"].notna()
         & result["category"].notna()
-        & result["node"].notna()
         & result["destination_weight"].notna()
         & (result["destination_weight"] > 0)
+    )
+
+    for column in node_columns.values():
+        valid_mask &= result[column].notna()
+
+    result = result[
+        valid_mask
     ].copy()
 
     if result.empty:
@@ -277,6 +293,8 @@ def assign_destinations(
     choice_config: dict,
     seed: int = 42,
     max_trip_distance_m: float | None = None,
+    modes: tuple[str, ...] | list[str] = ("walk", "bike", "car"),
+    node_prefix: str = "node_",
 ) -> list[Agent]:
     """
     Atribui um destino a cada agente.
@@ -301,8 +319,9 @@ def assign_destinations(
     Returns
     -------
     list[Agent]
-        Os próprios agentes, com `destination_id` e `destination_node`
-        preenchidos.
+        Os próprios agentes, com `destination_id` e os nós por modo
+        armazenados em `destination_nodes`. O `destination_node`
+        efetivo é definido somente depois da escolha modal.
 
     Notes
     -----
@@ -354,7 +373,9 @@ def assign_destinations(
             )
 
     destinations = _prepare_destinations(
-        destinations
+        destinations,
+        modes=modes,
+        node_prefix=node_prefix,
     )
 
     attractiveness_exponent = float(
@@ -450,7 +471,11 @@ def assign_destinations(
 
     probability_cache: dict[
         tuple[object, str, str],
-        tuple[pd.DataFrame, np.ndarray],
+        tuple[
+            pd.DataFrame,
+            np.ndarray,
+            np.ndarray,
+        ],
     ] = {}
 
     for agent in agents:
@@ -563,10 +588,11 @@ def assign_destinations(
                 cache_key
             ] = (
                 candidates,
+                distances_m,
                 probabilities,
             )
 
-        candidates, probabilities = (
+        candidates, distances_m, probabilities = (
             probability_cache[
                 cache_key
             ]
@@ -589,11 +615,24 @@ def assign_destinations(
             ]
         )
 
-        agent.destination_node = int(
-            selected_destination[
-                "node"
+        agent.destination_nodes = {
+            mode: int(
+                selected_destination[
+                    f"{node_prefix}{mode}"
+                ]
+            )
+            for mode in modes
+        }
+
+        # Registra a distância euclidiana usada como impedância pré-roteamento
+        agent.od_distance_m = float(
+            distances_m[
+                position
             ]
         )
+
+        # Mantém o nó efetivo indefinido até a escolha modal
+        agent.destination_node = None
 
     return agents
 
@@ -622,6 +661,9 @@ def destination_choice_summary(
                 "origin_id": agent.origin_id,
                 "destination_id": (
                     agent.destination_id
+                ),
+                "od_distance_m": (
+                    agent.od_distance_m
                 ),
                 "destination_node": (
                     agent.destination_node
