@@ -364,6 +364,128 @@ def plot_agent_routes(
 
     return fig, ax
 
+
+def plot_transit_agent_routes(
+    *,
+    agents,
+    walk_graph: nx.MultiDiGraph,
+    physical_edges: gpd.GeoDataFrame,
+    connection_to_physical_edge,
+    sample_size: int = 50,
+    title: str = "Rotas de transporte coletivo",
+):
+    """Plota acesso/egresso a pé e trechos físicos GTFS dos agentes transit."""
+
+    from shapely.geometry import LineString
+
+    if sample_size <= 0:
+        raise ValueError("sample_size precisa ser maior que zero.")
+
+    fig, ax = plt.subplots()
+
+    mapping = connection_to_physical_edge.copy()
+    mapping["connection_id"] = mapping["connection_id"].astype(str)
+    mapping["transit_physical_edge_id"] = (
+        mapping["transit_physical_edge_id"].astype(str)
+    )
+
+    edges = physical_edges.copy()
+    edges["transit_physical_edge_id"] = (
+        edges["transit_physical_edge_id"].astype(str)
+    )
+
+    plotted = 0
+
+    for agent in agents:
+        if plotted >= sample_size:
+            break
+
+        mode = getattr(agent, "mode", None)
+        mode_name = (
+            mode.value
+            if hasattr(mode, "value")
+            else str(mode)
+        )
+
+        if mode_name != "transit":
+            continue
+
+        connection_ids = list(
+            getattr(agent, "transit_connection_ids", [])
+        )
+
+        if not connection_ids:
+            continue
+
+        physical_ids = (
+            mapping.loc[
+                mapping["connection_id"].isin(
+                    [str(value) for value in connection_ids]
+                ),
+                "transit_physical_edge_id",
+            ]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        route_edges = edges.loc[
+            edges["transit_physical_edge_id"].isin(physical_ids)
+        ]
+
+        if not route_edges.empty:
+            route_edges.plot(
+                ax=ax,
+                linewidth=1.1,
+            )
+
+        walk_segments = []
+
+        for edge_list in (
+            getattr(agent, "transit_access_walk_edges", []),
+            getattr(agent, "transit_egress_walk_edges", []),
+        ):
+            for u, v, key in edge_list:
+                attributes = walk_graph.get_edge_data(
+                    int(u),
+                    int(v),
+                    int(key),
+                )
+
+                if not attributes:
+                    continue
+
+                geometry = attributes.get("geometry")
+
+                if geometry is None:
+                    origin = walk_graph.nodes[int(u)]
+                    destination = walk_graph.nodes[int(v)]
+                    geometry = LineString(
+                        [
+                            (origin["x"], origin["y"]),
+                            (destination["x"], destination["y"]),
+                        ]
+                    )
+
+                walk_segments.append(geometry)
+
+        if walk_segments:
+            gpd.GeoSeries(
+                walk_segments,
+                crs=walk_graph.graph.get("crs"),
+            ).plot(
+                ax=ax,
+                linewidth=0.8,
+            )
+
+        plotted += 1
+
+    ax.set_title(f"{title} — n={plotted}")
+    ax.set_axis_off()
+
+    return fig, ax
+
 def save_plot(
     fig,
     path: str | Path,
