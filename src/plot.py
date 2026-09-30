@@ -486,6 +486,133 @@ def plot_transit_agent_routes(
 
     return fig, ax
 
+
+def plot_edge_usage(
+    *,
+    edge_usage,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    transit_physical_edges: gpd.GeoDataFrame,
+    title: str = "Uso das redes",
+):
+    """Plota intensidade de uso das arestas por número de travessias."""
+
+    if edge_usage.empty:
+        raise ValueError("edge_usage está vazio.")
+
+    fig, ax = plt.subplots()
+
+    counts = (
+        edge_usage.groupby(
+            ["network_mode", "edge_id"],
+            as_index=False,
+        )
+        .size()
+        .rename(columns={"size": "n_traversals"})
+    )
+
+    for mode in ("walk", "bike", "car"):
+        if mode not in graphs:
+            continue
+
+        mode_counts = counts.loc[
+            counts["network_mode"] == mode
+        ].copy()
+
+        if mode_counts.empty:
+            continue
+
+        graph = graphs[mode]
+        _, edges = ox.graph_to_gdfs(
+            graph,
+            nodes=True,
+            edges=True,
+        )
+
+        edges = edges.reset_index()
+        edges["edge_id"] = (
+            mode
+            + ":"
+            + edges["u"].astype(str)
+            + ":"
+            + edges["v"].astype(str)
+            + ":"
+            + edges["key"].astype(str)
+        )
+
+        merged = edges.merge(
+            mode_counts,
+            on="edge_id",
+            how="inner",
+        )
+
+        if merged.empty:
+            continue
+
+        max_count = max(
+            float(merged["n_traversals"].max()),
+            1.0,
+        )
+        linewidth = (
+            0.4
+            + 3.0
+            * merged["n_traversals"].astype(float)
+            / max_count
+        )
+
+        gpd.GeoDataFrame(
+            merged,
+            geometry="geometry",
+            crs=edges.crs,
+        ).plot(
+            ax=ax,
+            linewidth=linewidth,
+            label=mode,
+        )
+
+    transit_counts = counts.loc[
+        counts["network_mode"] == "transit"
+    ].copy()
+
+    if not transit_counts.empty:
+        transit = transit_physical_edges.copy()
+        transit["transit_physical_edge_id"] = (
+            transit["transit_physical_edge_id"].astype(str)
+        )
+        transit["edge_id"] = (
+            "transit:"
+            + transit["transit_physical_edge_id"]
+        )
+
+        transit = transit.merge(
+            transit_counts,
+            on="edge_id",
+            how="inner",
+        )
+
+        if not transit.empty:
+            max_count = max(
+                float(transit["n_traversals"].max()),
+                1.0,
+            )
+            linewidth = (
+                0.4
+                + 3.0
+                * transit["n_traversals"].astype(float)
+                / max_count
+            )
+
+            transit.plot(
+                ax=ax,
+                linewidth=linewidth,
+                label="transit",
+            )
+
+    ax.set_title(title)
+    ax.set_axis_off()
+    ax.legend()
+
+    return fig, ax
+
 def save_plot(
     fig,
     path: str | Path,
