@@ -11,6 +11,10 @@ from __future__ import annotations
 
 import argparse
 
+from _bootstrap import add_project_root_to_path
+
+add_project_root_to_path()
+
 import osmnx as ox
 
 from src.core.config import load_project_config
