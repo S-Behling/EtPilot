@@ -196,6 +196,93 @@ def plot_transit_state(
     return fig, ax
 
 
+
+def plot_modal_snapping(
+    *,
+    study_area: StudyArea,
+    points: gpd.GeoDataFrame,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    sample_size: int = 100,
+    title: str | None = None,
+):
+    """Plota pontos e os respectivos nós associados em cada rede modal."""
+
+    if points.empty:
+        raise ValueError("Não há pontos para visualizar o snapping.")
+
+    if sample_size <= 0:
+        raise ValueError("sample_size precisa ser maior que zero.")
+
+    sample = points.head(sample_size).copy()
+
+    fig, ax = plt.subplots()
+
+    gpd.GeoSeries(
+        [study_area.geometry],
+        crs=study_area.crs,
+    ).boundary.plot(ax=ax)
+
+    sample.to_crs(study_area.crs).plot(
+        ax=ax,
+        marker="o",
+        markersize=16,
+        label="Pontos",
+    )
+
+    for mode, graph in graphs.items():
+        column = f"node_{mode}"
+
+        if column not in sample.columns:
+            continue
+
+        nodes, _ = ox.graph_to_gdfs(
+            graph,
+            nodes=True,
+            edges=True,
+        )
+        nodes = nodes.to_crs(study_area.crs)
+
+        selected_ids = [
+            node_id
+            for node_id in sample[column].dropna()
+            if node_id in nodes.index
+        ]
+
+        if not selected_ids:
+            continue
+
+        selected_nodes = nodes.loc[selected_ids]
+        selected_nodes.plot(
+            ax=ax,
+            marker="x",
+            markersize=20,
+            label=f"Nós {mode}",
+        )
+
+        sample_projected = sample.to_crs(study_area.crs)
+
+        for row_index, row in sample_projected.iterrows():
+            node_id = row.get(column)
+
+            if node_id not in nodes.index:
+                continue
+
+            node_geometry = nodes.loc[node_id].geometry
+
+            ax.plot(
+                [row.geometry.x, node_geometry.x],
+                [row.geometry.y, node_geometry.y],
+                linewidth=0.5,
+            )
+
+    ax.set_title(
+        title or f"Snapping modal — {study_area.label}"
+    )
+    ax.set_axis_off()
+    ax.legend()
+
+    return fig, ax
+
 def save_plot(
     fig,
     path: str | Path,
