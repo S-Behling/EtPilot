@@ -1051,21 +1051,36 @@ class PipelineApp(tk.Tk):
             pady=5,
         )
 
-        tk.Entry(
+        field = RoundedPanel(
             parent,
+            fill=PALETTE["white"],
+            outline=PALETTE["border"],
+            radius=14,
+            padding=1,
+            background=PALETTE["surface"],
+            height=34,
+        )
+        field.grid(
+            row=row,
+            column=1,
+            sticky="ew",
+            pady=5,
+        )
+
+        tk.Entry(
+            field.body,
             textvariable=variable,
             bg=PALETTE["white"],
             fg=PALETTE["ink"],
             insertbackground=PALETTE["ink"],
             font=FONT,
-            relief="solid",
-            bd=1,
-        ).grid(
-            row=row,
-            column=1,
-            sticky="ew",
+            relief="flat",
+            bd=0,
+        ).pack(
+            fill="both",
+            expand=True,
+            padx=10,
             pady=5,
-            ipady=4,
         )
 
     @staticmethod
