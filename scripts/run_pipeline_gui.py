@@ -24,6 +24,13 @@ from src.core.config import (
 )
 from src.domain.enums import IncomeGroup
 from src.pipeline.config import (
+    AVAILABLE_PLOTS,
+    PLOT_EDGE_USAGE,
+    PLOT_EDGE_USAGE_BY_INCOME,
+    PLOT_EDGE_USAGE_BY_MODE,
+    PLOT_EDGE_USAGE_BY_MODE_INCOME,
+    PLOT_ROUTES_OSM,
+    PLOT_ROUTES_TRANSIT,
     PilotRunConfig,
     SimulationPeriod,
 )
@@ -68,6 +75,15 @@ INCOME_LABELS = {
     IncomeGroup.LOW: "Baixa",
     IncomeGroup.MIDDLE: "Média",
     IncomeGroup.HIGH: "Alta",
+}
+
+PLOT_LABELS = {
+    PLOT_ROUTES_OSM: "Rotas OSM dos agentes",
+    PLOT_ROUTES_TRANSIT: "Rotas de transporte coletivo",
+    PLOT_EDGE_USAGE: "Uso geral das redes",
+    PLOT_EDGE_USAGE_BY_MODE: "Trechos por modo de viagem",
+    PLOT_EDGE_USAGE_BY_INCOME: "Trechos por classe social",
+    PLOT_EDGE_USAGE_BY_MODE_INCOME: "Trechos por modo + classe social",
 }
 
 
@@ -227,6 +243,11 @@ class PipelineApp(tk.Tk):
             value=False
         )
 
+        self.plot_vars = {
+            plot_name: tk.BooleanVar(value=True)
+            for plot_name in AVAILABLE_PLOTS
+        }
+
         self.status_var = tk.StringVar(
             value="Pronto."
         )
@@ -247,8 +268,49 @@ class PipelineApp(tk.Tk):
 
         self._build_title_bar(outer)
 
+        notebook = ttk.Notebook(outer)
+        notebook.pack(
+            fill="both",
+            expand=True,
+            padx=8,
+            pady=(6, 0),
+        )
+
+        config_tab = tk.Frame(
+            notebook,
+            bg=WIN95["face"],
+        )
+        maps_tab = tk.Frame(
+            notebook,
+            bg=WIN95["face"],
+        )
+
+        notebook.add(
+            config_tab,
+            text=" Configuração ",
+        )
+        notebook.add(
+            maps_tab,
+            text=" Mapas ",
+        )
+
+        self._build_config_tab(
+            config_tab
+        )
+        self._build_maps_tab(
+            maps_tab
+        )
+
+        self._build_footer(
+            outer
+        )
+
+    def _build_config_tab(
+        self,
+        parent: tk.Widget,
+    ) -> None:
         content = tk.Frame(
-            outer,
+            parent,
             bg=WIN95["face"],
             padx=8,
             pady=8,
@@ -283,9 +345,7 @@ class PipelineApp(tk.Tk):
             row=0,
             column=0,
         )
-        self._build_spatial_group(
-            spatial
-        )
+        self._build_spatial_group(spatial)
 
         population = self._group(
             content,
@@ -303,9 +363,7 @@ class PipelineApp(tk.Tk):
             row=1,
             column=0,
         )
-        self._build_temporal_group(
-            temporal
-        )
+        self._build_temporal_group(temporal)
 
         preparation = self._group(
             content,
@@ -317,9 +375,155 @@ class PipelineApp(tk.Tk):
             preparation
         )
 
-        self._build_footer(
-            outer
+    def _build_maps_tab(
+        self,
+        parent: tk.Widget,
+    ) -> None:
+        content = tk.Frame(
+            parent,
+            bg=WIN95["face"],
+            padx=12,
+            pady=12,
         )
+        content.pack(
+            fill="both",
+            expand=True,
+        )
+
+        selector = tk.LabelFrame(
+            content,
+            text=" Mapas a gerar ",
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            font=FONT_BOLD,
+            bd=2,
+            relief="groove",
+            padx=12,
+            pady=10,
+        )
+        selector.pack(
+            fill="x",
+        )
+
+        for row, plot_name in enumerate(
+            AVAILABLE_PLOTS
+        ):
+            tk.Checkbutton(
+                selector,
+                text=PLOT_LABELS[plot_name],
+                variable=self.plot_vars[
+                    plot_name
+                ],
+                bg=WIN95["face"],
+                activebackground=WIN95["face"],
+                fg=WIN95["text"],
+                activeforeground=WIN95["text"],
+                selectcolor=WIN95["field"],
+                font=FONT,
+                bd=0,
+                highlightthickness=0,
+                anchor="w",
+            ).grid(
+                row=row,
+                column=0,
+                sticky="w",
+                pady=4,
+            )
+
+        buttons = tk.Frame(
+            selector,
+            bg=WIN95["face"],
+        )
+        buttons.grid(
+            row=len(AVAILABLE_PLOTS),
+            column=0,
+            sticky="w",
+            pady=(10, 0),
+        )
+
+        tk.Button(
+            buttons,
+            text="Selecionar todos",
+            command=lambda: self._set_all_plots(
+                True
+            ),
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            activebackground=WIN95["light"],
+            font=FONT,
+            relief="raised",
+            bd=2,
+            padx=10,
+            pady=3,
+        ).pack(
+            side="left",
+        )
+
+        tk.Button(
+            buttons,
+            text="Limpar seleção",
+            command=lambda: self._set_all_plots(
+                False
+            ),
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            activebackground=WIN95["light"],
+            font=FONT,
+            relief="raised",
+            bd=2,
+            padx=10,
+            pady=3,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        legend = tk.LabelFrame(
+            content,
+            text=" Convenção visual dos mapas ",
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            font=FONT_BOLD,
+            bd=2,
+            relief="groove",
+            padx=12,
+            pady=10,
+        )
+        legend.pack(
+            fill="both",
+            expand=True,
+            pady=(12, 0),
+        )
+
+        tk.Label(
+            legend,
+            text=(
+                "Classe social = cor\n"
+                "Baixa: Lavender Gray  #CABAD7\n"
+                "Média: Eggplant       #4F364B\n"
+                "Alta:  Cinnabar       #DB3E1D\n\n"
+                "Modo de viagem = tipo de linha\n"
+                "Walk: pontilhada\n"
+                "Bike: tracejada\n"
+                "Carro: contínua\n"
+                "Ônibus: contínua com setas\n\n"
+                "Fundo dos mapas: Albescant White  #F7E9DE"
+            ),
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            font=FONT,
+            justify="left",
+            anchor="nw",
+        ).pack(
+            anchor="nw",
+        )
+
+    def _set_all_plots(
+        self,
+        selected: bool,
+    ) -> None:
+        for variable in self.plot_vars.values():
+            variable.set(selected)
 
     def _build_title_bar(
         self,
@@ -787,6 +991,12 @@ class PipelineApp(tk.Tk):
             ),
             force_network_download=(
                 self.force_network_var.get()
+            ),
+            selected_plots=tuple(
+                plot_name
+                for plot_name, variable
+                in self.plot_vars.items()
+                if variable.get()
             ),
         )
 
