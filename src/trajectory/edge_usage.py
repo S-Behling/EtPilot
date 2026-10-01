@@ -277,3 +277,72 @@ def _prepare_transit_mapping(
     )
 
     return result
+
+
+
+def edge_composition_summary(
+    edge_usage: pd.DataFrame,
+) -> pd.DataFrame:
+    """Resume quais modos e grupos de renda utilizaram cada aresta modal.
+
+    A unidade ainda é a aresta de cada rede modal. A unificação entre redes
+    distintas em um mesmo segmento físico será tratada em etapa posterior.
+    """
+
+    if edge_usage.empty:
+        return pd.DataFrame(
+            columns=[
+                "network_mode",
+                "edge_id",
+                "trip_modes",
+                "income_groups",
+                "n_trip_modes",
+                "n_income_groups",
+                "n_traversals",
+                "n_agents",
+            ]
+        )
+
+    required = {
+        "network_mode",
+        "edge_id",
+        "trip_mode",
+        "income_group",
+        "agent_id",
+    }
+
+    missing = required - set(edge_usage.columns)
+
+    if missing:
+        raise ValueError(
+            "edge_usage não possui as colunas obrigatórias: "
+            f"{sorted(missing)}"
+        )
+
+    def join_unique(series: pd.Series) -> str:
+        values = sorted(
+            {
+                str(value)
+                for value in series.dropna()
+            }
+        )
+        return "|".join(values)
+
+    return (
+        edge_usage.groupby(
+            [
+                "network_mode",
+                "edge_id",
+            ],
+            as_index=False,
+            dropna=False,
+        )
+        .agg(
+            trip_modes=("trip_mode", join_unique),
+            income_groups=("income_group", join_unique),
+            n_trip_modes=("trip_mode", "nunique"),
+            n_income_groups=("income_group", "nunique"),
+            n_traversals=("agent_id", "size"),
+            n_agents=("agent_id", "nunique"),
+        )
+    )
