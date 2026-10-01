@@ -373,6 +373,7 @@ Além dos CSVs, são produzidos automaticamente dois mapas analíticos:
 ```text
 edge_usage_by_mode.png
 edge_usage_by_income.png
+edge_usage_by_mode_income.png
 ```
 
 `edge_usage_by_mode.png` possui painéis separados por modo de viagem e mostra
@@ -382,6 +383,12 @@ coletivo. A espessura das linhas cresce com o número de travessias.
 `edge_usage_by_income.png` possui painéis separados por classe social e mostra
 quais trechos foram utilizados pelos grupos de baixa, média e alta renda,
 também com espessura proporcional ao número de travessias.
+
+`edge_usage_by_mode_income.png` cruza as duas dimensões. Cada painel representa
+uma combinação entre modo de viagem e classe social, por exemplo
+`car | high`, `transit | low` ou `walk | middle`. Esse mapa é o mais
+direto para observar quais grupos sociais, usando quais modos, aparecem em
+cada trecho da rede.
 
 O arquivo:
 
@@ -463,7 +470,8 @@ outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/
 ├── routes_transit.png
 ├── edge_usage.png
 ├── edge_usage_by_mode.png
-└── edge_usage_by_income.png
+├── edge_usage_by_income.png
+└── edge_usage_by_mode_income.png
 ```
 
 ---
@@ -529,7 +537,8 @@ Atualmente estão disponíveis diagnósticos para:
 - rotas de transporte coletivo;
 - intensidade de uso das arestas;
 - uso dos trechos separado por modo de viagem;
-- uso dos trechos separado por classe social.
+- uso dos trechos separado por classe social;
+- uso dos trechos cruzando modo de viagem e classe social.
 
 ---
 
