@@ -521,6 +521,29 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         f"{len(mandatory_maps)} arquivo(s) gerado(s)",
     )
 
+    # Atualiza o metadado da rodada com os arquivos efetivamente produzidos.
+    # Isso deixa explícito quando o mapa 09 foi omitido por n_agents >= 40.
+    metadata["mandatory_map_files"] = {
+        name: str(
+            path.relative_to(output_dir)
+        )
+        for name, path
+        in mandatory_maps.items()
+    }
+
+    with (
+        output_dir / "run_config.json"
+    ).open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            metadata,
+            file,
+            indent=2,
+            ensure_ascii=False,
+        )
+
     selected_plots = set(
         run_config.selected_plots
     )
