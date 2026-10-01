@@ -816,8 +816,15 @@ def _plot_transit_arrows(
 def _plot_styled_edge_usage(
     ax,
     usage_geometry: gpd.GeoDataFrame,
+    *,
+    force_solid: bool = False,
 ) -> None:
-    """Plota uso de arestas usando cor por renda e linha por modo."""
+    """Plota uso de arestas usando cor por renda e linha por modo.
+
+    Quando force_solid=True, todos os trechos ficam contínuos. Isso atende à
+    regra cartográfica de simplificar mapas que já mostram apenas um único
+    modo de viagem.
+    """
 
     if usage_geometry.empty:
         return
@@ -874,9 +881,13 @@ def _plot_styled_edge_usage(
             income_key,
             MAP_NEUTRAL,
         )
-        linestyle = MODE_LINESTYLES.get(
-            mode_key,
-            "solid",
+        linestyle = (
+            "solid"
+            if force_solid
+            else MODE_LINESTYLES.get(
+                mode_key,
+                "solid",
+            )
         )
 
         linewidths = (
@@ -915,6 +926,8 @@ def _plot_styled_edge_usage(
 def _add_usage_legends(
     ax,
     usage_geometry: gpd.GeoDataFrame,
+    *,
+    force_solid: bool = False,
 ) -> None:
     present_incomes = [
         income
@@ -966,9 +979,13 @@ def _add_usage_legends(
         kwargs = {
             "color": MAP_NEUTRAL,
             "linewidth": 2,
-            "linestyle": MODE_LINESTYLES[
-                mode
-            ],
+            "linestyle": (
+                "solid"
+                if force_solid
+                else MODE_LINESTYLES[
+                    mode
+                ]
+            ),
             "label": MODE_LABELS[
                 mode
             ],
@@ -1268,9 +1285,19 @@ def plot_edge_usage_by_category(
             == value
         ].copy()
 
+        # Se o painel contém apenas um modo de viagem, a diferenciação
+        # por tracejado deixa de ser necessária e todas as linhas ficam contínuas.
+        single_trip_mode = (
+            subset["trip_mode"]
+            .astype(str)
+            .nunique()
+            <= 1
+        )
+
         _plot_styled_edge_usage(
             ax,
             subset,
+            force_solid=single_trip_mode,
         )
 
         apply_study_area_view(
@@ -1281,6 +1308,7 @@ def plot_edge_usage_by_category(
         _add_usage_legends(
             ax,
             subset,
+            force_solid=single_trip_mode,
         )
 
         ax.set_title(
