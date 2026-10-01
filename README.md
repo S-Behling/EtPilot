@@ -194,6 +194,22 @@ seleção fica registrada em `run_config.json` através do campo
 Quando o pipeline é iniciado pelo terminal, todos os mapas continuam
 selecionados por padrão.
 
+
+### Origem e destino em amostras pequenas
+
+Quando a execução possui **menos de 20 agentes**, os mapas de rotas mostram
+também os pontos individuais de origem e destino:
+
+```text
+X  → origem do agente
+○  → destino do agente
+```
+
+Os marcadores usam a mesma cor associada à classe de renda do agente. Para
+20 agentes ou mais, esses símbolos são omitidos automaticamente para evitar
+poluição visual. Essa regra se aplica aos mapas de rotas OSM e de transporte
+coletivo.
+
 ### Convenção visual dos mapas
 
 Os mapas de uso da rede seguem uma convenção única para permitir leitura
