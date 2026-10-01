@@ -15,20 +15,31 @@ VALID_PERIOD_UNITS = {"hours", "days"}
 VALID_SCENARIOS = {"baseline", "differentiated"}
 VALID_REGION_MODES = {"analysis", "plot_only"}
 
-PLOT_ROUTES_OSM = "routes_osm"
-PLOT_ROUTES_TRANSIT = "routes_transit"
-PLOT_EDGE_USAGE = "edge_usage"
-PLOT_EDGE_USAGE_BY_MODE = "edge_usage_by_mode"
-PLOT_EDGE_USAGE_BY_INCOME = "edge_usage_by_income"
-PLOT_EDGE_USAGE_BY_MODE_INCOME = "edge_usage_by_mode_income"
+PLOT_MODE_ALL_INCOMES = "mode_all_incomes"
+PLOT_BIKE_BY_INCOME = "bike_by_income"
+PLOT_WALK_BY_INCOME = "walk_by_income"
+PLOT_CAR_BY_INCOME = "car_by_income"
+PLOT_TRANSIT_BY_INCOME = "transit_by_income"
+PLOT_CENSUS_INCOME = "census_income"
+PLOT_CENSUS_ALL_MODES = "census_all_modes"
+PLOT_ALL_NETWORKS = "all_networks"
+PLOT_AGENT_UNIQUE = "agent_unique"
+PLOT_MODE_FREQUENCY_BY_INCOME = "mode_frequency_by_income"
 
+# Somente estes produtos aparecem na GUI e podem ser gerados pelo piloto.
+# Alguns itens produzem mais de um arquivo (por exemplo, um por modo ou por
+# classe social), mas a seleção na interface é feita por grupo lógico.
 AVAILABLE_PLOTS = (
-    PLOT_ROUTES_OSM,
-    PLOT_ROUTES_TRANSIT,
-    PLOT_EDGE_USAGE,
-    PLOT_EDGE_USAGE_BY_MODE,
-    PLOT_EDGE_USAGE_BY_INCOME,
-    PLOT_EDGE_USAGE_BY_MODE_INCOME,
+    PLOT_MODE_ALL_INCOMES,
+    PLOT_BIKE_BY_INCOME,
+    PLOT_WALK_BY_INCOME,
+    PLOT_CAR_BY_INCOME,
+    PLOT_TRANSIT_BY_INCOME,
+    PLOT_CENSUS_INCOME,
+    PLOT_CENSUS_ALL_MODES,
+    PLOT_ALL_NETWORKS,
+    PLOT_AGENT_UNIQUE,
+    PLOT_MODE_FREQUENCY_BY_INCOME,
 )
 
 
