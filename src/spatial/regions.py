@@ -117,10 +117,10 @@ def select_neighborhoods(
         source_name="malha de bairros",
     )
 
-    if name_field not in neighborhoods.columns:
-        raise KeyError(
-            f"Coluna '{name_field}' ausente na malha de bairros."
-        )
+    resolved_name_field = _resolve_name_field(
+        neighborhoods,
+        requested_field=name_field,
+    )
 
     requested = {
         _normalize_name(name)
@@ -145,7 +145,7 @@ def select_neighborhoods(
             ] = canonical
 
     normalized = (
-        neighborhoods[name_field]
+        neighborhoods[resolved_name_field]
         .astype("string")
         .map(_normalize_name)
     )
@@ -175,6 +175,77 @@ def select_neighborhoods(
 
     return selected
 
+
+
+def _resolve_name_field(
+    neighborhoods: gpd.GeoDataFrame,
+    *,
+    requested_field: str,
+) -> str:
+    """Resolve automaticamente a coluna que contém o nome do bairro.
+
+    A malha oficial pode chegar com nomes de coluna diferentes conforme a
+    versão/exportação. Primeiro tenta o campo configurado e depois procura
+    alternativas usuais de forma determinística.
+    """
+
+    if requested_field in neighborhoods.columns:
+        return requested_field
+
+    columns = [
+        column
+        for column in neighborhoods.columns
+        if column != neighborhoods.geometry.name
+    ]
+
+    normalized = {
+        _normalize_name(column): column
+        for column in columns
+    }
+
+    preferred = (
+        _normalize_name(requested_field),
+        "nm bairro",
+        "nome bairro",
+        "bairro",
+        "nome",
+        "name",
+    )
+
+    for candidate in preferred:
+        if candidate in normalized:
+            return normalized[candidate]
+
+    bairro_candidates = [
+        original
+        for normalized_name, original
+        in normalized.items()
+        if "bairro" in normalized_name
+    ]
+
+    if len(bairro_candidates) == 1:
+        return bairro_candidates[0]
+
+    available = ", ".join(
+        str(column)
+        for column in neighborhoods.columns
+    )
+
+    if bairro_candidates:
+        candidates_text = ", ".join(
+            bairro_candidates
+        )
+        raise KeyError(
+            "Não foi possível decidir automaticamente qual coluna contém "
+            "o nome do bairro. Candidatas: "
+            f"{candidates_text}. Colunas disponíveis: {available}"
+        )
+
+    raise KeyError(
+        f"Coluna '{requested_field}' ausente na malha de bairros e nenhuma "
+        "alternativa reconhecível foi encontrada. "
+        f"Colunas disponíveis: {available}"
+    )
 
 def _union_geometry(
     gdf: gpd.GeoDataFrame,
