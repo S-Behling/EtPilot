@@ -14,6 +14,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
 import osmnx as ox
+import pandas as pd
 
 from src.spatial.regional_data import RegionalData
 from src.spatial.study_area import StudyArea
@@ -667,6 +668,254 @@ def plot_edge_usage(
     ax.legend()
 
     return fig, ax
+
+
+def _edge_usage_geometry(
+    *,
+    edge_usage,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    transit_physical_edges: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    """Associa os registros de uso às geometrias das respectivas redes."""
+
+    frames = []
+
+    for mode in ("walk", "bike", "car"):
+        mode_usage = edge_usage.loc[
+            edge_usage["network_mode"] == mode
+        ].copy()
+
+        if mode_usage.empty or mode not in graphs:
+            continue
+
+        _, edges = ox.graph_to_gdfs(
+            graphs[mode],
+            nodes=True,
+            edges=True,
+        )
+
+        edges = edges.reset_index()
+        edges["edge_id"] = (
+            mode
+            + ":"
+            + edges["u"].astype(str)
+            + ":"
+            + edges["v"].astype(str)
+            + ":"
+            + edges["key"].astype(str)
+        )
+
+        merged = mode_usage.merge(
+            edges[
+                [
+                    "edge_id",
+                    "geometry",
+                ]
+            ],
+            on="edge_id",
+            how="inner",
+        )
+
+        if not merged.empty:
+            frames.append(
+                gpd.GeoDataFrame(
+                    merged,
+                    geometry="geometry",
+                    crs=edges.crs,
+                )
+            )
+
+    transit_usage = edge_usage.loc[
+        edge_usage["network_mode"] == "transit"
+    ].copy()
+
+    if not transit_usage.empty:
+        transit = transit_physical_edges.copy()
+        transit["transit_physical_edge_id"] = (
+            transit["transit_physical_edge_id"].astype(str)
+        )
+        transit["edge_id"] = (
+            "transit:"
+            + transit["transit_physical_edge_id"]
+        )
+
+        merged = transit_usage.merge(
+            transit[
+                [
+                    "edge_id",
+                    "geometry",
+                ]
+            ],
+            on="edge_id",
+            how="inner",
+        )
+
+        if not merged.empty:
+            frames.append(
+                gpd.GeoDataFrame(
+                    merged,
+                    geometry="geometry",
+                    crs=transit.crs,
+                )
+            )
+
+    if not frames:
+        return gpd.GeoDataFrame(
+            columns=[
+                *edge_usage.columns,
+                "geometry",
+            ],
+            geometry="geometry",
+        )
+
+    target_crs = frames[0].crs
+
+    normalized = [
+        frame.to_crs(target_crs)
+        if frame.crs != target_crs
+        else frame
+        for frame in frames
+    ]
+
+    return gpd.GeoDataFrame(
+        pd.concat(
+            normalized,
+            ignore_index=True,
+        ),
+        geometry="geometry",
+        crs=target_crs,
+    )
+
+
+def plot_edge_usage_by_category(
+    *,
+    edge_usage,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    transit_physical_edges: gpd.GeoDataFrame,
+    category: str,
+    study_area: StudyArea | None = None,
+    title: str | None = None,
+):
+    """Plota um painel por categoria mostrando os trechos efetivamente usados.
+
+    Use category="trip_mode" para comparar modos de viagem e
+    category="income_group" para comparar classes sociais.
+    A espessura da linha representa o número de travessias do grupo no trecho.
+    """
+
+    if edge_usage.empty:
+        raise ValueError("edge_usage está vazio.")
+
+    if category not in edge_usage.columns:
+        raise KeyError(
+            f"Categoria '{category}' não existe em edge_usage."
+        )
+
+    usage_geometry = _edge_usage_geometry(
+        edge_usage=edge_usage,
+        graphs=graphs,
+        transit_physical_edges=transit_physical_edges,
+    )
+
+    if usage_geometry.empty:
+        raise ValueError(
+            "Nenhuma geometria pôde ser associada aos registros de uso."
+        )
+
+    categories = sorted(
+        str(value)
+        for value in usage_geometry[category]
+        .dropna()
+        .unique()
+    )
+
+    if not categories:
+        raise ValueError(
+            f"Nenhum valor válido encontrado em '{category}'."
+        )
+
+    ncols = min(2, len(categories))
+    nrows = (
+        len(categories)
+        + ncols
+        - 1
+    ) // ncols
+
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=(
+            8 * ncols,
+            7 * nrows,
+        ),
+        squeeze=False,
+    )
+
+    flat_axes = axes.ravel()
+
+    for ax, value in zip(
+        flat_axes,
+        categories,
+    ):
+        subset = usage_geometry.loc[
+            usage_geometry[category].astype(str)
+            == value
+        ].copy()
+
+        counts = (
+            subset.groupby(
+                "edge_id",
+                as_index=False,
+            )
+            .agg(
+                n_traversals=("agent_id", "size"),
+                geometry=("geometry", "first"),
+            )
+        )
+
+        counts = gpd.GeoDataFrame(
+            counts,
+            geometry="geometry",
+            crs=usage_geometry.crs,
+        )
+
+        max_count = max(
+            float(counts["n_traversals"].max()),
+            1.0,
+        )
+
+        linewidth = (
+            0.5
+            + 3.5
+            * counts["n_traversals"].astype(float)
+            / max_count
+        )
+
+        counts.plot(
+            ax=ax,
+            linewidth=linewidth,
+        )
+
+        apply_study_area_view(
+            ax,
+            study_area,
+        )
+
+        ax.set_title(
+            f"{value} — {int(counts['n_traversals'].sum())} travessias"
+        )
+        ax.set_axis_off()
+
+    for ax in flat_axes[len(categories):]:
+        ax.set_visible(False)
+
+    fig.suptitle(
+        title or f"Uso dos trechos por {category}",
+        fontsize=14,
+    )
+    fig.tight_layout()
+
+    return fig, axes
 
 def save_plot(
     fig,
