@@ -2475,31 +2475,176 @@ def plot_agent_routes_unique_colors(
     return fig, ax
 
 
-def generate_mandatory_maps(
+def plot_mode_frequency_by_income(
+    *,
+    choice_summary: pd.DataFrame,
+):
+    """Gráfico de barras da frequência modal por classe social.
+
+    O eixo X representa os modos de viagem. Para cada modo são mostradas
+    barras lado a lado para baixa, média e alta renda. As cores seguem a mesma
+    paleta usada nos mapas.
+    """
+
+    required_columns = {
+        "income_group",
+        "mode",
+    }
+
+    missing = (
+        required_columns
+        - set(choice_summary.columns)
+    )
+
+    if missing:
+        raise KeyError(
+            "Colunas ausentes para o gráfico modal: "
+            f"{sorted(missing)}"
+        )
+
+    # Reindexação explícita mantém as mesmas categorias entre rodadas,
+    # inclusive quando uma combinação classe x modo não aparece.
+    modes = [
+        "walk",
+        "bike",
+        "car",
+        "transit",
+    ]
+    incomes = [
+        "low",
+        "middle",
+        "high",
+    ]
+
+    counts = (
+        choice_summary.groupby(
+            [
+                "mode",
+                "income_group",
+            ]
+        )
+        .size()
+        .unstack(
+            fill_value=0
+        )
+        .reindex(
+            index=modes,
+            columns=incomes,
+            fill_value=0,
+        )
+    )
+
+    fig, ax = plt.subplots(
+        figsize=(10, 6)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    x = list(
+        range(
+            len(modes)
+        )
+    )
+    width = 0.24
+    offsets = {
+        "low": -width,
+        "middle": 0.0,
+        "high": width,
+    }
+
+    for income in incomes:
+        values = counts[
+            income
+        ].tolist()
+
+        ax.bar(
+            [
+                value
+                + offsets[income]
+                for value in x
+            ],
+            values,
+            width=width,
+            color=INCOME_COLORS[
+                income
+            ],
+            label=INCOME_LABELS[
+                income
+            ],
+        )
+
+    ax.set_xticks(
+        x,
+        [
+            MODE_LABELS[
+                mode
+            ]
+            for mode in modes
+        ],
+    )
+    ax.set_ylabel(
+        "Número de agentes"
+    )
+    ax.set_xlabel(
+        "Modo de viagem"
+    )
+    ax.set_title(
+        "Frequência dos modos de viagem por classe social"
+    )
+    ax.legend(
+        title="Classe social",
+        frameon=True,
+    )
+    ax.grid(
+        axis="y",
+        color="#E6E6E6",
+        linewidth=0.8,
+        alpha=0.8,
+    )
+    ax.set_axisbelow(
+        True
+    )
+
+    fig.tight_layout()
+
+    return fig, ax
+
+
+def generate_selected_plots(
     *,
     output_dir: str | Path,
+    selected_plots: tuple[str, ...],
     agents,
     graphs: Mapping[str, nx.MultiDiGraph],
     edge_usage: pd.DataFrame,
+    choice_summary: pd.DataFrame,
     transit_physical_edges: gpd.GeoDataFrame,
     connection_to_physical_edge,
     census_sectors: gpd.GeoDataFrame,
     study_area: StudyArea | None,
 ) -> dict[str, Path]:
-    """Gera e salva todo o conjunto obrigatório de mapas do piloto.
+    """Gera somente os produtos selecionados pelo usuário na interface.
 
-    A função centraliza a ordem e os nomes dos arquivos para que GUI e terminal
-    produzam exatamente o mesmo conjunto mínimo de figuras.
+    Alguns itens da GUI representam grupos de arquivos. Por exemplo,
+    mode_all_incomes produz quatro mapas, um para cada modo.
     """
 
-    mandatory_dir = Path(
-        output_dir
-    ) / "mandatory_maps"
-    mandatory_dir.mkdir(
+    plots_dir = (
+        Path(output_dir)
+        / "plots"
+    )
+    plots_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
+    selected = set(
+        selected_plots
+    )
+
+    # Estas conversões são custosas e por isso são feitas uma única vez.
     network_edges = (
         _network_edges_for_plot(
             graphs
@@ -2533,49 +2678,65 @@ def generate_mandatory_maps(
 
     generated: dict[str, Path] = {}
 
-    # ----------------------------------------------------------------------
-    # 1. Um mapa para cada modo, contendo todas as classes sociais.
-    # ----------------------------------------------------------------------
-    for trip_mode in (
-        "walk",
-        "bike",
-        "car",
-        "transit",
-    ):
-        fig, _ = (
-            plot_mandatory_mode_all_incomes(
-                usage_geometry=usage_geometry,
-                network_edges=network_edges,
-                transit_physical_edges=transit_physical_edges,
-                trip_mode=trip_mode,
-                study_area=study_area,
+    # 1. Um mapa para cada modo, com todas as classes sociais por cor.
+    if "mode_all_incomes" in selected:
+        for trip_mode in (
+            "walk",
+            "bike",
+            "car",
+            "transit",
+        ):
+            fig, _ = (
+                plot_mandatory_mode_all_incomes(
+                    usage_geometry=usage_geometry,
+                    network_edges=network_edges,
+                    transit_physical_edges=transit_physical_edges,
+                    trip_mode=trip_mode,
+                    study_area=study_area,
+                )
             )
-        )
+            path = (
+                plots_dir
+                / f"01_mode_{trip_mode}_all_incomes.png"
+            )
+            save_plot(
+                fig,
+                path,
+            )
+            plt.close(
+                fig
+            )
+            generated[
+                f"mode_{trip_mode}_all_incomes"
+            ] = path
 
-        path = (
-            mandatory_dir
-            / f"01_mode_{trip_mode}_all_incomes.png"
-        )
-        save_plot(
-            fig,
-            path,
-        )
-        plt.close(
-            fig
-        )
-        generated[
-            f"mode_{trip_mode}_all_incomes"
-        ] = path
+    # 2–5. Um mapa para cada classe dentro de um modo específico.
+    grouped_modes = {
+        "bike_by_income": (
+            "02",
+            "bike",
+        ),
+        "walk_by_income": (
+            "03",
+            "walk",
+        ),
+        "car_by_income": (
+            "04",
+            "car",
+        ),
+        "transit_by_income": (
+            "05",
+            "transit",
+        ),
+    }
 
-    # ----------------------------------------------------------------------
-    # 2–5. Um mapa para cada combinação classe social x modo de viagem.
-    # ----------------------------------------------------------------------
-    for trip_mode in (
-        "bike",
-        "walk",
-        "car",
-        "transit",
-    ):
+    for selection_name, (
+        order,
+        trip_mode,
+    ) in grouped_modes.items():
+        if selection_name not in selected:
+            continue
+
         for income_group in (
             "low",
             "middle",
@@ -2591,12 +2752,11 @@ def generate_mandatory_maps(
                     study_area=study_area,
                 )
             )
-
             path = (
-                mandatory_dir
+                plots_dir
                 / (
-                    f"0{2 + ('bike', 'walk', 'car', 'transit').index(trip_mode)}"
-                    f"_{trip_mode}_{income_group}.png"
+                    f"{order}_{trip_mode}_"
+                    f"{income_group}.png"
                 )
             )
             save_plot(
@@ -2610,82 +2770,84 @@ def generate_mandatory_maps(
                 f"{trip_mode}_{income_group}"
             ] = path
 
-    # ----------------------------------------------------------------------
-    # 6. Setores censitários em gradiente de renda.
-    # ----------------------------------------------------------------------
-    fig, _ = plot_census_income_gradient(
-        census_sectors=census_sectors,
-        network_edges=network_edges,
-        transit_physical_edges=transit_physical_edges,
-        study_area=study_area,
-    )
-    path = (
-        mandatory_dir
-        / "06_census_income_gradient.png"
-    )
-    save_plot(
-        fig,
-        path,
-    )
-    plt.close(
-        fig
-    )
-    generated[
-        "census_income_gradient"
-    ] = path
+    # 6. Região com setores censitários em gradiente de renda.
+    if "census_income" in selected:
+        fig, _ = (
+            plot_census_income_gradient(
+                census_sectors=census_sectors,
+                network_edges=network_edges,
+                transit_physical_edges=transit_physical_edges,
+                study_area=study_area,
+            )
+        )
+        path = (
+            plots_dir
+            / "06_census_income_gradient.png"
+        )
+        save_plot(
+            fig,
+            path,
+        )
+        plt.close(
+            fig
+        )
+        generated[
+            "census_income_gradient"
+        ] = path
 
-    # ----------------------------------------------------------------------
-    # 7. Mapa censitário com todos os modos contínuos e cor por classe.
-    # ----------------------------------------------------------------------
-    fig, _ = plot_census_plus_all_modes(
-        census_sectors=census_sectors,
-        usage_geometry=usage_geometry,
-        network_edges=network_edges,
-        transit_physical_edges=transit_physical_edges,
-        study_area=study_area,
-    )
-    path = (
-        mandatory_dir
-        / "07_census_plus_all_modes.png"
-    )
-    save_plot(
-        fig,
-        path,
-    )
-    plt.close(
-        fig
-    )
-    generated[
-        "census_plus_all_modes"
-    ] = path
+    # 7. Censo + todos os modos contínuos com classe social por cor.
+    if "census_all_modes" in selected:
+        fig, _ = (
+            plot_census_plus_all_modes(
+                census_sectors=census_sectors,
+                usage_geometry=usage_geometry,
+                network_edges=network_edges,
+                transit_physical_edges=transit_physical_edges,
+                study_area=study_area,
+            )
+        )
+        path = (
+            plots_dir
+            / "07_census_plus_all_modes.png"
+        )
+        save_plot(
+            fig,
+            path,
+        )
+        plt.close(
+            fig
+        )
+        generated[
+            "census_plus_all_modes"
+        ] = path
 
-    # ----------------------------------------------------------------------
     # 8. Todas as redes em cinza forte.
-    # ----------------------------------------------------------------------
-    fig, _ = plot_all_networks(
-        network_edges=network_edges,
-        transit_physical_edges=transit_physical_edges,
-        study_area=study_area,
-    )
-    path = (
-        mandatory_dir
-        / "08_all_networks.png"
-    )
-    save_plot(
-        fig,
-        path,
-    )
-    plt.close(
-        fig
-    )
-    generated[
-        "all_networks"
-    ] = path
+    if "all_networks" in selected:
+        fig, _ = plot_all_networks(
+            network_edges=network_edges,
+            transit_physical_edges=transit_physical_edges,
+            study_area=study_area,
+        )
+        path = (
+            plots_dir
+            / "08_all_networks.png"
+        )
+        save_plot(
+            fig,
+            path,
+        )
+        plt.close(
+            fig
+        )
+        generated[
+            "all_networks"
+        ] = path
 
-    # ----------------------------------------------------------------------
-    # 9. Uma cor por agente, somente quando n < 40.
-    # ----------------------------------------------------------------------
-    if len(agents) < 40:
+    # 9. Uma cor distinta por agente. Este item só é gerado quando n < 40.
+    if (
+        "agent_unique" in selected
+        and len(agents) < 40
+    ):
         fig, _ = (
             plot_agent_routes_unique_colors(
                 agents=agents,
@@ -2701,7 +2863,7 @@ def generate_mandatory_maps(
 
         if fig is not None:
             path = (
-                mandatory_dir
+                plots_dir
                 / "09_agent_routes_unique_colors.png"
             )
             save_plot(
@@ -2714,6 +2876,28 @@ def generate_mandatory_maps(
             generated[
                 "agent_routes_unique_colors"
             ] = path
+
+    # 10. Gráfico de barras: frequência de cada modo por classe social.
+    if "mode_frequency_by_income" in selected:
+        fig, _ = (
+            plot_mode_frequency_by_income(
+                choice_summary=choice_summary,
+            )
+        )
+        path = (
+            plots_dir
+            / "10_mode_frequency_by_income.png"
+        )
+        save_plot(
+            fig,
+            path,
+        )
+        plt.close(
+            fig
+        )
+        generated[
+            "mode_frequency_by_income"
+        ] = path
 
     return generated
 
