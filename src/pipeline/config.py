@@ -13,7 +13,6 @@ from src.domain.enums import IncomeGroup
 
 VALID_PERIOD_UNITS = {"hours", "days"}
 VALID_SCENARIOS = {"baseline", "differentiated"}
-VALID_REGIONS = {"city", "center", "north", "south", "east"}
 VALID_REGION_MODES = {"analysis", "plot_only"}
 
 
@@ -65,10 +64,9 @@ class PilotRunConfig:
     force_network_download: bool = False
 
     def __post_init__(self) -> None:
-        if self.region not in VALID_REGIONS:
+        if not self.region.strip():
             raise ValueError(
-                f"Região inválida: {self.region!r}. "
-                f"Use uma de {sorted(VALID_REGIONS)}."
+                "A região não pode ser vazia."
             )
 
         if self.region_mode not in VALID_REGION_MODES:
