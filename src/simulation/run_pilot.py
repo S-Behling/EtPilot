@@ -565,6 +565,31 @@ def run_pilot(run_config: PilotRunConfig) -> None:
             output_dir / "edge_usage_by_income.png",
         )
 
+        edge_usage_mode_income = edge_usage.copy()
+        edge_usage_mode_income["mode_income"] = (
+            edge_usage_mode_income["trip_mode"].astype(str)
+            + " | "
+            + edge_usage_mode_income["income_group"].astype(str)
+        )
+
+        fig, _ = plot_edge_usage_by_category(
+            edge_usage=edge_usage_mode_income,
+            graphs=graphs,
+            transit_physical_edges=(
+                regional_transit.physical_edges
+            ),
+            category="mode_income",
+            study_area=view_area,
+            title=(
+                f"Trechos por modo e classe social — {region_name} — "
+                f"{run_config.region_mode}"
+            ),
+        )
+        save_plot(
+            fig,
+            output_dir / "edge_usage_by_mode_income.png",
+        )
+
     print("10/10 - Resumo final...")
 
     print("\n=== DISTRIBUIÇÃO POR RENDA ===")
