@@ -11,7 +11,8 @@ Fluxo:
 
 Uso:
     python scripts/prepare_region.py --region city
-    python scripts/prepare_region.py --region south
+    python scripts/prepare_region.py --region sul
+    python scripts/prepare_region.py --region noroeste
 """
 
 from __future__ import annotations
@@ -53,7 +54,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--region",
         default=None,
-        help="city, center, north, south ou east.",
+        help=(
+            "Região territorial configurada em config/regions.json "
+            "(cidade inteira ou uma das regiões do Orçamento Participativo)."
+        ),
     )
     return parser.parse_args()
 
