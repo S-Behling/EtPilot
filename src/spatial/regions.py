@@ -117,7 +117,7 @@ def select_neighborhoods(
         source_name="malha de bairros",
     )
 
-    resolved_name_field = _resolve_name_field(
+    resolved_name_field = resolve_neighborhood_name_field(
         neighborhoods,
         requested_field=name_field,
     )
@@ -177,7 +177,7 @@ def select_neighborhoods(
 
 
 
-def _resolve_name_field(
+def resolve_neighborhood_name_field(
     neighborhoods: gpd.GeoDataFrame,
     *,
     requested_field: str,
