@@ -135,6 +135,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Força novo download das redes OSM.",
     )
+    parser.add_argument(
+        "--street",
+        default=None,
+        help=(
+            "Nome da rua para o plot 11. O nome deve existir dentro da "
+            "região selecionada."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -171,6 +179,11 @@ def build_run_config(
         prepare_region=not args.skip_region_preparation,
         clear_outputs=args.clear_outputs,
         force_network_download=args.force_network_download,
+        selected_street=(
+            args.street.strip()
+            if args.street
+            else None
+        ),
     )
 
 
@@ -196,6 +209,11 @@ def print_configuration(
     print(f"Agentes: {run_config.n_agents}")
     print(f"Seed: {run_config.seed}")
     print(f"Cenário: {run_config.scenario}")
+    print(
+        "Rua selecionada:",
+        run_config.selected_street
+        or "nenhuma",
+    )
     print(
         "Preparar redes:",
         "sim" if run_config.prepare_networks else "não",
