@@ -357,6 +357,113 @@ def plot_modal_snapping(
     return fig, ax
 
 
+
+
+
+def _agent_income_color(agent) -> str:
+    income = getattr(
+        agent,
+        "income_group",
+        None,
+    )
+    key = (
+        income.value
+        if hasattr(income, "value")
+        else str(income)
+    )
+
+    return INCOME_COLORS.get(
+        key,
+        MAP_NEUTRAL,
+    )
+
+
+def _plot_agent_od_markers(
+    ax,
+    *,
+    agent,
+    graph: nx.MultiDiGraph,
+    origin_node: int | None,
+    destination_node: int | None,
+) -> None:
+    """Marca origem com X e destino com círculo, preservando a cor da renda."""
+
+    color = _agent_income_color(
+        agent
+    )
+
+    if (
+        origin_node is not None
+        and int(origin_node) in graph.nodes
+    ):
+        node = graph.nodes[
+            int(origin_node)
+        ]
+        ax.scatter(
+            [node["x"]],
+            [node["y"]],
+            marker="x",
+            s=62,
+            c=[color],
+            linewidths=1.7,
+            zorder=8,
+        )
+
+    if (
+        destination_node is not None
+        and int(destination_node) in graph.nodes
+    ):
+        node = graph.nodes[
+            int(destination_node)
+        ]
+        ax.scatter(
+            [node["x"]],
+            [node["y"]],
+            marker="o",
+            s=48,
+            facecolors="none",
+            edgecolors=[color],
+            linewidths=1.7,
+            zorder=8,
+        )
+
+
+def _add_od_marker_legend(
+    ax,
+) -> None:
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="x",
+            linestyle="none",
+            color=MAP_NEUTRAL,
+            markersize=7,
+            markeredgewidth=1.5,
+            label="Origem",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="none",
+            markerfacecolor="none",
+            markeredgecolor=MAP_NEUTRAL,
+            color=MAP_NEUTRAL,
+            markersize=7,
+            markeredgewidth=1.5,
+            label="Destino",
+        ),
+    ]
+
+    ax.legend(
+        handles=handles,
+        title="O/D",
+        loc="lower left",
+        frameon=True,
+    )
+
+
 def plot_agent_routes(
     *,
     agents,
@@ -375,6 +482,7 @@ def plot_agent_routes(
     fig, ax = plt.subplots()
 
     plotted = 0
+    show_od_markers = len(agents) < 20
 
     for agent in agents:
         if plotted >= sample_size:
@@ -431,12 +539,34 @@ def plot_agent_routes(
             linewidth=0.9,
         )
 
+        if show_od_markers:
+            _plot_agent_od_markers(
+                ax,
+                agent=agent,
+                graph=graph,
+                origin_node=getattr(
+                    agent,
+                    "origin_node",
+                    None,
+                ),
+                destination_node=getattr(
+                    agent,
+                    "destination_node",
+                    None,
+                ),
+            )
+
         plotted += 1
 
     apply_study_area_view(
         ax,
         study_area,
     )
+    if show_od_markers and plotted:
+        _add_od_marker_legend(
+            ax
+        )
+
     ax.set_title(f"{title} — n={plotted}")
     ax.set_axis_off()
 
@@ -474,6 +604,7 @@ def plot_transit_agent_routes(
     )
 
     plotted = 0
+    show_od_markers = len(agents) < 20
 
     for agent in agents:
         if plotted >= sample_size:
@@ -558,12 +689,34 @@ def plot_transit_agent_routes(
                 linewidth=0.8,
             )
 
+        if show_od_markers:
+            _plot_agent_od_markers(
+                ax,
+                agent=agent,
+                graph=walk_graph,
+                origin_node=getattr(
+                    agent,
+                    "origin_nodes",
+                    {},
+                ).get("walk"),
+                destination_node=getattr(
+                    agent,
+                    "destination_nodes",
+                    {},
+                ).get("walk"),
+            )
+
         plotted += 1
 
     apply_study_area_view(
         ax,
         study_area,
     )
+    if show_od_markers and plotted:
+        _add_od_marker_legend(
+            ax
+        )
+
     ax.set_title(f"{title} — n={plotted}")
     ax.set_axis_off()
 
