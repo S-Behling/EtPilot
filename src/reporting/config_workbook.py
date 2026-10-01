@@ -140,6 +140,17 @@ def export_run_configuration_workbook(
             numeric_format=numeric_format,
         )
 
+
+    # Além das abas brutas, esta visão resume em uma única tabela os parâmetros
+    # sociais mais usados na interpretação do experimento: faixa de renda,
+    # participação populacional, pesos de propósito, escolha modal e
+    # decaimento de distância por classe.
+    _write_social_class_summary(
+        workbook=workbook,
+        header_format=header_format,
+        numeric_format=numeric_format,
+    )
+
     workbook.close()
 
     return output
@@ -343,3 +354,224 @@ def _flatten_config(
         return
 
     yield prefix, value
+
+
+def _write_social_class_summary(
+    *,
+    workbook,
+    header_format,
+    numeric_format,
+) -> None:
+    """Cria uma visão comparativa dos pesos e faixas por classe social."""
+
+    project_path = CONFIG_DIR / "config.json"
+    agents_path = CONFIG_DIR / "config_agents.json"
+
+    if (
+        not project_path.exists()
+        or not agents_path.exists()
+    ):
+        return
+
+    with project_path.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        project_config = json.load(
+            file
+        )
+
+    with agents_path.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        agent_config = json.load(
+            file
+        )
+
+    sheet = workbook.add_worksheet(
+        "resumo_classes"
+    )
+
+    purposes = [
+        "work",
+        "education",
+        "shopping",
+        "health",
+        "leisure",
+    ]
+    modes = [
+        "walk",
+        "bike",
+        "transit",
+        "car",
+    ]
+
+    headers = [
+        "classe",
+        "renda_min",
+        "renda_max",
+        "participacao",
+        *[
+            f"proposito_{purpose}"
+            for purpose in purposes
+        ],
+        *[
+            f"baseline_{mode}"
+            for mode in modes
+        ],
+        *[
+            f"diferenciado_{mode}"
+            for mode in modes
+        ],
+        *[
+            f"decaimento_{purpose}"
+            for purpose in purposes
+        ],
+    ]
+
+    for column, header in enumerate(
+        headers
+    ):
+        sheet.write(
+            0,
+            column,
+            header,
+            header_format,
+        )
+
+    income_groups = project_config.get(
+        "income",
+        {},
+    ).get(
+        "groups",
+        {},
+    )
+    purpose_choice = agent_config.get(
+        "purpose_choice",
+        {},
+    )
+    mode_choice = agent_config.get(
+        "mode_choice",
+        {},
+    )
+    distance_decay = (
+        agent_config.get(
+            "destination_choice",
+            {},
+        )
+        .get(
+            "distance_decay_per_km",
+            {},
+        )
+    )
+
+    for row, income_group in enumerate(
+        (
+            "low",
+            "middle",
+            "high",
+        ),
+        start=1,
+    ):
+        income = income_groups.get(
+            income_group,
+            {},
+        )
+
+        values = [
+            income_group,
+            income.get("min"),
+            income.get("max"),
+            income.get("share"),
+        ]
+
+        values.extend(
+            purpose_choice.get(
+                income_group,
+                {},
+            ).get(
+                purpose,
+                None,
+            )
+            for purpose in purposes
+        )
+
+        for scenario in (
+            "baseline",
+            "differentiated",
+        ):
+            scenario_config = (
+                mode_choice.get(
+                    scenario,
+                    {},
+                ).get(
+                    income_group,
+                    {},
+                )
+            )
+            values.extend(
+                scenario_config.get(
+                    mode,
+                    None,
+                )
+                for mode in modes
+            )
+
+        values.extend(
+            distance_decay.get(
+                purpose,
+                {},
+            ).get(
+                income_group,
+                None,
+            )
+            for purpose in purposes
+        )
+
+        for column, value in enumerate(
+            values
+        ):
+            if value is None:
+                sheet.write(
+                    row,
+                    column,
+                    "",
+                )
+            elif isinstance(
+                value,
+                (int, float),
+            ):
+                sheet.write_number(
+                    row,
+                    column,
+                    float(value),
+                    numeric_format,
+                )
+            else:
+                sheet.write(
+                    row,
+                    column,
+                    str(value),
+                )
+
+    sheet.freeze_panes(
+        1,
+        1,
+    )
+    sheet.autofilter(
+        0,
+        0,
+        3,
+        len(headers) - 1,
+    )
+    sheet.set_column(
+        0,
+        0,
+        14,
+    )
+    sheet.set_column(
+        1,
+        len(headers) - 1,
+        16,
+    )
