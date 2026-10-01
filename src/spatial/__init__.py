@@ -1,5 +1,6 @@
 """Operações espaciais independentes da lógica de simulação."""
 
+from src.spatial.census import load_census_income_sectors
 from src.spatial.filtering import filter_points_to_study_area
 from src.spatial.network_clip import (
     clip_graph_to_study_area,
@@ -17,6 +18,7 @@ from src.spatial.transit_filter import (
 
 __all__ = [
     "StudyArea",
+    "load_census_income_sectors",
     "RegionalData",
     "RegionalTransitData",
     "filter_points_to_study_area",
