@@ -73,6 +73,269 @@ INCOME_LABELS = {
 }
 
 
+def _rounded_polygon(
+    canvas: tk.Canvas,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    radius: float,
+    *,
+    fill: str,
+    outline: str | None = None,
+    width: int = 1,
+    tags=(),
+):
+    """Desenha um retângulo visualmente arredondado em um Canvas."""
+
+    radius = min(
+        radius,
+        (x2 - x1) / 2,
+        (y2 - y1) / 2,
+    )
+
+    points = [
+        x1 + radius, y1,
+        x2 - radius, y1,
+        x2, y1,
+        x2, y1 + radius,
+        x2, y2 - radius,
+        x2, y2,
+        x2 - radius, y2,
+        x1 + radius, y2,
+        x1, y2,
+        x1, y2 - radius,
+        x1, y1 + radius,
+        x1, y1,
+    ]
+
+    return canvas.create_polygon(
+        points,
+        smooth=True,
+        splinesteps=36,
+        fill=fill,
+        outline=outline or fill,
+        width=width,
+        tags=tags,
+    )
+
+
+class RoundedPanel(tk.Canvas):
+    """Container com cantos arredondados que hospeda widgets Tk normais."""
+
+    def __init__(
+        self,
+        parent,
+        *,
+        fill: str,
+        outline: str | None = None,
+        radius: int = 18,
+        padding: int = 1,
+        background: str | None = None,
+        height: int | None = None,
+    ) -> None:
+        super().__init__(
+            parent,
+            bg=background or parent.cget("bg"),
+            highlightthickness=0,
+            bd=0,
+            height=height or 1,
+        )
+
+        self._fill = fill
+        self._outline = outline or fill
+        self._radius = radius
+        self._padding = padding
+
+        self.body = tk.Frame(
+            self,
+            bg=fill,
+        )
+        self._window = self.create_window(
+            padding,
+            padding,
+            anchor="nw",
+            window=self.body,
+        )
+
+        self.bind(
+            "<Configure>",
+            self._redraw,
+        )
+
+    def _redraw(
+        self,
+        event,
+    ) -> None:
+        self.delete(
+            "rounded-bg"
+        )
+
+        _rounded_polygon(
+            self,
+            self._padding,
+            self._padding,
+            max(
+                event.width - self._padding,
+                self._padding + 2,
+            ),
+            max(
+                event.height - self._padding,
+                self._padding + 2,
+            ),
+            self._radius,
+            fill=self._fill,
+            outline=self._outline,
+            tags=("rounded-bg",),
+        )
+
+        self.tag_lower(
+            "rounded-bg"
+        )
+
+        self.coords(
+            self._window,
+            self._padding + 1,
+            self._padding + 1,
+        )
+        self.itemconfigure(
+            self._window,
+            width=max(
+                event.width
+                - 2 * (self._padding + 1),
+                1,
+            ),
+            height=max(
+                event.height
+                - 2 * (self._padding + 1),
+                1,
+            ),
+        )
+
+
+class RoundedButton(tk.Canvas):
+    """Botão arredondado desenhado em Canvas."""
+
+    def __init__(
+        self,
+        parent,
+        *,
+        text: str,
+        command,
+        width: int = 190,
+        height: int = 42,
+        radius: int = 20,
+        fill: str,
+        hover_fill: str,
+        foreground: str,
+    ) -> None:
+        super().__init__(
+            parent,
+            width=width,
+            height=height,
+            bg=parent.cget("bg"),
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2",
+        )
+
+        self._text = text
+        self._command = command
+        self._fill = fill
+        self._hover_fill = hover_fill
+        self._foreground = foreground
+        self._radius = radius
+        self._enabled = True
+
+        self.bind(
+            "<Button-1>",
+            self._on_click,
+        )
+        self.bind(
+            "<Enter>",
+            lambda _event: self._draw(
+                self._hover_fill
+            ),
+        )
+        self.bind(
+            "<Leave>",
+            lambda _event: self._draw(
+                self._fill
+            ),
+        )
+
+        self._draw(
+            self._fill
+        )
+
+    def _draw(
+        self,
+        fill: str,
+    ) -> None:
+        self.delete(
+            "all"
+        )
+
+        width = int(
+            self.cget("width")
+        )
+        height = int(
+            self.cget("height")
+        )
+
+        _rounded_polygon(
+            self,
+            1,
+            1,
+            width - 1,
+            height - 1,
+            self._radius,
+            fill=fill,
+        )
+
+        self.create_text(
+            width / 2,
+            height / 2,
+            text=self._text,
+            fill=self._foreground,
+            font=FONT_BOLD,
+        )
+
+    def _on_click(
+        self,
+        _event,
+    ) -> None:
+        if self._enabled:
+            self._command()
+
+    def set_state(
+        self,
+        *,
+        enabled: bool,
+        text: str | None = None,
+        fill: str | None = None,
+    ) -> None:
+        self._enabled = enabled
+
+        if text is not None:
+            self._text = text
+
+        if fill is not None:
+            self._fill = fill
+
+        self.configure(
+            cursor=(
+                "hand2"
+                if enabled
+                else "arrow"
+            )
+        )
+
+        self._draw(
+            self._fill
+        )
+
+
 class PipelineApp(tk.Tk):
     """Janela principal da configuração do piloto."""
 
