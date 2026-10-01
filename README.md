@@ -172,9 +172,9 @@ botões com relevo e tipografia clássica. A interface possui duas abas:
 
 ### Aba "Mapas" da interface gráfica
 
-A interface gráfica possui agora uma segunda aba chamada **Mapas**. Nela o
-usuário pode selecionar quais produtos cartográficos deseja gerar em cada
-execução, sem alterar a simulação em si.
+A interface gráfica possui uma segunda aba chamada **Mapas**. Os checkboxes
+dessa aba controlam apenas **mapas opcionais adicionais**. O conjunto de mapas
+obrigatórios descrito abaixo é sempre gerado, sem alterar a simulação em si.
 
 Opções disponíveis:
 
@@ -212,8 +212,9 @@ coletivo.
 
 ### Convenção visual dos mapas
 
-Os mapas de uso da rede seguem uma convenção única para permitir leitura
-simultânea de classe social e modo de deslocamento.
+Os mapas opcionais de uso da rede seguem uma convenção própria para permitir
+leitura simultânea de classe social e modo de deslocamento. Os mapas
+obrigatórios possuem regras adicionais descritas na seção específica.
 
 **Cor = classe social**
 
@@ -221,7 +222,7 @@ simultânea de classe social e modo de deslocamento.
 Baixa renda   → Lavender Gray  #CABAD7
 Média renda   → Eggplant       #4F364B
 Alta renda    → Cinnabar       #DB3E1D
-Fundo         → Albescant White #F7E9DE
+Fundo         → branco puro      #FFFFFF
 ```
 
 **Tipo de linha = modo efetivamente utilizado no trecho**
@@ -549,6 +550,105 @@ Se as redes `car/walk/bike` ainda não existirem, insira antes do
 ```powershell
 python scripts/prepare_city_networks.py
 ```
+
+---
+
+
+## Mapas obrigatórios
+
+Toda execução do piloto gera automaticamente um conjunto mínimo de mapas,
+independentemente do que estiver marcado na aba `Mapas` da GUI. A seleção da
+aba controla apenas figuras extras.
+
+Os mapas obrigatórios são:
+
+1. **um mapa para cada modo de viagem**, com todas as classes sociais
+   sobrepostas e diferenciadas por cor;
+2. **um mapa para cada classe social no modo bike**;
+3. **um mapa para cada classe social no modo walk**;
+4. **um mapa para cada classe social no modo car**;
+5. **um mapa para cada classe social no transporte público**;
+6. **setores censitários da região em gradiente de renda**;
+7. **mapa censitário + todos os modos**, com todos os modos em linha contínua
+   e classe social identificada pela cor;
+8. **todas as redes de mobilidade**, em cinza forte;
+9. **trajeto de cada agente em uma cor distinta**, somente quando houver menos
+   de 40 agentes.
+
+Todos ficam em:
+
+```text
+outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/mandatory_maps/
+```
+
+Os arquivos seguem nomes padronizados, por exemplo:
+
+```text
+01_mode_walk_all_incomes.png
+01_mode_bike_all_incomes.png
+01_mode_car_all_incomes.png
+01_mode_transit_all_incomes.png
+
+02_bike_low.png
+02_bike_middle.png
+02_bike_high.png
+
+03_walk_low.png
+03_walk_middle.png
+03_walk_high.png
+
+04_car_low.png
+04_car_middle.png
+04_car_high.png
+
+05_transit_low.png
+05_transit_middle.png
+05_transit_high.png
+
+06_census_income_gradient.png
+07_census_plus_all_modes.png
+08_all_networks.png
+09_agent_routes_unique_colors.png
+```
+
+O arquivo 09 só existe quando `n_agents < 40`.
+
+### Regras visuais dos mapas obrigatórios
+
+- fundo de **todos os mapas**: branco puro (`#FFFFFF`);
+- redes de base: cinza claro e discreto em todos os mapas;
+- exceção: no mapa 08, as redes aparecem em cinza forte;
+- baixa renda: `#CABAD7`;
+- média renda: `#4F364B`;
+- alta renda: `#DB3E1D`;
+- quando um mapa mostra apenas um modo, as linhas são contínuas;
+- no mapa 07, todos os modos também são contínuos;
+- quando classes diferentes compartilham a mesma aresta, é aplicado um pequeno
+  deslocamento lateral apenas visual para reduzir a sobreposição;
+- a espessura das linhas representa intensidade relativa de travessias.
+
+Para amostras com menos de 20 agentes, origem e destino continuam sendo
+marcados como:
+
+```text
+X = origem
+○ = destino
+```
+
+### Dados censitários exigidos
+
+Os mapas 06 e 07 usam os setores censitários do Censo 2022. Por isso estes
+insumos passam a fazer parte da validação de setup:
+
+```text
+data/censo_2022/setores/setores_rs.zip
+data/censo_2022/renda_setores/extracted/
+```
+
+O pipeline associa a geometria dos setores à variável de renda `V06004` e
+reutiliza a mesma classificação `classify_income_2022` que foi usada na
+preparação das origens, evitando que agentes e setores usem classificações
+sociais diferentes.
 
 ---
 
