@@ -12,6 +12,8 @@ from typing import Mapping
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.patches import FancyArrowPatch
 import networkx as nx
 import osmnx as ox
 import pandas as pd
@@ -19,6 +21,36 @@ import pandas as pd
 from src.spatial.regional_data import RegionalData
 from src.spatial.study_area import StudyArea
 from src.spatial.transit_filter import RegionalTransitData
+
+
+INCOME_COLORS = {
+    "low": "#CABAD7",
+    "middle": "#4F364B",
+    "high": "#DB3E1D",
+}
+
+INCOME_LABELS = {
+    "low": "Baixa renda",
+    "middle": "Média renda",
+    "high": "Alta renda",
+}
+
+MODE_LINESTYLES = {
+    "walk": (0, (1, 2)),
+    "bike": (0, (6, 3)),
+    "car": "solid",
+    "transit": "solid",
+}
+
+MODE_LABELS = {
+    "walk": "Walk",
+    "bike": "Bike",
+    "car": "Carro",
+    "transit": "Ônibus",
+}
+
+MAP_BACKGROUND = "#F7E9DE"
+MAP_NEUTRAL = "#2F2A2A"
 
 
 
@@ -538,6 +570,274 @@ def plot_transit_agent_routes(
     return fig, ax
 
 
+def _set_map_background(
+    fig,
+    ax,
+) -> None:
+    fig.patch.set_facecolor(
+        MAP_BACKGROUND
+    )
+    ax.set_facecolor(
+        MAP_BACKGROUND
+    )
+
+
+def _plot_transit_arrows(
+    ax,
+    geometry,
+    *,
+    color: str,
+    linewidth: float,
+) -> None:
+    """Adiciona uma seta central seguindo a orientação da geometria."""
+
+    if geometry is None or geometry.is_empty:
+        return
+
+    parts = (
+        list(geometry.geoms)
+        if hasattr(geometry, "geoms")
+        else [geometry]
+    )
+
+    for part in parts:
+        if (
+            part.is_empty
+            or part.length <= 0
+            or not hasattr(
+                part,
+                "interpolate",
+            )
+        ):
+            continue
+
+        start = part.interpolate(
+            0.44,
+            normalized=True,
+        )
+        end = part.interpolate(
+            0.56,
+            normalized=True,
+        )
+
+        arrow = FancyArrowPatch(
+            (start.x, start.y),
+            (end.x, end.y),
+            arrowstyle="-|>",
+            mutation_scale=(
+                8.0
+                + 2.0 * linewidth
+            ),
+            color=color,
+            linewidth=max(
+                0.7,
+                linewidth * 0.7,
+            ),
+            shrinkA=0,
+            shrinkB=0,
+            zorder=5,
+        )
+        ax.add_patch(
+            arrow
+        )
+
+
+def _plot_styled_edge_usage(
+    ax,
+    usage_geometry: gpd.GeoDataFrame,
+) -> None:
+    """Plota uso de arestas usando cor por renda e linha por modo."""
+
+    if usage_geometry.empty:
+        return
+
+    grouped = (
+        usage_geometry.groupby(
+            [
+                "income_group",
+                "trip_mode",
+                "edge_id",
+            ],
+            dropna=False,
+            as_index=False,
+        )
+        .agg(
+            n_traversals=("agent_id", "size"),
+            geometry=("geometry", "first"),
+        )
+    )
+
+    grouped = gpd.GeoDataFrame(
+        grouped,
+        geometry="geometry",
+        crs=usage_geometry.crs,
+    )
+
+    max_count = max(
+        float(
+            grouped[
+                "n_traversals"
+            ].max()
+        ),
+        1.0,
+    )
+
+    for (
+        income_group,
+        trip_mode,
+    ), subset in grouped.groupby(
+        [
+            "income_group",
+            "trip_mode",
+        ],
+        dropna=False,
+    ):
+        income_key = str(
+            income_group
+        )
+        mode_key = str(
+            trip_mode
+        )
+
+        color = INCOME_COLORS.get(
+            income_key,
+            MAP_NEUTRAL,
+        )
+        linestyle = MODE_LINESTYLES.get(
+            mode_key,
+            "solid",
+        )
+
+        linewidths = (
+            0.7
+            + 3.3
+            * subset[
+                "n_traversals"
+            ].astype(float)
+            / max_count
+        )
+
+        subset.plot(
+            ax=ax,
+            color=color,
+            linewidth=linewidths,
+            linestyle=linestyle,
+            alpha=0.95,
+            zorder=3,
+        )
+
+        if mode_key == "transit":
+            for geometry, linewidth in zip(
+                subset.geometry,
+                linewidths,
+            ):
+                _plot_transit_arrows(
+                    ax,
+                    geometry,
+                    color=color,
+                    linewidth=float(
+                        linewidth
+                    ),
+                )
+
+
+def _add_usage_legends(
+    ax,
+    usage_geometry: gpd.GeoDataFrame,
+) -> None:
+    present_incomes = [
+        income
+        for income in (
+            "low",
+            "middle",
+            "high",
+        )
+        if income in set(
+            usage_geometry[
+                "income_group"
+            ].astype(str)
+        )
+    ]
+
+    present_modes = [
+        mode
+        for mode in (
+            "walk",
+            "bike",
+            "car",
+            "transit",
+        )
+        if mode in set(
+            usage_geometry[
+                "trip_mode"
+            ].astype(str)
+        )
+    ]
+
+    income_handles = [
+        Line2D(
+            [0],
+            [0],
+            color=INCOME_COLORS[
+                income
+            ],
+            linewidth=3,
+            label=INCOME_LABELS[
+                income
+            ],
+        )
+        for income in present_incomes
+    ]
+
+    mode_handles = []
+
+    for mode in present_modes:
+        kwargs = {
+            "color": MAP_NEUTRAL,
+            "linewidth": 2,
+            "linestyle": MODE_LINESTYLES[
+                mode
+            ],
+            "label": MODE_LABELS[
+                mode
+            ],
+        }
+
+        if mode == "transit":
+            kwargs.update(
+                marker=">",
+                markersize=6,
+                markevery=[1],
+            )
+
+        mode_handles.append(
+            Line2D(
+                [0, 1],
+                [0, 0],
+                **kwargs,
+            )
+        )
+
+    if income_handles:
+        income_legend = ax.legend(
+            handles=income_handles,
+            title="Classe social",
+            loc="upper left",
+            frameon=True,
+        )
+        ax.add_artist(
+            income_legend
+        )
+
+    if mode_handles:
+        ax.legend(
+            handles=mode_handles,
+            title="Modo",
+            loc="upper right",
+            frameon=True,
+        )
+
+
 def plot_edge_usage(
     *,
     edge_usage,
@@ -546,126 +846,50 @@ def plot_edge_usage(
     title: str = "Uso das redes",
     study_area: StudyArea | None = None,
 ):
-    """Plota intensidade de uso das arestas por número de travessias."""
+    """Plota uso das redes com cor por renda e linha por modo."""
 
     if edge_usage.empty:
-        raise ValueError("edge_usage está vazio.")
-
-    fig, ax = plt.subplots()
-
-    counts = (
-        edge_usage.groupby(
-            ["network_mode", "edge_id"],
-            as_index=False,
+        raise ValueError(
+            "edge_usage está vazio."
         )
-        .size()
-        .rename(columns={"size": "n_traversals"})
+
+    usage_geometry = _edge_usage_geometry(
+        edge_usage=edge_usage,
+        graphs=graphs,
+        transit_physical_edges=transit_physical_edges,
     )
 
-    for mode in ("walk", "bike", "car"):
-        if mode not in graphs:
-            continue
-
-        mode_counts = counts.loc[
-            counts["network_mode"] == mode
-        ].copy()
-
-        if mode_counts.empty:
-            continue
-
-        graph = graphs[mode]
-        _, edges = ox.graph_to_gdfs(
-            graph,
-            nodes=True,
-            edges=True,
+    if usage_geometry.empty:
+        raise ValueError(
+            "Nenhuma geometria pôde ser associada aos registros de uso."
         )
 
-        edges = edges.reset_index()
-        edges["edge_id"] = (
-            mode
-            + ":"
-            + edges["u"].astype(str)
-            + ":"
-            + edges["v"].astype(str)
-            + ":"
-            + edges["key"].astype(str)
-        )
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
 
-        merged = edges.merge(
-            mode_counts,
-            on="edge_id",
-            how="inner",
-        )
-
-        if merged.empty:
-            continue
-
-        max_count = max(
-            float(merged["n_traversals"].max()),
-            1.0,
-        )
-        linewidth = (
-            0.4
-            + 3.0
-            * merged["n_traversals"].astype(float)
-            / max_count
-        )
-
-        gpd.GeoDataFrame(
-            merged,
-            geometry="geometry",
-            crs=edges.crs,
-        ).plot(
-            ax=ax,
-            linewidth=linewidth,
-            label=mode,
-        )
-
-    transit_counts = counts.loc[
-        counts["network_mode"] == "transit"
-    ].copy()
-
-    if not transit_counts.empty:
-        transit = transit_physical_edges.copy()
-        transit["transit_physical_edge_id"] = (
-            transit["transit_physical_edge_id"].astype(str)
-        )
-        transit["edge_id"] = (
-            "transit:"
-            + transit["transit_physical_edge_id"]
-        )
-
-        transit = transit.merge(
-            transit_counts,
-            on="edge_id",
-            how="inner",
-        )
-
-        if not transit.empty:
-            max_count = max(
-                float(transit["n_traversals"].max()),
-                1.0,
-            )
-            linewidth = (
-                0.4
-                + 3.0
-                * transit["n_traversals"].astype(float)
-                / max_count
-            )
-
-            transit.plot(
-                ax=ax,
-                linewidth=linewidth,
-                label="transit",
-            )
+    _plot_styled_edge_usage(
+        ax,
+        usage_geometry,
+    )
 
     apply_study_area_view(
         ax,
         study_area,
     )
-    ax.set_title(title)
+    _add_usage_legends(
+        ax,
+        usage_geometry,
+    )
+
+    ax.set_title(
+        title
+    )
     ax.set_axis_off()
-    ax.legend()
 
     return fig, ax
 
@@ -796,15 +1020,12 @@ def plot_edge_usage_by_category(
     study_area: StudyArea | None = None,
     title: str | None = None,
 ):
-    """Plota um painel por categoria mostrando os trechos efetivamente usados.
-
-    Use category="trip_mode" para comparar modos de viagem e
-    category="income_group" para comparar classes sociais.
-    A espessura da linha representa o número de travessias do grupo no trecho.
-    """
+    """Plota painéis mantendo cor por renda e linha por modo em todos eles."""
 
     if edge_usage.empty:
-        raise ValueError("edge_usage está vazio.")
+        raise ValueError(
+            "edge_usage está vazio."
+        )
 
     if category not in edge_usage.columns:
         raise KeyError(
@@ -824,7 +1045,9 @@ def plot_edge_usage_by_category(
 
     categories = sorted(
         str(value)
-        for value in usage_geometry[category]
+        for value in usage_geometry[
+            category
+        ]
         .dropna()
         .unique()
     )
@@ -834,7 +1057,10 @@ def plot_edge_usage_by_category(
             f"Nenhum valor válido encontrado em '{category}'."
         )
 
-    ncols = min(2, len(categories))
+    ncols = min(
+        2,
+        len(categories),
+    )
     nrows = (
         len(categories)
         + ncols
@@ -850,6 +1076,9 @@ def plot_edge_usage_by_category(
         ),
         squeeze=False,
     )
+    fig.patch.set_facecolor(
+        MAP_BACKGROUND
+    )
 
     flat_axes = axes.ravel()
 
@@ -857,43 +1086,20 @@ def plot_edge_usage_by_category(
         flat_axes,
         categories,
     ):
+        ax.set_facecolor(
+            MAP_BACKGROUND
+        )
+
         subset = usage_geometry.loc[
-            usage_geometry[category].astype(str)
+            usage_geometry[
+                category
+            ].astype(str)
             == value
         ].copy()
 
-        counts = (
-            subset.groupby(
-                "edge_id",
-                as_index=False,
-            )
-            .agg(
-                n_traversals=("agent_id", "size"),
-                geometry=("geometry", "first"),
-            )
-        )
-
-        counts = gpd.GeoDataFrame(
-            counts,
-            geometry="geometry",
-            crs=usage_geometry.crs,
-        )
-
-        max_count = max(
-            float(counts["n_traversals"].max()),
-            1.0,
-        )
-
-        linewidth = (
-            0.5
-            + 3.5
-            * counts["n_traversals"].astype(float)
-            / max_count
-        )
-
-        counts.plot(
-            ax=ax,
-            linewidth=linewidth,
+        _plot_styled_edge_usage(
+            ax,
+            subset,
         )
 
         apply_study_area_view(
@@ -901,21 +1107,35 @@ def plot_edge_usage_by_category(
             study_area,
         )
 
+        _add_usage_legends(
+            ax,
+            subset,
+        )
+
         ax.set_title(
-            f"{value} — {int(counts['n_traversals'].sum())} travessias"
+            (
+                f"{value} — "
+                f"{len(subset):,} registros de uso"
+            )
         )
         ax.set_axis_off()
 
-    for ax in flat_axes[len(categories):]:
-        ax.set_visible(False)
+    for ax in flat_axes[
+        len(categories):
+    ]:
+        ax.set_visible(
+            False
+        )
 
     fig.suptitle(
-        title or f"Uso dos trechos por {category}",
+        title
+        or f"Uso dos trechos por {category}",
         fontsize=14,
     )
     fig.tight_layout()
 
     return fig, axes
+
 
 def save_plot(
     fig,
