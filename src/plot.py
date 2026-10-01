@@ -76,6 +76,12 @@ CENSUS_INCOME_CMAP = LinearSegmentedColormap.from_list(
     ],
 )
 
+# Escala cartográfica fixa para os mapas censitários de renda.
+# Valores acima de R$ 20.000 ficam acumulados no topo da escala, evitando
+# que poucos outliers comprimam visualmente a maioria dos setores.
+CENSUS_INCOME_MIN = 0.0
+CENSUS_INCOME_MAX = 20_000.0
+
 
 
 def apply_study_area_view(
@@ -1887,6 +1893,35 @@ def plot_mandatory_mode_income(
     return fig, ax
 
 
+
+def _prepare_census_income_for_plot(
+    sectors: gpd.GeoDataFrame,
+    *,
+    income_column: str,
+) -> gpd.GeoDataFrame:
+    """Prepara a renda apenas para representação cartográfica.
+
+    A coluna original é preservada. A coluna auxiliar income_plot é limitada
+    ao intervalo entre R$ 0 e R$ 20.000; valores superiores são acumulados em
+    R$ 20.000 para reduzir o efeito visual de outliers.
+    """
+
+    result = sectors.copy()
+
+    result[income_column] = pd.to_numeric(
+        result[income_column],
+        errors="coerce",
+    )
+
+    result["income_plot"] = result[
+        income_column
+    ].clip(
+        lower=CENSUS_INCOME_MIN,
+        upper=CENSUS_INCOME_MAX,
+    )
+
+    return result
+
 def plot_census_income_gradient(
     *,
     census_sectors: gpd.GeoDataFrame,
@@ -1910,17 +1945,16 @@ def plot_census_income_gradient(
         ax,
     )
 
-    sectors = census_sectors.copy()
-    sectors[income_column] = pd.to_numeric(
-        sectors[income_column],
-        errors="coerce",
+    sectors = _prepare_census_income_for_plot(
+        census_sectors,
+        income_column=income_column,
     )
 
     valid = sectors.loc[
-        sectors[income_column].notna()
+        sectors["income_plot"].notna()
     ].copy()
     missing = sectors.loc[
-        sectors[income_column].isna()
+        sectors["income_plot"].isna()
     ].copy()
 
     if not missing.empty:
@@ -1935,14 +1969,23 @@ def plot_census_income_gradient(
     if not valid.empty:
         valid.plot(
             ax=ax,
-            column=income_column,
+            column="income_plot",
             cmap=CENSUS_INCOME_CMAP,
+            vmin=CENSUS_INCOME_MIN,
+            vmax=CENSUS_INCOME_MAX,
             edgecolor="#BDBDBD",
             linewidth=0.25,
             legend=True,
             legend_kwds={
-                "label": "Renda média do responsável (R$)",
+                "label": "Renda média do responsável (R$; 20.000 = 20.000+)",
                 "shrink": 0.72,
+                "ticks": [
+                    0,
+                    5_000,
+                    10_000,
+                    15_000,
+                    20_000,
+                ],
             },
             zorder=2,
         )
@@ -2019,21 +2062,22 @@ def plot_census_plus_all_modes(
         ax,
     )
 
-    sectors = census_sectors.copy()
-    sectors[income_column] = pd.to_numeric(
-        sectors[income_column],
-        errors="coerce",
+    sectors = _prepare_census_income_for_plot(
+        census_sectors,
+        income_column=income_column,
     )
 
     valid = sectors.loc[
-        sectors[income_column].notna()
+        sectors["income_plot"].notna()
     ].copy()
 
     if not valid.empty:
         valid.plot(
             ax=ax,
-            column=income_column,
+            column="income_plot",
             cmap=CENSUS_INCOME_CMAP,
+            vmin=CENSUS_INCOME_MIN,
+            vmax=CENSUS_INCOME_MAX,
             edgecolor="#C6C6C6",
             linewidth=0.2,
             alpha=0.55,
