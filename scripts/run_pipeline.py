@@ -24,7 +24,10 @@ from prepare_city_networks import prepare_city_networks
 from prepare_region import prepare_region
 
 from scripts.clear_outputs import clear_output_files
-from src.core.config import load_project_config
+from src.core.config import (
+    load_project_config,
+    load_regions_config,
+)
 from src.domain.enums import IncomeGroup
 from src.pipeline.config import (
     PilotRunConfig,
@@ -34,6 +37,23 @@ from src.simulation.run_pilot import run_pilot
 
 
 def parse_args() -> argparse.Namespace:
+    project_config = load_project_config()
+    regions_config = load_regions_config(
+        project_config
+    )
+    enabled_regions = tuple(
+        name
+        for name, definition
+        in regions_config.get(
+            "regions",
+            {},
+        ).items()
+        if definition.get(
+            "enabled",
+            False,
+        )
+    )
+
     parser = argparse.ArgumentParser(
         description="Executa todo o pipeline configurável do EtPilot."
     )
@@ -41,10 +61,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--region",
         default=None,
-        choices=("city", "center", "north", "south", "east"),
+        choices=enabled_regions,
         help=(
-            "Região da análise. As regiões precisam estar habilitadas "
-            "em config/regions.json."
+            "Região territorial habilitada em config/regions.json. "
+            "Inclui a cidade inteira e as 17 regiões do Orçamento Participativo."
         ),
     )
     parser.add_argument(
