@@ -1308,6 +1308,1361 @@ def plot_edge_usage_by_category(
     return fig, axes
 
 
+
+# ============================================================================
+# MAPAS OBRIGATÓRIOS DO PILOTO
+# ============================================================================
+#
+# Os mapas abaixo formam o conjunto mínimo que deve existir em toda execução.
+# Eles são separados dos mapas opcionais da GUI: mesmo que o usuário não
+# selecione nenhum mapa extra, estes produtos continuam sendo gerados.
+#
+# Regras visuais comuns:
+# - fundo branco;
+# - redes de referência sempre visíveis em cinza claro;
+# - no mapa exclusivo de redes, o cinza é propositalmente mais forte;
+# - classe social é codificada por cor;
+# - quando um mapa contém somente um modo de viagem, as rotas são contínuas;
+# - a espessura representa intensidade relativa de travessias.
+
+
+def _network_edges_for_plot(
+    graphs: Mapping[str, nx.MultiDiGraph],
+) -> dict[str, gpd.GeoDataFrame]:
+    """Converte cada grafo modal em GeoDataFrame uma única vez.
+
+    A geração obrigatória cria muitas figuras. Fazer graph_to_gdfs em cada
+    figura seria desnecessariamente caro; por isso a conversão é preparada uma
+    única vez e reutilizada por todos os mapas da mesma rodada.
+    """
+
+    result: dict[str, gpd.GeoDataFrame] = {}
+
+    for mode in ("walk", "bike", "car"):
+        graph = graphs.get(mode)
+
+        if graph is None:
+            continue
+
+        _, edges = ox.graph_to_gdfs(
+            graph,
+            nodes=True,
+            edges=True,
+        )
+
+        result[mode] = edges
+
+    return result
+
+
+def _plot_network_context(
+    ax,
+    *,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    strong: bool = False,
+    add_legend: bool = False,
+) -> None:
+    """Desenha as redes de referência por baixo dos dados simulados.
+
+    Em praticamente todos os mapas as redes devem funcionar apenas como
+    contexto espacial, portanto recebem cinza claro, baixa espessura e baixa
+    prioridade visual. O mapa obrigatório 8 chama esta função com strong=True
+    para transformar as redes no assunto principal da figura.
+    """
+
+    if strong:
+        # No mapa de redes usamos tons fortes e estilos distintos para que as
+        # quatro infraestruturas possam ser identificadas sem depender de cor.
+        styles = {
+            "walk": {
+                "color": "#777777",
+                "linewidth": 0.8,
+                "linestyle": (0, (1, 2)),
+                "label": "Walk",
+            },
+            "bike": {
+                "color": "#666666",
+                "linewidth": 0.9,
+                "linestyle": (0, (6, 3)),
+                "label": "Bike",
+            },
+            "car": {
+                "color": "#444444",
+                "linewidth": 1.0,
+                "linestyle": "solid",
+                "label": "Carro",
+            },
+        }
+        transit_color = "#222222"
+        transit_width = 1.2
+        alpha = 0.92
+    else:
+        # Nas demais figuras todas as redes aparecem discretamente para não
+        # competir com trajetórias, classes sociais ou setores censitários.
+        styles = {
+            mode: {
+                "color": NETWORK_BASE_WEAK,
+                "linewidth": 0.35,
+                "linestyle": "solid",
+                "label": MODE_LABELS.get(mode, mode),
+            }
+            for mode in ("walk", "bike", "car")
+        }
+        transit_color = NETWORK_BASE_WEAK
+        transit_width = 0.45
+        alpha = 0.65
+
+    legend_handles = []
+
+    for mode in ("walk", "bike", "car"):
+        edges = network_edges.get(mode)
+
+        if edges is None or edges.empty:
+            continue
+
+        style = styles[mode]
+
+        edges.plot(
+            ax=ax,
+            color=style["color"],
+            linewidth=style["linewidth"],
+            linestyle=style["linestyle"],
+            alpha=alpha,
+            zorder=1,
+        )
+
+        if strong and add_legend:
+            legend_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=style["color"],
+                    linewidth=2,
+                    linestyle=style["linestyle"],
+                    label=style["label"],
+                )
+            )
+
+    if (
+        transit_physical_edges is not None
+        and not transit_physical_edges.empty
+    ):
+        transit_physical_edges.plot(
+            ax=ax,
+            color=transit_color,
+            linewidth=transit_width,
+            linestyle="solid",
+            alpha=alpha,
+            zorder=1,
+        )
+
+        if strong and add_legend:
+            legend_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=transit_color,
+                    linewidth=2,
+                    linestyle="solid",
+                    marker=">",
+                    markevery=[1],
+                    label="Ônibus",
+                )
+            )
+
+    if legend_handles:
+        ax.legend(
+            handles=legend_handles,
+            title="Redes",
+            loc="upper right",
+            frameon=True,
+        )
+
+
+def _annotate_no_simulated_routes(
+    ax,
+    message: str = "Sem trajetos simulados para este filtro",
+) -> None:
+    """Mantém o mapa obrigatório legível mesmo quando o filtro fica vazio."""
+
+    ax.text(
+        0.5,
+        0.04,
+        message,
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        color="#666666",
+        bbox={
+            "facecolor": "#FFFFFF",
+            "edgecolor": "#CCCCCC",
+            "alpha": 0.9,
+            "pad": 4,
+        },
+        zorder=20,
+    )
+
+
+def _income_offset_geometry(
+    geometry,
+    income_group: str,
+    *,
+    offset_m: float = 4.0,
+):
+    """Desloca levemente classes paralelas para evitar sobreposição total.
+
+    O CRS operacional do projeto é métrico (EPSG:31982). Portanto o pequeno
+    deslocamento lateral abaixo é medido em metros. Ele não altera a rota
+    analítica; serve somente à representação cartográfica.
+    """
+
+    if geometry is None or geometry.is_empty:
+        return geometry
+
+    offsets = {
+        "low": -offset_m,
+        "middle": 0.0,
+        "high": offset_m,
+    }
+
+    distance = offsets.get(
+        str(income_group),
+        0.0,
+    )
+
+    if distance == 0:
+        return geometry
+
+    # parallel_offset é confiável para LineString. Para geometrias compostas
+    # mantemos a geometria original em vez de arriscar uma transformação
+    # cartograficamente incorreta.
+    if geometry.geom_type != "LineString":
+        return geometry
+
+    try:
+        return geometry.parallel_offset(
+            abs(distance),
+            side=(
+                "left"
+                if distance > 0
+                else "right"
+            ),
+            join_style=2,
+        )
+    except Exception:
+        # O mapa nunca deve derrubar o pipeline apenas porque uma geometria
+        # específica não aceitou o offset visual.
+        return geometry
+
+
+def _plot_continuous_usage_by_income(
+    ax,
+    usage_geometry: gpd.GeoDataFrame,
+    *,
+    offset_classes: bool,
+) -> None:
+    """Plota classes por cor usando somente linhas contínuas.
+
+    Esta função é utilizada nos mapas obrigatórios em que o modo já está
+    filtrado ou em que o usuário pediu explicitamente todos os modos em linha
+    contínua. A agregação por aresta preserva a intensidade de uso.
+    """
+
+    if usage_geometry.empty:
+        return
+
+    grouped = (
+        usage_geometry.groupby(
+            [
+                "income_group",
+                "edge_id",
+            ],
+            dropna=False,
+            as_index=False,
+        )
+        .agg(
+            n_traversals=("agent_id", "size"),
+            geometry=("geometry", "first"),
+        )
+    )
+
+    grouped = gpd.GeoDataFrame(
+        grouped,
+        geometry="geometry",
+        crs=usage_geometry.crs,
+    )
+
+    max_count = max(
+        float(
+            grouped["n_traversals"].max()
+        ),
+        1.0,
+    )
+
+    for income_group, subset in grouped.groupby(
+        "income_group",
+        dropna=False,
+    ):
+        income_key = str(
+            income_group
+        )
+        color = INCOME_COLORS.get(
+            income_key,
+            MAP_NEUTRAL,
+        )
+
+        subset = subset.copy()
+
+        if offset_classes:
+            subset["geometry"] = [
+                _income_offset_geometry(
+                    geometry,
+                    income_key,
+                )
+                for geometry in subset.geometry
+            ]
+
+        linewidths = (
+            0.8
+            + 3.2
+            * subset[
+                "n_traversals"
+            ].astype(float)
+            / max_count
+        )
+
+        subset.plot(
+            ax=ax,
+            color=color,
+            linewidth=linewidths,
+            linestyle="solid",
+            alpha=0.96,
+            zorder=4,
+        )
+
+
+def _add_income_only_legend(
+    ax,
+    *,
+    income_groups: list[str] | None = None,
+) -> None:
+    """Adiciona legenda padronizada das classes sociais."""
+
+    groups = income_groups or [
+        "low",
+        "middle",
+        "high",
+    ]
+
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            color=INCOME_COLORS[group],
+            linewidth=3,
+            label=INCOME_LABELS[group],
+        )
+        for group in groups
+        if group in INCOME_COLORS
+    ]
+
+    if handles:
+        ax.legend(
+            handles=handles,
+            title="Classe social",
+            loc="upper right",
+            frameon=True,
+        )
+
+
+def plot_mandatory_mode_all_incomes(
+    *,
+    usage_geometry: gpd.GeoDataFrame,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    trip_mode: str,
+    study_area: StudyArea | None,
+):
+    """Mapa obrigatório 1: um modo de viagem com todas as classes sociais."""
+
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=False,
+    )
+
+    subset = usage_geometry.loc[
+        usage_geometry[
+            "trip_mode"
+        ].astype(str)
+        == trip_mode
+    ].copy()
+
+    # Como a figura mostra somente um modo de viagem, todas as trajetórias são
+    # desenhadas com linha contínua. As classes permanecem diferenciadas por cor.
+    _plot_continuous_usage_by_income(
+        ax,
+        subset,
+        offset_classes=True,
+    )
+
+    if subset.empty:
+        _annotate_no_simulated_routes(
+            ax
+        )
+
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
+    _add_income_only_legend(
+        ax
+    )
+
+    ax.set_title(
+        f"{MODE_LABELS.get(trip_mode, trip_mode)} — todas as classes"
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def plot_mandatory_mode_income(
+    *,
+    usage_geometry: gpd.GeoDataFrame,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    trip_mode: str,
+    income_group: str,
+    study_area: StudyArea | None,
+):
+    """Mapas obrigatórios 2–5: uma classe social e um modo por figura."""
+
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=False,
+    )
+
+    subset = usage_geometry.loc[
+        (
+            usage_geometry[
+                "trip_mode"
+            ].astype(str)
+            == trip_mode
+        )
+        & (
+            usage_geometry[
+                "income_group"
+            ].astype(str)
+            == income_group
+        )
+    ].copy()
+
+    _plot_continuous_usage_by_income(
+        ax,
+        subset,
+        offset_classes=False,
+    )
+
+    if subset.empty:
+        _annotate_no_simulated_routes(
+            ax
+        )
+
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
+
+    color = INCOME_COLORS.get(
+        income_group,
+        MAP_NEUTRAL,
+    )
+
+    ax.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                color=color,
+                linewidth=3,
+                linestyle="solid",
+                label=(
+                    f"{INCOME_LABELS.get(income_group, income_group)}"
+                    f" — {MODE_LABELS.get(trip_mode, trip_mode)}"
+                ),
+            )
+        ],
+        loc="upper right",
+        frameon=True,
+    )
+
+    ax.set_title(
+        (
+            f"{MODE_LABELS.get(trip_mode, trip_mode)} — "
+            f"{INCOME_LABELS.get(income_group, income_group)}"
+        )
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def plot_census_income_gradient(
+    *,
+    census_sectors: gpd.GeoDataFrame,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    study_area: StudyArea | None,
+    income_column: str = "renda_media_responsavel",
+):
+    """Mapa obrigatório 6: setores censitários em gradiente de renda."""
+
+    if income_column not in census_sectors.columns:
+        raise KeyError(
+            f"Coluna de renda '{income_column}' ausente nos setores censitários."
+        )
+
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    sectors = census_sectors.copy()
+    sectors[income_column] = pd.to_numeric(
+        sectors[income_column],
+        errors="coerce",
+    )
+
+    valid = sectors.loc[
+        sectors[income_column].notna()
+    ].copy()
+    missing = sectors.loc[
+        sectors[income_column].isna()
+    ].copy()
+
+    if not missing.empty:
+        missing.plot(
+            ax=ax,
+            color="#F2F2F2",
+            edgecolor="#D0D0D0",
+            linewidth=0.2,
+            zorder=1,
+        )
+
+    if not valid.empty:
+        valid.plot(
+            ax=ax,
+            column=income_column,
+            cmap=CENSUS_INCOME_CMAP,
+            edgecolor="#BDBDBD",
+            linewidth=0.25,
+            legend=True,
+            legend_kwds={
+                "label": "Renda média do responsável (R$)",
+                "shrink": 0.72,
+            },
+            zorder=2,
+        )
+
+    # Mesmo no mapa censitário a infraestrutura urbana continua visível, mas
+    # apenas como referência em cinza claro.
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=False,
+    )
+
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
+
+    ax.set_title(
+        "Setores censitários — gradiente de renda"
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def plot_census_plus_all_modes(
+    *,
+    census_sectors: gpd.GeoDataFrame,
+    usage_geometry: gpd.GeoDataFrame,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    study_area: StudyArea | None,
+    income_column: str = "renda_media_responsavel",
+):
+    """Mapa obrigatório 7: setores censitários + todos os modos simulados.
+
+    Todos os modos são representados por linha contínua. A classe social é
+    identificada exclusivamente pela cor, e classes que compartilham a mesma
+    aresta recebem pequeno deslocamento lateral para melhorar a leitura.
+    """
+
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    sectors = census_sectors.copy()
+    sectors[income_column] = pd.to_numeric(
+        sectors[income_column],
+        errors="coerce",
+    )
+
+    valid = sectors.loc[
+        sectors[income_column].notna()
+    ].copy()
+
+    if not valid.empty:
+        valid.plot(
+            ax=ax,
+            column=income_column,
+            cmap=CENSUS_INCOME_CMAP,
+            edgecolor="#C6C6C6",
+            linewidth=0.2,
+            alpha=0.55,
+            zorder=1,
+        )
+
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=False,
+    )
+
+    _plot_continuous_usage_by_income(
+        ax,
+        usage_geometry,
+        offset_classes=True,
+    )
+
+    if usage_geometry.empty:
+        _annotate_no_simulated_routes(
+            ax
+        )
+
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
+    _add_income_only_legend(
+        ax
+    )
+
+    ax.set_title(
+        "Setores censitários + todos os modos por classe social"
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def plot_all_networks(
+    *,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    study_area: StudyArea | None,
+):
+    """Mapa obrigatório 8: todas as redes em cinza forte."""
+
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=True,
+        add_legend=True,
+    )
+
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
+
+    ax.set_title(
+        "Todas as redes de mobilidade"
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def _route_edge_geometries(
+    graph: nx.MultiDiGraph,
+    edge_list,
+):
+    """Recupera as geometrias de uma sequência de arestas de um agente."""
+
+    from shapely.geometry import LineString
+
+    geometries = []
+
+    for u, v, key in edge_list:
+        attributes = graph.get_edge_data(
+            int(u),
+            int(v),
+            int(key),
+        )
+
+        if not attributes:
+            continue
+
+        geometry = attributes.get(
+            "geometry"
+        )
+
+        if geometry is None:
+            origin = graph.nodes[
+                int(u)
+            ]
+            destination = graph.nodes[
+                int(v)
+            ]
+            geometry = LineString(
+                [
+                    (
+                        origin["x"],
+                        origin["y"],
+                    ),
+                    (
+                        destination["x"],
+                        destination["y"],
+                    ),
+                ]
+            )
+
+        geometries.append(
+            geometry
+        )
+
+    return geometries
+
+
+def plot_agent_routes_unique_colors(
+    *,
+    agents,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    connection_to_physical_edge,
+    study_area: StudyArea | None,
+):
+    """Mapa obrigatório 9: cada agente recebe uma cor exclusiva.
+
+    Por regra de legibilidade este mapa só é gerado quando existem menos de
+    40 agentes. Quando há menos de 20, origem e destino também são marcados
+    com X e círculo, respectivamente.
+    """
+
+    if len(agents) >= 40:
+        return None, None
+
+    fig, ax = plt.subplots(
+        figsize=(10, 9)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=False,
+    )
+
+    mapping = (
+        connection_to_physical_edge.copy()
+    )
+    mapping[
+        "connection_id"
+    ] = mapping[
+        "connection_id"
+    ].astype(str)
+    mapping[
+        "transit_physical_edge_id"
+    ] = mapping[
+        "transit_physical_edge_id"
+    ].astype(str)
+
+    transit_edges = (
+        transit_physical_edges.copy()
+    )
+    transit_edges[
+        "transit_physical_edge_id"
+    ] = transit_edges[
+        "transit_physical_edge_id"
+    ].astype(str)
+
+    # turbo oferece cores suficientemente separadas para amostras pequenas sem
+    # impor significado ordinal às cores dos agentes.
+    cmap = plt.get_cmap(
+        "turbo",
+        max(
+            len(agents),
+            1,
+        ),
+    )
+
+    show_od = len(agents) < 20
+
+    for index, agent in enumerate(
+        agents
+    ):
+        color = cmap(
+            index
+        )
+        mode = getattr(
+            agent,
+            "mode",
+            None,
+        )
+        mode_name = (
+            mode.value
+            if hasattr(
+                mode,
+                "value",
+            )
+            else str(mode)
+        )
+
+        if mode_name in {
+            "walk",
+            "bike",
+            "car",
+        }:
+            graph = graphs.get(
+                mode_name
+            )
+
+            if graph is None:
+                continue
+
+            geometries = (
+                _route_edge_geometries(
+                    graph,
+                    getattr(
+                        agent,
+                        "route_edges",
+                        [],
+                    ),
+                )
+            )
+
+            if geometries:
+                gpd.GeoSeries(
+                    geometries,
+                    crs=graph.graph.get(
+                        "crs"
+                    ),
+                ).plot(
+                    ax=ax,
+                    color=color,
+                    linewidth=1.8,
+                    linestyle="solid",
+                    alpha=0.95,
+                    zorder=5,
+                )
+
+            if show_od:
+                origin_node = getattr(
+                    agent,
+                    "origin_node",
+                    None,
+                )
+                destination_node = getattr(
+                    agent,
+                    "destination_node",
+                    None,
+                )
+
+                if (
+                    origin_node is not None
+                    and int(origin_node)
+                    in graph.nodes
+                ):
+                    node = graph.nodes[
+                        int(origin_node)
+                    ]
+                    ax.scatter(
+                        [node["x"]],
+                        [node["y"]],
+                        marker="x",
+                        s=65,
+                        color=[color],
+                        linewidths=1.8,
+                        zorder=8,
+                    )
+
+                if (
+                    destination_node
+                    is not None
+                    and int(
+                        destination_node
+                    )
+                    in graph.nodes
+                ):
+                    node = graph.nodes[
+                        int(
+                            destination_node
+                        )
+                    ]
+                    ax.scatter(
+                        [node["x"]],
+                        [node["y"]],
+                        marker="o",
+                        s=50,
+                        facecolors="none",
+                        edgecolors=[color],
+                        linewidths=1.8,
+                        zorder=8,
+                    )
+
+        elif mode_name == "transit":
+            walk_graph = graphs.get(
+                "walk"
+            )
+
+            if walk_graph is None:
+                continue
+
+            # Acesso e egresso a pé recebem a mesma cor do agente para que a
+            # trajetória completa possa ser seguida visualmente.
+            walk_geometries = []
+
+            for edge_list in (
+                getattr(
+                    agent,
+                    "transit_access_walk_edges",
+                    [],
+                ),
+                getattr(
+                    agent,
+                    "transit_egress_walk_edges",
+                    [],
+                ),
+            ):
+                walk_geometries.extend(
+                    _route_edge_geometries(
+                        walk_graph,
+                        edge_list,
+                    )
+                )
+
+            if walk_geometries:
+                gpd.GeoSeries(
+                    walk_geometries,
+                    crs=walk_graph.graph.get(
+                        "crs"
+                    ),
+                ).plot(
+                    ax=ax,
+                    color=color,
+                    linewidth=1.8,
+                    linestyle="solid",
+                    alpha=0.95,
+                    zorder=5,
+                )
+
+            connection_ids = [
+                str(value)
+                for value in getattr(
+                    agent,
+                    "transit_connection_ids",
+                    [],
+                )
+            ]
+
+            physical_ids = (
+                mapping.loc[
+                    mapping[
+                        "connection_id"
+                    ].isin(
+                        connection_ids
+                    ),
+                    "transit_physical_edge_id",
+                ]
+                .dropna()
+                .astype(str)
+                .unique()
+                .tolist()
+            )
+
+            vehicle_edges = (
+                transit_edges.loc[
+                    transit_edges[
+                        "transit_physical_edge_id"
+                    ].isin(
+                        physical_ids
+                    )
+                ]
+            )
+
+            if not vehicle_edges.empty:
+                vehicle_edges.plot(
+                    ax=ax,
+                    color=color,
+                    linewidth=2.0,
+                    linestyle="solid",
+                    alpha=0.96,
+                    zorder=6,
+                )
+
+            if show_od:
+                origin_node = getattr(
+                    agent,
+                    "origin_nodes",
+                    {},
+                ).get("walk")
+                destination_node = getattr(
+                    agent,
+                    "destination_nodes",
+                    {},
+                ).get("walk")
+
+                if (
+                    origin_node is not None
+                    and int(origin_node)
+                    in walk_graph.nodes
+                ):
+                    node = walk_graph.nodes[
+                        int(origin_node)
+                    ]
+                    ax.scatter(
+                        [node["x"]],
+                        [node["y"]],
+                        marker="x",
+                        s=65,
+                        color=[color],
+                        linewidths=1.8,
+                        zorder=8,
+                    )
+
+                if (
+                    destination_node
+                    is not None
+                    and int(
+                        destination_node
+                    )
+                    in walk_graph.nodes
+                ):
+                    node = walk_graph.nodes[
+                        int(
+                            destination_node
+                        )
+                    ]
+                    ax.scatter(
+                        [node["x"]],
+                        [node["y"]],
+                        marker="o",
+                        s=50,
+                        facecolors="none",
+                        edgecolors=[color],
+                        linewidths=1.8,
+                        zorder=8,
+                    )
+
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
+
+    if show_od:
+        _add_od_marker_legend(
+            ax
+        )
+
+    ax.set_title(
+        f"Trajetória individual dos agentes — n={len(agents)}"
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def generate_mandatory_maps(
+    *,
+    output_dir: str | Path,
+    agents,
+    graphs: Mapping[str, nx.MultiDiGraph],
+    edge_usage: pd.DataFrame,
+    transit_physical_edges: gpd.GeoDataFrame,
+    connection_to_physical_edge,
+    census_sectors: gpd.GeoDataFrame,
+    study_area: StudyArea | None,
+) -> dict[str, Path]:
+    """Gera e salva todo o conjunto obrigatório de mapas do piloto.
+
+    A função centraliza a ordem e os nomes dos arquivos para que GUI e terminal
+    produzam exatamente o mesmo conjunto mínimo de figuras.
+    """
+
+    mandatory_dir = Path(
+        output_dir
+    ) / "mandatory_maps"
+    mandatory_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    network_edges = (
+        _network_edges_for_plot(
+            graphs
+        )
+    )
+
+    usage_geometry = (
+        _edge_usage_geometry(
+            edge_usage=edge_usage,
+            graphs=graphs,
+            transit_physical_edges=transit_physical_edges,
+        )
+        if not edge_usage.empty
+        else gpd.GeoDataFrame(
+            columns=[
+                "agent_id",
+                "income_group",
+                "trip_mode",
+                "network_mode",
+                "edge_id",
+                "geometry",
+            ],
+            geometry="geometry",
+            crs=(
+                study_area.crs
+                if study_area is not None
+                else None
+            ),
+        )
+    )
+
+    generated: dict[str, Path] = {}
+
+    # ----------------------------------------------------------------------
+    # 1. Um mapa para cada modo, contendo todas as classes sociais.
+    # ----------------------------------------------------------------------
+    for trip_mode in (
+        "walk",
+        "bike",
+        "car",
+        "transit",
+    ):
+        fig, _ = (
+            plot_mandatory_mode_all_incomes(
+                usage_geometry=usage_geometry,
+                network_edges=network_edges,
+                transit_physical_edges=transit_physical_edges,
+                trip_mode=trip_mode,
+                study_area=study_area,
+            )
+        )
+
+        path = (
+            mandatory_dir
+            / f"01_mode_{trip_mode}_all_incomes.png"
+        )
+        save_plot(
+            fig,
+            path,
+        )
+        plt.close(
+            fig
+        )
+        generated[
+            f"mode_{trip_mode}_all_incomes"
+        ] = path
+
+    # ----------------------------------------------------------------------
+    # 2–5. Um mapa para cada combinação classe social x modo de viagem.
+    # ----------------------------------------------------------------------
+    for trip_mode in (
+        "bike",
+        "walk",
+        "car",
+        "transit",
+    ):
+        for income_group in (
+            "low",
+            "middle",
+            "high",
+        ):
+            fig, _ = (
+                plot_mandatory_mode_income(
+                    usage_geometry=usage_geometry,
+                    network_edges=network_edges,
+                    transit_physical_edges=transit_physical_edges,
+                    trip_mode=trip_mode,
+                    income_group=income_group,
+                    study_area=study_area,
+                )
+            )
+
+            path = (
+                mandatory_dir
+                / (
+                    f"0{2 + ('bike', 'walk', 'car', 'transit').index(trip_mode)}"
+                    f"_{trip_mode}_{income_group}.png"
+                )
+            )
+            save_plot(
+                fig,
+                path,
+            )
+            plt.close(
+                fig
+            )
+            generated[
+                f"{trip_mode}_{income_group}"
+            ] = path
+
+    # ----------------------------------------------------------------------
+    # 6. Setores censitários em gradiente de renda.
+    # ----------------------------------------------------------------------
+    fig, _ = plot_census_income_gradient(
+        census_sectors=census_sectors,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        study_area=study_area,
+    )
+    path = (
+        mandatory_dir
+        / "06_census_income_gradient.png"
+    )
+    save_plot(
+        fig,
+        path,
+    )
+    plt.close(
+        fig
+    )
+    generated[
+        "census_income_gradient"
+    ] = path
+
+    # ----------------------------------------------------------------------
+    # 7. Mapa censitário com todos os modos contínuos e cor por classe.
+    # ----------------------------------------------------------------------
+    fig, _ = plot_census_plus_all_modes(
+        census_sectors=census_sectors,
+        usage_geometry=usage_geometry,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        study_area=study_area,
+    )
+    path = (
+        mandatory_dir
+        / "07_census_plus_all_modes.png"
+    )
+    save_plot(
+        fig,
+        path,
+    )
+    plt.close(
+        fig
+    )
+    generated[
+        "census_plus_all_modes"
+    ] = path
+
+    # ----------------------------------------------------------------------
+    # 8. Todas as redes em cinza forte.
+    # ----------------------------------------------------------------------
+    fig, _ = plot_all_networks(
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        study_area=study_area,
+    )
+    path = (
+        mandatory_dir
+        / "08_all_networks.png"
+    )
+    save_plot(
+        fig,
+        path,
+    )
+    plt.close(
+        fig
+    )
+    generated[
+        "all_networks"
+    ] = path
+
+    # ----------------------------------------------------------------------
+    # 9. Uma cor por agente, somente quando n < 40.
+    # ----------------------------------------------------------------------
+    if len(agents) < 40:
+        fig, _ = (
+            plot_agent_routes_unique_colors(
+                agents=agents,
+                graphs=graphs,
+                network_edges=network_edges,
+                transit_physical_edges=transit_physical_edges,
+                connection_to_physical_edge=(
+                    connection_to_physical_edge
+                ),
+                study_area=study_area,
+            )
+        )
+
+        if fig is not None:
+            path = (
+                mandatory_dir
+                / "09_agent_routes_unique_colors.png"
+            )
+            save_plot(
+                fig,
+                path,
+            )
+            plt.close(
+                fig
+            )
+            generated[
+                "agent_routes_unique_colors"
+            ] = path
+
+    return generated
+
 def save_plot(
     fig,
     path: str | Path,
