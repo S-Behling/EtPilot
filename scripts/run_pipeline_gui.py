@@ -25,12 +25,16 @@ from src.core.config import (
 from src.domain.enums import IncomeGroup
 from src.pipeline.config import (
     AVAILABLE_PLOTS,
-    PLOT_EDGE_USAGE,
-    PLOT_EDGE_USAGE_BY_INCOME,
-    PLOT_EDGE_USAGE_BY_MODE,
-    PLOT_EDGE_USAGE_BY_MODE_INCOME,
-    PLOT_ROUTES_OSM,
-    PLOT_ROUTES_TRANSIT,
+    PLOT_AGENT_UNIQUE,
+    PLOT_ALL_NETWORKS,
+    PLOT_BIKE_BY_INCOME,
+    PLOT_CAR_BY_INCOME,
+    PLOT_CENSUS_ALL_MODES,
+    PLOT_CENSUS_INCOME,
+    PLOT_MODE_ALL_INCOMES,
+    PLOT_MODE_FREQUENCY_BY_INCOME,
+    PLOT_TRANSIT_BY_INCOME,
+    PLOT_WALK_BY_INCOME,
     PilotRunConfig,
     SimulationPeriod,
 )
@@ -78,12 +82,36 @@ INCOME_LABELS = {
 }
 
 PLOT_LABELS = {
-    PLOT_ROUTES_OSM: "Rotas OSM dos agentes",
-    PLOT_ROUTES_TRANSIT: "Rotas de transporte coletivo",
-    PLOT_EDGE_USAGE: "Uso geral das redes",
-    PLOT_EDGE_USAGE_BY_MODE: "Trechos por modo de viagem",
-    PLOT_EDGE_USAGE_BY_INCOME: "Trechos por classe social",
-    PLOT_EDGE_USAGE_BY_MODE_INCOME: "Trechos por modo + classe social",
+    PLOT_MODE_ALL_INCOMES: (
+        "1. Um mapa por modo, com todas as classes sociais"
+    ),
+    PLOT_BIKE_BY_INCOME: (
+        "2. Bike: um mapa para cada classe social"
+    ),
+    PLOT_WALK_BY_INCOME: (
+        "3. Walk: um mapa para cada classe social"
+    ),
+    PLOT_CAR_BY_INCOME: (
+        "4. Carro: um mapa para cada classe social"
+    ),
+    PLOT_TRANSIT_BY_INCOME: (
+        "5. Transporte público: um mapa para cada classe social"
+    ),
+    PLOT_CENSUS_INCOME: (
+        "6. Setores censitários em gradiente de renda"
+    ),
+    PLOT_CENSUS_ALL_MODES: (
+        "7. Censo + todos os modos contínuos por classe"
+    ),
+    PLOT_ALL_NETWORKS: (
+        "8. Todas as redes"
+    ),
+    PLOT_AGENT_UNIQUE: (
+        "9. Uma cor por agente (somente se n < 40)"
+    ),
+    PLOT_MODE_FREQUENCY_BY_INCOME: (
+        "10. Gráfico de barras: frequência modal por classe"
+    ),
 }
 
 
@@ -395,7 +423,7 @@ class PipelineApp(tk.Tk):
 
         selector = tk.LabelFrame(
             content,
-            text=" Mapas opcionais adicionais ",
+            text=" Plots a gerar ",
             bg=WIN95["face"],
             fg=WIN95["text"],
             font=FONT_BOLD,
@@ -408,14 +436,12 @@ class PipelineApp(tk.Tk):
             fill="x",
         )
 
-        # Os checkboxes abaixo controlam apenas mapas extras. O conjunto
-        # obrigatório definido no pipeline é sempre gerado, independentemente
-        # desta seleção.
+        # Somente os itens selecionados abaixo são produzidos. Alguns itens
+        # representam um grupo de arquivos, como um mapa por classe social.
         tk.Label(
             selector,
             text=(
-                "Os 9 grupos de mapas obrigatórios são definidos pelo pipeline. "
-                "Selecione abaixo apenas produtos adicionais."
+                "Selecione os mapas e gráficos que deseja gerar nesta rodada."
             ),
             bg=WIN95["face"],
             fg=WIN95["text"],
@@ -533,13 +559,9 @@ class PipelineApp(tk.Tk):
                 "Carro: contínua\n"
                 "Ônibus: contínua com setas\n\n"
                 "Fundo de todos os mapas: branco puro  #FFFFFF\n\n"
-                "Mapas obrigatórios:\n"
-                "1. Um mapa por modo com todas as classes\n"
-                "2–5. Um mapa por classe para bike, walk, carro e ônibus\n"
-                "6. Setores censitários em gradiente de renda\n"
-                "7. Censo + todos os modos contínuos por classe\n"
-                "8. Todas as redes em cinza forte\n"
-                "9. Uma cor por agente quando n < 40 (condicional)"
+                "Somente os plots selecionados acima serão gerados.\n"
+                "O gráfico 10 usa a mesma cor das classes sociais.\n"
+                "O arquivo configurations_used.xlsx é sempre gerado."
             ),
             bg=WIN95["face"],
             fg=WIN95["text"],
