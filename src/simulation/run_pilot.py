@@ -20,6 +20,12 @@ from src.core.config import (
 )
 from src.domain.enums import IncomeGroup, TravelMode
 from src.pipeline.config import (
+    PLOT_EDGE_USAGE,
+    PLOT_EDGE_USAGE_BY_INCOME,
+    PLOT_EDGE_USAGE_BY_MODE,
+    PLOT_EDGE_USAGE_BY_MODE_INCOME,
+    PLOT_ROUTES_OSM,
+    PLOT_ROUTES_TRANSIT,
     PilotRunConfig,
     SimulationPeriod,
 )
@@ -437,6 +443,9 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         "n_agents": run_config.n_agents,
         "seed": run_config.seed,
         "scenario": run_config.scenario,
+        "selected_plots": list(
+            run_config.selected_plots
+        ),
         "gtfs_start_date": (
             representative_date.date().isoformat()
         ),
@@ -474,51 +483,17 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         index=False,
     )
 
-    fig, _ = plot_agent_routes(
-        agents=agents,
-        graphs=graphs,
-        sample_size=min(100, len(agents)),
-        title=(
-            f"Rotas OSM — {region_name} — "
-            f"{run_config.region_mode} — "
-            f"{run_config.scenario}"
-        ),
-        study_area=view_area,
-    )
-    save_plot(
-        fig,
-        output_dir / "routes_osm.png",
+    selected_plots = set(
+        run_config.selected_plots
     )
 
-    fig, _ = plot_transit_agent_routes(
-        agents=agents,
-        walk_graph=graphs["walk"],
-        physical_edges=regional_transit.physical_edges,
-        connection_to_physical_edge=(
-            regional_transit.connection_to_physical_edge
-        ),
-        sample_size=min(50, len(agents)),
-        title=(
-            f"Rotas transit — {region_name} — "
-            f"{run_config.region_mode} — "
-            f"{run_config.scenario}"
-        ),
-        study_area=view_area,
-    )
-    save_plot(
-        fig,
-        output_dir / "routes_transit.png",
-    )
-
-    if not edge_usage.empty:
-        fig, _ = plot_edge_usage(
-            edge_usage=edge_usage,
+    if PLOT_ROUTES_OSM in selected_plots:
+        fig, _ = plot_agent_routes(
+            agents=agents,
             graphs=graphs,
-            transit_physical_edges=(
-                regional_transit.physical_edges
-            ),
+            sample_size=min(100, len(agents)),
             title=(
-                f"Uso das redes — {region_name} — "
+                f"Rotas OSM — {region_name} — "
                 f"{run_config.region_mode} — "
                 f"{run_config.scenario}"
             ),
@@ -526,69 +501,124 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         )
         save_plot(
             fig,
-            output_dir / "edge_usage.png",
+            output_dir / "routes_osm.png",
         )
 
-        fig, _ = plot_edge_usage_by_category(
-            edge_usage=edge_usage,
-            graphs=graphs,
-            transit_physical_edges=(
-                regional_transit.physical_edges
+    if PLOT_ROUTES_TRANSIT in selected_plots:
+        fig, _ = plot_transit_agent_routes(
+            agents=agents,
+            walk_graph=graphs["walk"],
+            physical_edges=regional_transit.physical_edges,
+            connection_to_physical_edge=(
+                regional_transit.connection_to_physical_edge
             ),
-            category="trip_mode",
-            study_area=view_area,
+            sample_size=min(50, len(agents)),
             title=(
-                f"Trechos por modo de viagem — {region_name} — "
-                f"{run_config.region_mode}"
+                f"Rotas transit — {region_name} — "
+                f"{run_config.region_mode} — "
+                f"{run_config.scenario}"
             ),
+            study_area=view_area,
         )
         save_plot(
             fig,
-            output_dir / "edge_usage_by_mode.png",
+            output_dir / "routes_transit.png",
         )
 
-        fig, _ = plot_edge_usage_by_category(
-            edge_usage=edge_usage,
-            graphs=graphs,
-            transit_physical_edges=(
-                regional_transit.physical_edges
-            ),
-            category="income_group",
-            study_area=view_area,
-            title=(
-                f"Trechos por classe social — {region_name} — "
-                f"{run_config.region_mode}"
-            ),
-        )
-        save_plot(
-            fig,
-            output_dir / "edge_usage_by_income.png",
-        )
+    if not edge_usage.empty:
+        if PLOT_EDGE_USAGE in selected_plots:
+            fig, _ = plot_edge_usage(
+                edge_usage=edge_usage,
+                graphs=graphs,
+                transit_physical_edges=(
+                    regional_transit.physical_edges
+                ),
+                title=(
+                    f"Uso das redes — {region_name} — "
+                    f"{run_config.region_mode} — "
+                    f"{run_config.scenario}"
+                ),
+                study_area=view_area,
+            )
+            save_plot(
+                fig,
+                output_dir / "edge_usage.png",
+            )
 
-        edge_usage_mode_income = edge_usage.copy()
-        edge_usage_mode_income["mode_income"] = (
-            edge_usage_mode_income["trip_mode"].astype(str)
-            + " | "
-            + edge_usage_mode_income["income_group"].astype(str)
-        )
+        if PLOT_EDGE_USAGE_BY_MODE in selected_plots:
+            fig, _ = plot_edge_usage_by_category(
+                edge_usage=edge_usage,
+                graphs=graphs,
+                transit_physical_edges=(
+                    regional_transit.physical_edges
+                ),
+                category="trip_mode",
+                study_area=view_area,
+                title=(
+                    f"Trechos por modo de viagem — {region_name} — "
+                    f"{run_config.region_mode}"
+                ),
+            )
+            save_plot(
+                fig,
+                output_dir / "edge_usage_by_mode.png",
+            )
 
-        fig, _ = plot_edge_usage_by_category(
-            edge_usage=edge_usage_mode_income,
-            graphs=graphs,
-            transit_physical_edges=(
-                regional_transit.physical_edges
-            ),
-            category="mode_income",
-            study_area=view_area,
-            title=(
-                f"Trechos por modo e classe social — {region_name} — "
-                f"{run_config.region_mode}"
-            ),
-        )
-        save_plot(
-            fig,
-            output_dir / "edge_usage_by_mode_income.png",
-        )
+        if PLOT_EDGE_USAGE_BY_INCOME in selected_plots:
+            fig, _ = plot_edge_usage_by_category(
+                edge_usage=edge_usage,
+                graphs=graphs,
+                transit_physical_edges=(
+                    regional_transit.physical_edges
+                ),
+                category="income_group",
+                study_area=view_area,
+                title=(
+                    f"Trechos por classe social — {region_name} — "
+                    f"{run_config.region_mode}"
+                ),
+            )
+            save_plot(
+                fig,
+                output_dir / "edge_usage_by_income.png",
+            )
+
+        if (
+            PLOT_EDGE_USAGE_BY_MODE_INCOME
+            in selected_plots
+        ):
+            edge_usage_mode_income = (
+                edge_usage.copy()
+            )
+            edge_usage_mode_income[
+                "mode_income"
+            ] = (
+                edge_usage_mode_income[
+                    "trip_mode"
+                ].astype(str)
+                + " | "
+                + edge_usage_mode_income[
+                    "income_group"
+                ].astype(str)
+            )
+
+            fig, _ = plot_edge_usage_by_category(
+                edge_usage=edge_usage_mode_income,
+                graphs=graphs,
+                transit_physical_edges=(
+                    regional_transit.physical_edges
+                ),
+                category="mode_income",
+                study_area=view_area,
+                title=(
+                    f"Trechos por modo e classe social — {region_name} — "
+                    f"{run_config.region_mode}"
+                ),
+            )
+            save_plot(
+                fig,
+                output_dir / "edge_usage_by_mode_income.png",
+            )
 
     print("10/10 - Resumo final...")
 
