@@ -447,6 +447,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         "selected_plots": list(
             run_config.selected_plots
         ),
+        "selected_street": run_config.selected_street,
         "gtfs_start_date": (
             representative_date.date().isoformat()
         ),
@@ -505,6 +506,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         ),
         census_sectors=census_sectors,
         study_area=view_area,
+        selected_street=run_config.selected_street,
     )
 
     metadata["generated_plot_files"] = {
