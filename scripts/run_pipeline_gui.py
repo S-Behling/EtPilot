@@ -392,7 +392,7 @@ class PipelineApp(tk.Tk):
 
         selector = tk.LabelFrame(
             content,
-            text=" Mapas a gerar ",
+            text=" Mapas opcionais adicionais ",
             bg=WIN95["face"],
             fg=WIN95["text"],
             font=FONT_BOLD,
@@ -405,8 +405,30 @@ class PipelineApp(tk.Tk):
             fill="x",
         )
 
+        # Os checkboxes abaixo controlam apenas mapas extras. O conjunto
+        # obrigatório definido no pipeline é sempre gerado, independentemente
+        # desta seleção.
+        tk.Label(
+            selector,
+            text=(
+                "Os 8 grupos de mapas obrigatórios são sempre gerados. "
+                "Selecione abaixo apenas produtos adicionais."
+            ),
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            font=FONT_SMALL,
+            justify="left",
+            wraplength=760,
+        ).grid(
+            row=0,
+            column=0,
+            sticky="w",
+            pady=(0, 8),
+        )
+
         for row, plot_name in enumerate(
-            AVAILABLE_PLOTS
+            AVAILABLE_PLOTS,
+            start=1,
         ):
             tk.Checkbutton(
                 selector,
@@ -435,7 +457,7 @@ class PipelineApp(tk.Tk):
             bg=WIN95["face"],
         )
         buttons.grid(
-            row=len(AVAILABLE_PLOTS),
+            row=len(AVAILABLE_PLOTS) + 1,
             column=0,
             sticky="w",
             pady=(10, 0),
@@ -507,7 +529,14 @@ class PipelineApp(tk.Tk):
                 "Bike: tracejada\n"
                 "Carro: contínua\n"
                 "Ônibus: contínua com setas\n\n"
-                "Fundo dos mapas: Albescant White  #F7E9DE"
+                "Fundo de todos os mapas: branco puro  #FFFFFF\n\n"
+                "Mapas obrigatórios:\n"
+                "1. Um mapa por modo com todas as classes\n"
+                "2–5. Um mapa por classe para bike, walk, carro e ônibus\n"
+                "6. Setores censitários em gradiente de renda\n"
+                "7. Censo + todos os modos contínuos por classe\n"
+                "8. Todas as redes em cinza forte\n"
+                "9. Uma cor por agente quando n < 40"
             ),
             bg=WIN95["face"],
             fg=WIN95["text"],
