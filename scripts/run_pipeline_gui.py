@@ -136,6 +136,13 @@ class PipelineApp(tk.Tk):
         self._build_variables()
         self._build_ui()
 
+        # Ao trocar a região, a lista anterior deixa de ser válida. O usuário
+        # pode então carregar novamente apenas as ruas da nova região.
+        self.region_var.trace_add(
+            "write",
+            self._on_region_changed,
+        )
+
     def _configure_ttk_style(self) -> None:
         style = ttk.Style(self)
 
@@ -281,7 +288,12 @@ class PipelineApp(tk.Tk):
         )
 
         self.plot_vars = {
-            plot_name: tk.BooleanVar(value=True)
+            plot_name: tk.BooleanVar(
+                value=(
+                    plot_name
+                    != PLOT_SELECTED_STREET_USAGE
+                )
+            )
             for plot_name in AVAILABLE_PLOTS
         }
 
@@ -773,6 +785,29 @@ class PipelineApp(tk.Tk):
             columnspan=2,
             sticky="w",
             pady=(8, 0),
+        )
+
+    def _on_region_changed(
+        self,
+        *_args,
+    ) -> None:
+        """Limpa a rua selecionada quando a região é alterada."""
+
+        self.selected_street_var.set(
+            ""
+        )
+        self.street_options = ()
+
+        if hasattr(
+            self,
+            "street_combo",
+        ):
+            self.street_combo.configure(
+                values=()
+            )
+
+        self.status_var.set(
+            "Região alterada. Carregue as ruas da nova região."
         )
 
     def _refresh_street_options(
