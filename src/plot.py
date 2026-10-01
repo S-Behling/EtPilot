@@ -8,6 +8,8 @@ figura e eixo para permitir composição, testes e salvamento externo.
 from __future__ import annotations
 
 from pathlib import Path
+import re
+import unicodedata
 from typing import Mapping
 
 import geopandas as gpd
@@ -22,6 +24,10 @@ import pandas as pd
 from src.spatial.regional_data import RegionalData
 from src.spatial.study_area import StudyArea
 from src.spatial.transit_filter import RegionalTransitData
+from src.spatial.streets import (
+    normalize_street_names,
+    street_mask,
+)
 
 
 INCOME_COLORS = {
@@ -1117,10 +1123,24 @@ def _edge_usage_geometry(
             + edges["key"].astype(str)
         )
 
+        edges["street_names"] = (
+            edges["name"].apply(
+                normalize_street_names
+            )
+            if "name" in edges.columns
+            else [
+                []
+                for _ in range(
+                    len(edges)
+                )
+            ]
+        )
+
         merged = mode_usage.merge(
             edges[
                 [
                     "edge_id",
+                    "street_names",
                     "geometry",
                 ]
             ],
@@ -1151,10 +1171,20 @@ def _edge_usage_geometry(
             + transit["transit_physical_edge_id"]
         )
 
+        # Arestas de transporte coletivo nem sempre possuem nome de rua.
+        # Elas serão associadas à rua selecionada por sobreposição espacial.
+        transit["street_names"] = [
+            []
+            for _ in range(
+                len(transit)
+            )
+        ]
+
         merged = transit_usage.merge(
             transit[
                 [
                     "edge_id",
+                    "street_names",
                     "geometry",
                 ]
             ],
@@ -2612,6 +2642,389 @@ def plot_mode_frequency_by_income(
     return fig, ax
 
 
+def _selected_street_geometry(
+    *,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    selected_street: str,
+):
+    """Constrói a geometria de referência da rua escolhida.
+
+    São combinados segmentos com o mesmo nome em walk, bike e car. Essa união
+    ajuda a representar ruas que aparecem de forma ligeiramente diferente nas
+    redes modais do OSM.
+    """
+
+    pieces = []
+
+    for edges in network_edges.values():
+        if (
+            edges is None
+            or edges.empty
+            or "name" not in edges.columns
+        ):
+            continue
+
+        mask = street_mask(
+            edges,
+            street_name=selected_street,
+            name_column="name",
+        )
+
+        selected = edges.loc[
+            mask
+        ]
+
+        if not selected.empty:
+            pieces.extend(
+                selected.geometry.tolist()
+            )
+
+    if not pieces:
+        raise ValueError(
+            f"A rua '{selected_street}' não foi encontrada nas redes da região."
+        )
+
+    return gpd.GeoSeries(
+        pieces,
+        crs=next(
+            edges.crs
+            for edges in network_edges.values()
+            if edges is not None
+            and not edges.empty
+        ),
+    ).unary_union
+
+
+def _transit_overlaps_selected_street(
+    geometry,
+    *,
+    street_corridor,
+) -> bool:
+    """Identifica trechos de ônibus que percorrem a rua, não apenas a cruzam."""
+
+    if (
+        geometry is None
+        or geometry.is_empty
+        or geometry.length <= 0
+    ):
+        return False
+
+    overlap = geometry.intersection(
+        street_corridor
+    )
+
+    if overlap.is_empty:
+        return False
+
+    overlap_length = float(
+        overlap.length
+    )
+    ratio = (
+        overlap_length
+        / float(geometry.length)
+    )
+
+    # O critério combinado evita classificar como uso da rua uma linha de
+    # ônibus que apenas a cruza perpendicularmente em um ponto.
+    return (
+        overlap_length >= 8.0
+        and ratio >= 0.25
+    )
+
+
+def _street_usage_subset(
+    *,
+    usage_geometry: gpd.GeoDataFrame,
+    selected_street: str,
+    street_geometry,
+) -> gpd.GeoDataFrame:
+    """Filtra os registros de uso efetivamente associados à rua escolhida."""
+
+    if usage_geometry.empty:
+        return usage_geometry.copy()
+
+    target = selected_street.casefold()
+
+    road_mask = usage_geometry.apply(
+        lambda row: (
+            str(
+                row.get(
+                    "network_mode",
+                    "",
+                )
+            )
+            != "transit"
+            and any(
+                name.casefold()
+                == target
+                for name in (
+                    row.get(
+                        "street_names",
+                        [],
+                    )
+                    or []
+                )
+            )
+        ),
+        axis=1,
+    )
+
+    # O buffer é apenas um corredor cartográfico para reconhecer ônibus que
+    # percorrem a rua. Como o CRS do piloto é métrico, 12 significa 12 metros.
+    street_corridor = street_geometry.buffer(
+        12.0
+    )
+
+    transit_mask = usage_geometry.apply(
+        lambda row: (
+            str(
+                row.get(
+                    "network_mode",
+                    "",
+                )
+            )
+            == "transit"
+            and _transit_overlaps_selected_street(
+                row.geometry,
+                street_corridor=street_corridor,
+            )
+        ),
+        axis=1,
+    )
+
+    return usage_geometry.loc[
+        road_mask
+        | transit_mask
+    ].copy()
+
+
+def _plot_selected_street_legend(
+    ax,
+    counts: pd.DataFrame,
+) -> None:
+    """Legenda classe x modo com número de agentes únicos que usaram a rua."""
+
+    handles = []
+
+    for row in counts.itertuples(
+        index=False
+    ):
+        income = str(
+            row.income_group
+        )
+        mode = str(
+            row.network_mode
+        )
+        n_agents = int(
+            row.n_agents
+        )
+
+        kwargs = {
+            "color": INCOME_COLORS.get(
+                income,
+                MAP_NEUTRAL,
+            ),
+            "linewidth": 2.5,
+            "linestyle": MODE_LINESTYLES.get(
+                mode,
+                "solid",
+            ),
+            "label": (
+                f"{INCOME_LABELS.get(income, income)} · "
+                f"{MODE_LABELS.get(mode, mode)} — "
+                f"{n_agents} agente"
+                f"{'s' if n_agents != 1 else ''}"
+            ),
+        }
+
+        if mode == "transit":
+            kwargs.update(
+                marker=">",
+                markersize=6,
+                markevery=[1],
+            )
+
+        handles.append(
+            Line2D(
+                [0, 1],
+                [0, 0],
+                **kwargs,
+            )
+        )
+
+    if handles:
+        ax.legend(
+            handles=handles,
+            title="Classe · modo · agentes",
+            loc="upper right",
+            frameon=True,
+        )
+
+
+def plot_selected_street_usage(
+    *,
+    selected_street: str,
+    usage_geometry: gpd.GeoDataFrame,
+    network_edges: Mapping[str, gpd.GeoDataFrame],
+    transit_physical_edges: gpd.GeoDataFrame,
+    study_area: StudyArea | None,
+):
+    """Mapa da rua selecionada com classe, modo e contagem de agentes.
+
+    Cor identifica a classe social. O tipo de linha identifica o modo:
+    contínua=carro, pontilhada=walk, tracejada=bike e contínua com pequenas
+    setas=transporte público.
+    """
+
+    street_geometry = (
+        _selected_street_geometry(
+            network_edges=network_edges,
+            selected_street=selected_street,
+        )
+    )
+
+    street_usage = (
+        _street_usage_subset(
+            usage_geometry=usage_geometry,
+            selected_street=selected_street,
+            street_geometry=street_geometry,
+        )
+    )
+
+    fig, ax = plt.subplots(
+        figsize=(11, 8)
+    )
+    _set_map_background(
+        fig,
+        ax,
+    )
+
+    # Mantém as redes como contexto espacial fraco.
+    _plot_network_context(
+        ax,
+        network_edges=network_edges,
+        transit_physical_edges=transit_physical_edges,
+        strong=False,
+    )
+
+    # A rua escolhida recebe um traço neutro um pouco mais espesso para que seu
+    # percurso completo seja reconhecível mesmo nos trechos sem agentes.
+    gpd.GeoSeries(
+        [street_geometry],
+        crs=usage_geometry.crs
+        if usage_geometry.crs is not None
+        else study_area.crs,
+    ).plot(
+        ax=ax,
+        color="#8A8A8A",
+        linewidth=2.2,
+        alpha=0.75,
+        zorder=2,
+    )
+
+    if not street_usage.empty:
+        _plot_styled_edge_usage(
+            ax,
+            street_usage,
+            force_solid=False,
+        )
+
+        counts = (
+            street_usage.groupby(
+                [
+                    "income_group",
+                    "network_mode",
+                ],
+                dropna=False,
+            )["agent_id"]
+            .nunique()
+            .reset_index(
+                name="n_agents"
+            )
+            .sort_values(
+                [
+                    "income_group",
+                    "network_mode",
+                ]
+            )
+        )
+
+        _plot_selected_street_legend(
+            ax,
+            counts,
+        )
+    else:
+        _annotate_no_simulated_routes(
+            ax,
+            message=(
+                "Nenhum agente da rodada utilizou esta rua."
+            ),
+        )
+
+    # O enquadramento usa a própria rua, não a região inteira, para dar escala
+    # suficiente à leitura dos trechos e estilos de linha.
+    minx, miny, maxx, maxy = (
+        street_geometry.bounds
+    )
+    width = max(
+        maxx - minx,
+        100.0,
+    )
+    height = max(
+        maxy - miny,
+        100.0,
+    )
+    margin = max(
+        width,
+        height,
+    ) * 0.12
+
+    ax.set_xlim(
+        minx - margin,
+        maxx + margin,
+    )
+    ax.set_ylim(
+        miny - margin,
+        maxy + margin,
+    )
+
+    ax.set_title(
+        f"Uso da rua — {selected_street}"
+    )
+    ax.set_axis_off()
+
+    return fig, ax
+
+
+def _safe_street_filename(
+    street_name: str,
+) -> str:
+    """Cria nome de arquivo legível e seguro a partir do nome da rua."""
+
+    normalized = unicodedata.normalize(
+        "NFKD",
+        street_name,
+    ).encode(
+        "ascii",
+        "ignore",
+    ).decode(
+        "ascii"
+    )
+
+    slug = re.sub(
+        r"[^A-Za-z0-9]+",
+        "_",
+        normalized,
+    ).strip(
+        "_"
+    ).lower()
+
+    return (
+        slug
+        or "rua"
+    )
+
+
 def generate_selected_plots(
     *,
     output_dir: str | Path,
@@ -2624,6 +3037,7 @@ def generate_selected_plots(
     connection_to_physical_edge,
     census_sectors: gpd.GeoDataFrame,
     study_area: StudyArea | None,
+    selected_street: str | None = None,
 ) -> dict[str, Path]:
     """Gera somente os produtos selecionados pelo usuário na interface.
 
@@ -2897,6 +3311,42 @@ def generate_selected_plots(
         )
         generated[
             "mode_frequency_by_income"
+        ] = path
+
+    # 11. Rua selecionada: classe social, modo e contagem de agentes.
+    if "selected_street_usage" in selected:
+        if not selected_street:
+            raise ValueError(
+                "O mapa 11 foi selecionado, mas nenhuma rua foi informada."
+            )
+
+        fig, _ = plot_selected_street_usage(
+            selected_street=selected_street,
+            usage_geometry=usage_geometry,
+            network_edges=network_edges,
+            transit_physical_edges=transit_physical_edges,
+            study_area=study_area,
+        )
+
+        path = (
+            plots_dir
+            / (
+                "11_selected_street_"
+                + _safe_street_filename(
+                    selected_street
+                )
+                + ".png"
+            )
+        )
+        save_plot(
+            fig,
+            path,
+        )
+        plt.close(
+            fig
+        )
+        generated[
+            "selected_street_usage"
         ] = path
 
     return generated
