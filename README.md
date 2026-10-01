@@ -572,6 +572,8 @@ As opções são:
 8. todas as redes de mobilidade em cinza forte;
 9. trajetória individual dos agentes, uma cor por agente, somente se `n < 40`;
 10. gráfico de barras da frequência de cada modo de viagem por classe social.
+11. mapa da rua selecionada, mostrando as classes sociais e os modos que
+    utilizaram o trecho, com contagem de agentes por combinação classe × modo.
 
 Os arquivos selecionados ficam em:
 
@@ -591,6 +593,38 @@ Regras visuais:
 - classes sobrepostas podem receber pequeno deslocamento lateral apenas visual;
 - a espessura das linhas representa intensidade relativa de travessias;
 - com menos de 20 agentes, `X` indica origem e `○` indica destino.
+
+### Seleção de rua
+
+Na aba `Configuração`, o grupo **Recorte espacial** possui um campo
+`Rua` e o botão **Carregar ruas da região**. A lista é construída a partir
+das redes OSM e filtrada pelo limite da região selecionada. O campo também
+permite digitação para facilitar a busca em listas longas.
+
+O plot 11 só pode ser executado quando uma rua estiver selecionada. Sua
+convenção visual é:
+
+```text
+cor = classe social
+
+linha contínua        = carro
+linha pontilhada       = walk
+linha tracejada        = bike
+linha contínua + seta  = transporte público
+```
+
+A legenda informa a combinação e o número de agentes únicos, por exemplo:
+
+```text
+Baixa renda · Walk — 12 agentes
+Média renda · Carro — 7 agentes
+Alta renda · Ônibus — 3 agentes
+```
+
+Para transporte público, o reconhecimento da rua usa sobreposição espacial
+com o corredor da via, porque as arestas processadas do GTFS nem sempre
+possuem o mesmo atributo `name` da rede OSM. Cruzamentos pontuais são
+descartados por um critério mínimo de comprimento e proporção de sobreposição.
 
 ### Workbook das configurações
 
