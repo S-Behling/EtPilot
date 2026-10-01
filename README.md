@@ -119,9 +119,28 @@ um horário de partida dentro do período configurado; assim, o mesmo modelo
 pode trabalhar com janelas em horas ou em dias.
 
 A configuração é armazenada em `PilotRunConfig`, separada da interface.
-Isso permite que futuramente uma janela gráfica com seletores, caixas de
-marcação e menus suspensos monte a mesma configuração sem alterar a lógica do
-pipeline.
+Por isso o pipeline possui agora **duas inicializações equivalentes**:
+
+### Inicialização 1 — terminal
+
+```powershell
+python scripts/run_pipeline.py
+```
+
+É a opção mais adequada para execuções reproduzíveis, automação e registro
+dos parâmetros usados.
+
+### Inicialização 2 — interface gráfica
+
+```powershell
+python scripts/run_pipeline_gui.py
+```
+
+A interface usa Tkinter e monta o mesmo `PilotRunConfig` do terminal. Nela
+podem ser selecionados região, modo de uso da região, classes sociais,
+período, número de agentes, seed, cenário e opções de preparação. A interface
+não substitui o terminal; as duas formas continuam disponíveis e executam a
+mesma lógica do pipeline.
 
 ---
 
@@ -289,65 +308,108 @@ número de conexões programadas.
 
 ## Dois modos de uso da região
 
-A região pode atuar de duas formas diferentes no pipeline.
+A região pode atuar de duas formas diferentes. Essa escolha altera a
+interpretação científica da execução e fica registrada em
+`run_config.json`.
 
-### 1. Região como recorte da análise
-
-Use:
+### 1. `analysis` — região como universo da análise
 
 ```powershell
 python scripts/run_pipeline.py --region south --region-mode analysis
 ```
 
-Nesse modo, a região altera os próprios dados da simulação:
+Nesse caso, a região realmente restringe o piloto:
 
 ```text
-origens dentro da região
-destinos dentro da região
-agentes sorteados a partir dessas origens
-redes car/walk/bike recortadas
-GTFS filtrado
-rotas calculadas no recorte regional
-plots da mesma região
+origens               → somente dentro da região
+destinos              → somente dentro da região
+agentes               → atribuídos a essas origens regionais
+redes car/walk/bike   → recortadas para a região
+GTFS                   → filtrado para a região
+rotas                  → calculadas usando o recorte regional
+mapas                  → mostram esse mesmo universo regional
 ```
 
-Portanto, a região não é apenas uma moldura do mapa: ela define o universo
-espacial da execução.
+Portanto, selecionar `south` em `analysis` não significa apenas ampliar ou
+recortar a figura. O conjunto de agentes, O/D e infraestrutura disponível na
+simulação muda.
 
-### 2. Região apenas como janela de visualização
-
-Use:
+### 2. `plot_only` — região apenas como janela espacial
 
 ```powershell
 python scripts/run_pipeline.py --region south --region-mode plot_only
 ```
 
-Nesse modo, a simulação continua usando os dados de toda Porto Alegre:
+Nesse caso, a simulação continua municipal:
 
 ```text
-origens da cidade inteira
-destinos da cidade inteira
-agentes da cidade inteira
-redes municipais completas
-GTFS municipal
-rotas municipais
-        ↓
-mapa enquadrado na região Sul
+origens               → Porto Alegre inteira
+destinos              → Porto Alegre inteira
+agentes               → cidade inteira
+redes car/walk/bike   → cidade inteira
+GTFS                   → cidade inteira
+rotas                  → podem começar, terminar ou passar fora da região
+mapas                  → enquadrados somente na região selecionada
 ```
 
-Assim é possível observar, por exemplo, somente o que acontece na região Sul
-sem impedir que uma viagem tenha origem, destino ou trecho fora dela.
+Esse modo permite responder perguntas como: **quais fluxos da cidade inteira
+passam pela região Sul?** Uma rota pode ter origem no Centro, destino na Zona
+Norte e ainda aparecer no mapa da Zona Sul se atravessar a janela mostrada.
 
-Os outputs dos dois modos são separados:
+### Modos de viagem e classes sociais em cada trecho
+
+Nos dois modos regionais o pipeline registra, para cada aresta modal
+efetivamente percorrida:
+
+- agente;
+- classe social (`low`, `middle`, `high`);
+- modo de viagem (`walk`, `bike`, `car`, `transit`);
+- tipo de trecho da viagem;
+- número de travessias;
+- número de agentes distintos.
+
+Além dos CSVs, são produzidos automaticamente dois mapas analíticos:
+
+```text
+edge_usage_by_mode.png
+edge_usage_by_income.png
+```
+
+`edge_usage_by_mode.png` possui painéis separados por modo de viagem e mostra
+quais trechos foram utilizados por caminhada, bicicleta, carro e transporte
+coletivo. A espessura das linhas cresce com o número de travessias.
+
+`edge_usage_by_income.png` possui painéis separados por classe social e mostra
+quais trechos foram utilizados pelos grupos de baixa, média e alta renda,
+também com espessura proporcional ao número de travessias.
+
+O arquivo:
+
+```text
+edge_composition.csv
+```
+
+resume, para cada aresta modal, quais modos de viagem e quais classes sociais
+foram observados, além do número de categorias, travessias e agentes.
+
+**Importante:** nesta etapa, "trecho" ainda significa a aresta da rede modal
+correspondente. Carro, caminhada, bicicleta e transporte coletivo ainda não
+foram consolidados em uma única geometria física comum de rua. Essa
+normalização para um segmento físico comum será feita antes do cálculo de
+`H_soc`. Portanto, os mapas atuais permitem comparar quem usa os trechos de
+cada rede, mas ainda não devem ser interpretados como uma fusão perfeita de
+todos os modos sobre a mesma unidade física.
+
+Os outputs dos dois modos regionais são separados:
 
 ```text
 outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/
 ```
 
 As regiões `center`, `north`, `south` e `east` ainda dependem da
-definição explícita de seus bairros em `config/regions.json`. Isso vale tanto
-para `analysis` quanto para `plot_only`, pois a geometria da região precisa
-ser conhecida mesmo quando ela serve apenas para enquadrar o mapa.
+definição explícita de seus bairros em `config/regions.json`. Isso vale para
+`analysis` e `plot_only`, porque até uma simples janela de visualização
+precisa de uma geometria territorial conhecida.
 
 ---
 
@@ -390,14 +452,18 @@ outputs/diagnostics/<region>/
 Resultados do piloto:
 
 ```text
-outputs/pilot/<region>/<scenario>/seed_<seed>/
+outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/
+├── run_config.json
 ├── agent_choices.csv
 ├── routing_summary.csv
 ├── edge_usage.csv
 ├── edge_usage_summary.csv
+├── edge_composition.csv
 ├── routes_osm.png
 ├── routes_transit.png
-└── edge_usage.png
+├── edge_usage.png
+├── edge_usage_by_mode.png
+└── edge_usage_by_income.png
 ```
 
 ---
@@ -461,7 +527,9 @@ Atualmente estão disponíveis diagnósticos para:
 - transporte coletivo regional;
 - rotas OSM dos agentes;
 - rotas de transporte coletivo;
-- intensidade de uso das arestas.
+- intensidade de uso das arestas;
+- uso dos trechos separado por modo de viagem;
+- uso dos trechos separado por classe social.
 
 ---
 
