@@ -2754,6 +2754,18 @@ def _street_usage_subset(
                 )
             )
             != "transit"
+            and str(
+                row.get(
+                    "trip_mode",
+                    "",
+                )
+            )
+            == str(
+                row.get(
+                    "network_mode",
+                    "",
+                )
+            )
             and any(
                 name.casefold()
                 == target
