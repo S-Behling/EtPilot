@@ -172,9 +172,10 @@ botões com relevo e tipografia clássica. A interface possui duas abas:
 
 ### Aba "Mapas" da interface gráfica
 
-A interface gráfica possui uma segunda aba chamada **Mapas**. Os checkboxes
-dessa aba controlam apenas **mapas opcionais adicionais**. O conjunto de mapas
-obrigatórios descrito abaixo é sempre gerado, sem alterar a simulação em si.
+A interface gráfica possui uma segunda aba chamada **Mapas**. Nela aparecem
+somente os produtos cartográficos e gráficos aprovados para o piloto. **Apenas
+os itens marcados são gerados**. Alguns checkboxes representam um grupo de
+arquivos, como um mapa por classe social.
 
 Opções disponíveis:
 
@@ -554,103 +555,67 @@ python scripts/prepare_city_networks.py
 ---
 
 
-## Mapas obrigatórios
+## Plots selecionáveis
 
-Toda execução do piloto gera automaticamente um conjunto mínimo de mapas,
-independentemente do que estiver marcado na aba `Mapas` da GUI. A seleção da
-aba controla apenas figuras extras.
+A execução gera **somente** os plots selecionados na aba `Mapas` da GUI
+(ou todos eles por padrão quando a execução é iniciada pelo terminal).
 
-Os mapas obrigatórios são:
+As opções são:
 
-1. **um mapa para cada modo de viagem**, com todas as classes sociais
-   sobrepostas e diferenciadas por cor;
-2. **um mapa para cada classe social no modo bike**;
-3. **um mapa para cada classe social no modo walk**;
-4. **um mapa para cada classe social no modo car**;
-5. **um mapa para cada classe social no transporte público**;
-6. **setores censitários da região em gradiente de renda**;
-7. **mapa censitário + todos os modos**, com todos os modos em linha contínua
-   e classe social identificada pela cor;
-8. **todas as redes de mobilidade**, em cinza forte;
-9. **trajeto de cada agente em uma cor distinta**, somente quando houver menos
-   de 40 agentes.
+1. um mapa para cada modo de viagem, com todas as classes sociais;
+2. um mapa por classe social para bike;
+3. um mapa por classe social para walk;
+4. um mapa por classe social para car;
+5. um mapa por classe social para transporte público;
+6. setores censitários da região em gradiente de renda;
+7. setores censitários + todos os modos, com linhas contínuas e classe por cor;
+8. todas as redes de mobilidade em cinza forte;
+9. trajetória individual dos agentes, uma cor por agente, somente se `n < 40`;
+10. gráfico de barras da frequência de cada modo de viagem por classe social.
 
-Todos ficam em:
+Os arquivos selecionados ficam em:
 
 ```text
-outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/mandatory_maps/
+outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/plots/
 ```
 
-Os arquivos seguem nomes padronizados, por exemplo:
+Regras visuais:
 
-```text
-01_mode_walk_all_incomes.png
-01_mode_bike_all_incomes.png
-01_mode_car_all_incomes.png
-01_mode_transit_all_incomes.png
-
-02_bike_low.png
-02_bike_middle.png
-02_bike_high.png
-
-03_walk_low.png
-03_walk_middle.png
-03_walk_high.png
-
-04_car_low.png
-04_car_middle.png
-04_car_high.png
-
-05_transit_low.png
-05_transit_middle.png
-05_transit_high.png
-
-06_census_income_gradient.png
-07_census_plus_all_modes.png
-08_all_networks.png
-09_agent_routes_unique_colors.png
-```
-
-O arquivo 09 só existe quando `n_agents < 40`.
-
-### Regras visuais dos mapas obrigatórios
-
-- fundo de **todos os mapas**: branco puro (`#FFFFFF`);
-- redes de base: cinza claro e discreto em todos os mapas;
-- exceção: no mapa 08, as redes aparecem em cinza forte;
+- fundo branco puro (`#FFFFFF`);
+- redes de base em cinza fraco, exceto no mapa 8;
 - baixa renda: `#CABAD7`;
 - média renda: `#4F364B`;
 - alta renda: `#DB3E1D`;
 - quando um mapa mostra apenas um modo, as linhas são contínuas;
-- no mapa 07, todos os modos também são contínuos;
-- quando classes diferentes compartilham a mesma aresta, é aplicado um pequeno
-  deslocamento lateral apenas visual para reduzir a sobreposição;
-- a espessura das linhas representa intensidade relativa de travessias.
+- no mapa 7, todos os modos também são contínuos;
+- classes sobrepostas podem receber pequeno deslocamento lateral apenas visual;
+- a espessura das linhas representa intensidade relativa de travessias;
+- com menos de 20 agentes, `X` indica origem e `○` indica destino.
 
-Para amostras com menos de 20 agentes, origem e destino continuam sendo
-marcados como:
+### Workbook das configurações
 
-```text
-X = origem
-○ = destino
-```
-
-### Dados censitários exigidos
-
-Os mapas 06 e 07 usam os setores censitários do Censo 2022. Por isso estes
-insumos passam a fazer parte da validação de setup:
+Toda rodada também gera automaticamente:
 
 ```text
-data/censo_2022/setores/setores_rs.zip
-data/censo_2022/renda_setores/extracted/
+configurations_used.xlsx
 ```
 
-O pipeline associa a geometria dos setores à variável de renda `V06004` e
-reutiliza a mesma classificação `classify_income_2022` que foi usada na
-preparação das origens, evitando que agentes e setores usem classificações
-sociais diferentes.
+O workbook registra os parâmetros efetivamente usados e os arquivos JSON da
+pasta `config/`, cada fonte em uma aba separada:
 
----
+```text
+run_config
+config
+config_agents
+regions
+road_classification
+```
+
+As estruturas aninhadas são exportadas como `caminho da configuração ->
+valor`. Assim ficam explícitos, entre outros, pesos de propósito, pesos de
+escolha modal por classe, decaimento de distância, faixas/participações de
+renda, parâmetros de roteamento e definições territoriais.
+
 
 ## Principais outputs
 
