@@ -679,9 +679,13 @@ class PipelineApp(tk.Tk):
         column: int,
         accent: str,
     ) -> tk.Frame:
-        outer = tk.Frame(
+        outer = RoundedPanel(
             parent,
-            bg=PALETTE["border"],
+            fill=PALETTE["surface"],
+            outline=PALETTE["border"],
+            radius=22,
+            padding=1,
+            background=PALETTE["background"],
         )
         outer.grid(
             row=row,
@@ -697,17 +701,10 @@ class PipelineApp(tk.Tk):
             ),
         )
 
-        card = tk.Frame(
-            outer,
-            bg=PALETTE["surface"],
+        card = outer.body
+        card.configure(
             padx=16,
             pady=13,
-        )
-        card.pack(
-            fill="both",
-            expand=True,
-            padx=1,
-            pady=1,
         )
 
         top = tk.Frame(
@@ -987,40 +984,49 @@ class PipelineApp(tk.Tk):
             pady=(4, 0),
         )
 
-        self.run_button = tk.Button(
+        self.run_button = RoundedButton(
             footer,
             text="Executar pipeline  →",
             command=self._start_pipeline,
-            bg=PALETTE["terracotta"],
-            fg=PALETTE["white"],
-            activebackground=PALETTE["terracotta_dark"],
-            activeforeground=PALETTE["white"],
-            font=FONT_BOLD,
-            relief="flat",
-            bd=0,
-            padx=18,
-            pady=10,
-            cursor="hand2",
+            fill=PALETTE["terracotta"],
+            hover_fill=PALETTE["terracotta_dark"],
+            foreground=PALETTE["white"],
+            width=205,
+            height=44,
+            radius=22,
         )
         self.run_button.pack(
             side="left",
         )
 
-        status = tk.Label(
+        status_panel = RoundedPanel(
             footer,
-            textvariable=self.status_var,
-            bg=PALETTE["surface"],
-            fg=PALETTE["muted"],
-            font=FONT_SMALL,
-            padx=12,
-            pady=10,
-            anchor="w",
+            fill=PALETTE["surface"],
+            outline=PALETTE["surface"],
+            radius=20,
+            padding=0,
+            background=PALETTE["background"],
+            height=44,
         )
-        status.pack(
+        status_panel.pack(
             side="left",
             fill="x",
             expand=True,
             padx=(12, 0),
+        )
+
+        tk.Label(
+            status_panel.body,
+            textvariable=self.status_var,
+            bg=PALETTE["surface"],
+            fg=PALETTE["muted"],
+            font=FONT_SMALL,
+            padx=14,
+            pady=10,
+            anchor="w",
+        ).pack(
+            fill="both",
+            expand=True,
         )
 
     @staticmethod
@@ -1159,10 +1165,10 @@ class PipelineApp(tk.Tk):
             )
             return
 
-        self.run_button.configure(
-            state="disabled",
+        self.run_button.set_state(
+            enabled=False,
             text="Executando...",
-            bg=PALETTE["brandy_rose"],
+            fill=PALETTE["brandy_rose"],
         )
         self.status_var.set(
             "Executando. O progresso detalhado continua disponível no terminal."
@@ -1200,10 +1206,10 @@ class PipelineApp(tk.Tk):
     def _execution_finished(
         self,
     ) -> None:
-        self.run_button.configure(
-            state="normal",
+        self.run_button.set_state(
+            enabled=True,
             text="Executar novamente  →",
-            bg=PALETTE["terracotta"],
+            fill=PALETTE["terracotta"],
         )
         self.status_var.set(
             "Pipeline concluído. Consulte a pasta outputs."
@@ -1217,10 +1223,10 @@ class PipelineApp(tk.Tk):
         self,
         message: str,
     ) -> None:
-        self.run_button.configure(
-            state="normal",
+        self.run_button.set_state(
+            enabled=True,
             text="Tentar novamente  →",
-            bg=PALETTE["terracotta"],
+            fill=PALETTE["terracotta"],
         )
         self.status_var.set(
             "A execução terminou com erro."
