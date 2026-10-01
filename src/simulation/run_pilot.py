@@ -216,10 +216,10 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         data_region_name,
     )
 
-    # Os mapas obrigatórios 6 e 7 usam os setores censitários. A camada é
+    # Os plots censitários 6 e 7 usam os setores censitários. A camada é
     # carregada já recortada à região exibida, tanto em analysis quanto em
-    # plot_only. Se os insumos censitários estiverem ausentes, o pipeline falha
-    # cedo com uma mensagem explícita, pois esses mapas são obrigatórios.
+    # plot_only. Mantemos esse carregamento centralizado porque os mesmos dados
+    # podem ser usados por qualquer um desses produtos quando selecionados.
     census_sectors = load_census_income_sectors(
         config,
         study_area=view_area,
