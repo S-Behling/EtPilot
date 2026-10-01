@@ -88,5 +88,14 @@
                 "share": 0.17857621
             }
         }
+    },
+    "census": {
+        "sector_geometry": "data/censo_2022/setores/setores_rs.zip",
+        "income_directory": "data/censo_2022/renda_setores/extracted",
+        "sector_id_column": "CD_SETOR",
+        "income_column": "V06004",
+        "municipality_code": "4314902",
+        "target_income_column": "renda_media_responsavel",
+        "income_group_column": "income_group"
     }
 }
