@@ -609,12 +609,18 @@ config
 config_agents
 regions
 road_classification
+resumo_classes
 ```
 
 As estruturas aninhadas são exportadas como `caminho da configuração ->
 valor`. Assim ficam explícitos, entre outros, pesos de propósito, pesos de
 escolha modal por classe, decaimento de distância, faixas/participações de
 renda, parâmetros de roteamento e definições territoriais.
+
+A aba `resumo_classes` reorganiza os principais parâmetros sociais em uma
+tabela comparativa: faixa de renda, participação, pesos de propósito, pesos de
+modo nos cenários baseline/differentiated e decaimentos de distância por
+propósito.
 
 
 ## Principais outputs
