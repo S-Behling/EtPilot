@@ -15,6 +15,22 @@ VALID_PERIOD_UNITS = {"hours", "days"}
 VALID_SCENARIOS = {"baseline", "differentiated"}
 VALID_REGION_MODES = {"analysis", "plot_only"}
 
+PLOT_ROUTES_OSM = "routes_osm"
+PLOT_ROUTES_TRANSIT = "routes_transit"
+PLOT_EDGE_USAGE = "edge_usage"
+PLOT_EDGE_USAGE_BY_MODE = "edge_usage_by_mode"
+PLOT_EDGE_USAGE_BY_INCOME = "edge_usage_by_income"
+PLOT_EDGE_USAGE_BY_MODE_INCOME = "edge_usage_by_mode_income"
+
+AVAILABLE_PLOTS = (
+    PLOT_ROUTES_OSM,
+    PLOT_ROUTES_TRANSIT,
+    PLOT_EDGE_USAGE,
+    PLOT_EDGE_USAGE_BY_MODE,
+    PLOT_EDGE_USAGE_BY_INCOME,
+    PLOT_EDGE_USAGE_BY_MODE_INCOME,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class SimulationPeriod:
@@ -62,6 +78,9 @@ class PilotRunConfig:
     prepare_region: bool = True
     clear_outputs: bool = False
     force_network_download: bool = False
+    selected_plots: tuple[str, ...] = field(
+        default_factory=lambda: AVAILABLE_PLOTS
+    )
 
     def __post_init__(self) -> None:
         if not self.region.strip():
@@ -88,6 +107,19 @@ class PilotRunConfig:
         if self.scenario not in VALID_SCENARIOS:
             raise ValueError(
                 f"Cenário inválido: {self.scenario!r}."
+            )
+
+        invalid_plots = (
+            set(self.selected_plots)
+            - set(AVAILABLE_PLOTS)
+        )
+
+        if invalid_plots:
+            raise ValueError(
+                "Mapas inválidos selecionados: "
+                + ", ".join(
+                    sorted(invalid_plots)
+                )
             )
 
     @property
