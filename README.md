@@ -594,6 +594,15 @@ Regras visuais:
 - a espessura das linhas representa intensidade relativa de travessias;
 - com menos de 20 agentes, `X` indica origem e `○` indica destino.
 
+### Escala do gradiente de renda
+
+Nos plots censitários 6 e 7, a renda é representada em uma escala fixa de
+`R$ 0` a `R$ 20.000`. Valores superiores a `R$ 20.000` são acumulados
+visualmente no limite de `R$ 20.000`. A renda original permanece inalterada
+nos dados; o corte é aplicado somente à coluna auxiliar usada na plotagem.
+Isso evita que poucos valores extremos comprimam a variação cromática da maior
+parte dos setores.
+
 ### Seleção de rua
 
 Na aba `Configuração`, o grupo **Recorte espacial** possui um campo
