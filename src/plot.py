@@ -12,6 +12,7 @@ from typing import Mapping
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
 from matplotlib.patches import FancyArrowPatch
 import networkx as nx
@@ -49,8 +50,25 @@ MODE_LABELS = {
     "transit": "Ônibus",
 }
 
-MAP_BACKGROUND = "#F7E9DE"
+# Todos os mapas finais usam fundo branco puro para facilitar leitura,
+# impressão e comparação entre figuras.
+MAP_BACKGROUND = "#FFFFFF"
 MAP_NEUTRAL = "#2F2A2A"
+
+# As redes aparecem sempre como contexto. Em quase todos os mapas elas ficam
+# deliberadamente discretas; apenas o mapa obrigatório de redes usa tons fortes.
+NETWORK_BASE_WEAK = "#D9D9D9"
+NETWORK_BASE_STRONG = "#5F5F5F"
+
+# Gradiente censitário construído com a mesma paleta das classes sociais.
+CENSUS_INCOME_CMAP = LinearSegmentedColormap.from_list(
+    "etpilot_income",
+    [
+        INCOME_COLORS["low"],
+        INCOME_COLORS["middle"],
+        INCOME_COLORS["high"],
+    ],
+)
 
 
 
