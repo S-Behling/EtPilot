@@ -20,22 +20,12 @@ from src.core.config import (
 )
 from src.domain.enums import IncomeGroup, TravelMode
 from src.pipeline.config import (
-    PLOT_EDGE_USAGE,
-    PLOT_EDGE_USAGE_BY_INCOME,
-    PLOT_EDGE_USAGE_BY_MODE,
-    PLOT_EDGE_USAGE_BY_MODE_INCOME,
-    PLOT_ROUTES_OSM,
-    PLOT_ROUTES_TRANSIT,
     PilotRunConfig,
     SimulationPeriod,
 )
-from src.plot import (
-    generate_mandatory_maps,
-    plot_agent_routes,
-    plot_edge_usage,
-    plot_edge_usage_by_category,
-    plot_transit_agent_routes,
-    save_plot,
+from src.plot import generate_selected_plots
+from src.reporting.config_workbook import (
+    export_run_configuration_workbook,
 )
 from src.routing.multimodal_router import routing_summary
 from src.routing.pilot_router import route_pilot_agents
@@ -457,7 +447,6 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         "selected_plots": list(
             run_config.selected_plots
         ),
-        "mandatory_maps": True,
         "gtfs_start_date": (
             representative_date.date().isoformat()
         ),
@@ -496,16 +485,18 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     )
 
     # ------------------------------------------------------------------
-    # MAPAS OBRIGATÓRIOS
+    # PLOTS SELECIONADOS NA INTERFACE
     # ------------------------------------------------------------------
-    # Estes mapas independem da seleção feita na aba "Mapas" da GUI. A aba
-    # controla apenas produtos adicionais; o conjunto mínimo abaixo é sempre
-    # criado para manter comparabilidade entre rodadas do experimento.
-    mandatory_maps = generate_mandatory_maps(
+    # Somente os produtos presentes em run_config.selected_plots são gerados.
+    # A GUI e o terminal usam a mesma lista, evitando saídas extras que não
+    # tenham sido explicitamente escolhidas.
+    generated_plots = generate_selected_plots(
         output_dir=output_dir,
+        selected_plots=run_config.selected_plots,
         agents=agents,
         graphs=graphs,
         edge_usage=edge_usage,
+        choice_summary=choice_summary,
         transit_physical_edges=(
             regional_transit.physical_edges
         ),
@@ -516,21 +507,40 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         study_area=view_area,
     )
 
-    print(
-        "[mapas obrigatórios]",
-        f"{len(mandatory_maps)} arquivo(s) gerado(s)",
-    )
-
-    # Atualiza o metadado da rodada com os arquivos efetivamente produzidos.
-    # Isso deixa explícito quando o mapa 09 foi omitido por n_agents >= 40.
-    metadata["mandatory_map_files"] = {
+    metadata["generated_plot_files"] = {
         name: str(
             path.relative_to(output_dir)
         )
         for name, path
-        in mandatory_maps.items()
+        in generated_plots.items()
     }
 
+    # ------------------------------------------------------------------
+    # WORKBOOK DE CONFIGURAÇÕES
+    # ------------------------------------------------------------------
+    # O Excel funciona como registro auditável da rodada. Cada JSON da pasta
+    # config recebe sua própria aba; a primeira aba registra os parâmetros
+    # efetivamente usados nesta execução.
+    configuration_workbook = (
+        export_run_configuration_workbook(
+            output_path=(
+                output_dir
+                / "configurations_used.xlsx"
+            ),
+            run_metadata=metadata,
+        )
+    )
+
+    metadata[
+        "configuration_workbook"
+    ] = str(
+        configuration_workbook.relative_to(
+            output_dir
+        )
+    )
+
+    # Regrava o JSON ao final para incluir a lista exata de plots gerados e o
+    # caminho do workbook de configurações.
     with (
         output_dir / "run_config.json"
     ).open(
@@ -544,142 +554,14 @@ def run_pilot(run_config: PilotRunConfig) -> None:
             ensure_ascii=False,
         )
 
-    selected_plots = set(
-        run_config.selected_plots
+    print(
+        "[plots]",
+        f"{len(generated_plots)} arquivo(s) gerado(s)",
     )
-
-    if PLOT_ROUTES_OSM in selected_plots:
-        fig, _ = plot_agent_routes(
-            agents=agents,
-            graphs=graphs,
-            sample_size=min(100, len(agents)),
-            title=(
-                f"Rotas OSM — {region_name} — "
-                f"{run_config.region_mode} — "
-                f"{run_config.scenario}"
-            ),
-            study_area=view_area,
-        )
-        save_plot(
-            fig,
-            output_dir / "routes_osm.png",
-        )
-
-    if PLOT_ROUTES_TRANSIT in selected_plots:
-        fig, _ = plot_transit_agent_routes(
-            agents=agents,
-            walk_graph=graphs["walk"],
-            physical_edges=regional_transit.physical_edges,
-            connection_to_physical_edge=(
-                regional_transit.connection_to_physical_edge
-            ),
-            sample_size=min(50, len(agents)),
-            title=(
-                f"Rotas transit — {region_name} — "
-                f"{run_config.region_mode} — "
-                f"{run_config.scenario}"
-            ),
-            study_area=view_area,
-        )
-        save_plot(
-            fig,
-            output_dir / "routes_transit.png",
-        )
-
-    if not edge_usage.empty:
-        if PLOT_EDGE_USAGE in selected_plots:
-            fig, _ = plot_edge_usage(
-                edge_usage=edge_usage,
-                graphs=graphs,
-                transit_physical_edges=(
-                    regional_transit.physical_edges
-                ),
-                title=(
-                    f"Uso das redes — {region_name} — "
-                    f"{run_config.region_mode} — "
-                    f"{run_config.scenario}"
-                ),
-                study_area=view_area,
-            )
-            save_plot(
-                fig,
-                output_dir / "edge_usage.png",
-            )
-
-        if PLOT_EDGE_USAGE_BY_MODE in selected_plots:
-            fig, _ = plot_edge_usage_by_category(
-                edge_usage=edge_usage,
-                graphs=graphs,
-                transit_physical_edges=(
-                    regional_transit.physical_edges
-                ),
-                category="trip_mode",
-                study_area=view_area,
-                title=(
-                    f"Trechos por modo de viagem — {region_name} — "
-                    f"{run_config.region_mode}"
-                ),
-            )
-            save_plot(
-                fig,
-                output_dir / "edge_usage_by_mode.png",
-            )
-
-        if PLOT_EDGE_USAGE_BY_INCOME in selected_plots:
-            fig, _ = plot_edge_usage_by_category(
-                edge_usage=edge_usage,
-                graphs=graphs,
-                transit_physical_edges=(
-                    regional_transit.physical_edges
-                ),
-                category="income_group",
-                study_area=view_area,
-                title=(
-                    f"Trechos por classe social — {region_name} — "
-                    f"{run_config.region_mode}"
-                ),
-            )
-            save_plot(
-                fig,
-                output_dir / "edge_usage_by_income.png",
-            )
-
-        if (
-            PLOT_EDGE_USAGE_BY_MODE_INCOME
-            in selected_plots
-        ):
-            edge_usage_mode_income = (
-                edge_usage.copy()
-            )
-            edge_usage_mode_income[
-                "mode_income"
-            ] = (
-                edge_usage_mode_income[
-                    "trip_mode"
-                ].astype(str)
-                + " | "
-                + edge_usage_mode_income[
-                    "income_group"
-                ].astype(str)
-            )
-
-            fig, _ = plot_edge_usage_by_category(
-                edge_usage=edge_usage_mode_income,
-                graphs=graphs,
-                transit_physical_edges=(
-                    regional_transit.physical_edges
-                ),
-                category="mode_income",
-                study_area=view_area,
-                title=(
-                    f"Trechos por modo e classe social — {region_name} — "
-                    f"{run_config.region_mode}"
-                ),
-            )
-            save_plot(
-                fig,
-                output_dir / "edge_usage_by_mode_income.png",
-            )
+    print(
+        "[config]",
+        configuration_workbook,
+    )
 
     print("10/10 - Resumo final...")
 
