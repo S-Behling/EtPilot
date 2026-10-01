@@ -738,7 +738,7 @@ class PipelineApp(tk.Tk):
             parent,
             textvariable=self.selected_street_var,
             values=self.street_options,
-            state="readonly",
+            state="normal",
             style="Win95.TCombobox",
         )
         self.street_combo.grid(
