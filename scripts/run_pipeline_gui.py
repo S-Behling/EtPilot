@@ -597,8 +597,22 @@ class PipelineApp(tk.Tk):
         self,
         selected: bool,
     ) -> None:
-        for variable in self.plot_vars.values():
-            variable.set(selected)
+        """Marca/desmarca plots sem ativar o mapa 11 sem uma rua válida."""
+
+        for plot_name, variable in self.plot_vars.items():
+            if (
+                selected
+                and plot_name
+                == PLOT_SELECTED_STREET_USAGE
+                and not self.selected_street_var.get().strip()
+            ):
+                variable.set(
+                    False
+                )
+            else:
+                variable.set(
+                    selected
+                )
 
     def _build_title_bar(
         self,
