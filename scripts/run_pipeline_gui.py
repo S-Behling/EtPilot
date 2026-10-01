@@ -19,7 +19,10 @@ from _bootstrap import add_project_root_to_path
 add_project_root_to_path()
 
 from run_pipeline import run_pipeline
-from src.core.config import load_project_config
+from src.core.config import (
+    load_project_config,
+    load_regions_config,
+)
 from src.domain.enums import IncomeGroup
 from src.pipeline.config import (
     PilotRunConfig,
@@ -33,11 +36,6 @@ REGION_LABELS = {
     "north": "Norte",
     "south": "Sul",
     "east": "Leste",
-}
-
-REGION_VALUES = {
-    label: value
-    for value, label in REGION_LABELS.items()
 }
 
 REGION_MODE_LABELS = {
@@ -61,17 +59,65 @@ class PipelineApp(tk.Tk):
         self.minsize(650, 650)
 
         project_config = load_project_config()
+        regions_config = load_regions_config(
+            project_config
+        )
         default_region = project_config[
             "study_area"
         ][
             "default_region"
         ]
 
-        self.region_var = tk.StringVar(
-            value=REGION_LABELS.get(
-                default_region,
-                "Cidade inteira",
+        self.enabled_region_values = {}
+        self.disabled_region_labels = []
+
+        for region_name, definition in (
+            regions_config.get(
+                "regions",
+                {},
+            ).items()
+        ):
+            label = REGION_LABELS.get(
+                region_name,
+                definition.get(
+                    "label",
+                    region_name,
+                ),
             )
+
+            if definition.get(
+                "enabled",
+                False,
+            ):
+                self.enabled_region_values[
+                    label
+                ] = region_name
+            else:
+                self.disabled_region_labels.append(
+                    label
+                )
+
+        if not self.enabled_region_values:
+            raise ValueError(
+                "Nenhuma região está habilitada em config/regions.json."
+            )
+
+        default_label = next(
+            (
+                label
+                for label, value
+                in self.enabled_region_values.items()
+                if value == default_region
+            ),
+            next(
+                iter(
+                    self.enabled_region_values
+                )
+            ),
+        )
+
+        self.region_var = tk.StringVar(
+            value=default_label
         )
         self.region_mode_var = tk.StringVar(
             value="Recorte da análise"
@@ -161,7 +207,9 @@ class PipelineApp(tk.Tk):
             spatial,
             "Região",
             self.region_var,
-            tuple(REGION_VALUES),
+            tuple(
+                self.enabled_region_values
+            ),
             row=0,
         )
 
@@ -173,13 +221,25 @@ class PipelineApp(tk.Tk):
             row=1,
         )
 
+        explanation = (
+            "Recorte da análise: O/D, agentes, redes e GTFS ficam na região.\n"
+            "Somente janela do mapa: a simulação usa a cidade inteira e "
+            "o mapa é enquadrado na região."
+        )
+
+        if self.disabled_region_labels:
+            explanation += (
+                "\n\nAinda não configuradas: "
+                + ", ".join(
+                    self.disabled_region_labels
+                )
+                + ". Essas opções aparecerão automaticamente quando forem "
+                "habilitadas em config/regions.json."
+            )
+
         ttk.Label(
             spatial,
-            text=(
-                "Recorte da análise: O/D, agentes, redes e GTFS ficam na região.\n"
-                "Somente janela do mapa: a simulação usa a cidade inteira e "
-                "o mapa é enquadrado na região."
-            ),
+            text=explanation,
             wraplength=560,
         ).grid(
             row=2,
@@ -432,7 +492,7 @@ class PipelineApp(tk.Tk):
         )
 
         return PilotRunConfig(
-            region=REGION_VALUES[
+            region=self.enabled_region_values[
                 self.region_var.get()
             ],
             region_mode=REGION_MODE_LABELS[
