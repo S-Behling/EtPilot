@@ -2935,9 +2935,29 @@ def plot_selected_street_usage(
     )
 
     if not street_usage.empty:
+        # Um pequeno deslocamento lateral por classe reduz a ocultação quando
+        # baixa, média e alta renda percorrem exatamente o mesmo segmento.
+        # Trata-se somente de uma convenção visual; as geometrias analíticas
+        # originais em edge_usage permanecem intactas.
+        display_usage = street_usage.copy()
+        display_usage["geometry"] = [
+            _income_offset_geometry(
+                geometry,
+                str(income_group),
+                offset_m=2.5,
+            )
+            for geometry, income_group
+            in zip(
+                display_usage.geometry,
+                display_usage[
+                    "income_group"
+                ],
+            )
+        ]
+
         _plot_styled_edge_usage(
             ax,
-            street_usage,
+            display_usage,
             force_solid=False,
         )
 
