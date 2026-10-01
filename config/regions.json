@@ -1,36 +1,251 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
+    "territorial_system": "Orçamento Participativo de Porto Alegre",
+    "source": {
+        "organization": "Prefeitura de Porto Alegre / ObservaPOA",
+        "source_url": "https://prefeitura.poa.br/external-tools/observapoa_regioes.php",
+        "source_note": "Espacialização das Regiões do Orçamento Participativo alinhada aos bairros oficiais.",
+        "adopted_spatialization": "Conselho do Orçamento Participativo, 09/04/2019",
+        "neighborhood_reference": "Lei Complementar nº 12.112/2016"
+    },
     "default": "city",
     "name_field": "NM_BAIRRO",
     "regions": {
         "city": {
             "enabled": true,
             "strategy": "municipality",
-            "label": "Porto Alegre"
+            "label": "Porto Alegre — cidade inteira",
+            "op_region_number": null
         },
-        "center": {
-            "enabled": false,
+        "humaita_navegantes": {
+            "enabled": true,
             "strategy": "neighborhood_group",
-            "label": "Centro",
-            "neighborhoods": []
+            "label": "01 — Humaitá/Navegantes",
+            "op_region_number": 1,
+            "neighborhoods": [
+                "Anchieta",
+                "Farrapos",
+                "Humaitá",
+                "Navegantes",
+                "São Geraldo"
+            ]
         },
-        "north": {
-            "enabled": false,
+        "noroeste": {
+            "enabled": true,
             "strategy": "neighborhood_group",
-            "label": "Norte",
-            "neighborhoods": []
+            "label": "02 — Noroeste",
+            "op_region_number": 2,
+            "neighborhoods": [
+                "Boa Vista",
+                "Cristo Redentor",
+                "Higienópolis",
+                "Jardim Europa",
+                "Jardim Floresta",
+                "Jardim Lindóia",
+                "Jardim São Pedro",
+                "Passo da Areia",
+                "Santa Maria Goretti",
+                "São João",
+                "São Sebastião",
+                "Vila Ipiranga"
+            ]
         },
-        "south": {
-            "enabled": false,
+        "leste": {
+            "enabled": true,
             "strategy": "neighborhood_group",
-            "label": "Sul",
-            "neighborhoods": []
+            "label": "03 — Leste",
+            "op_region_number": 3,
+            "neighborhoods": [
+                "Bom Jesus",
+                "Chácara das Pedras",
+                "Jardim Carvalho",
+                "Jardim do Salso",
+                "Jardim Sabará",
+                "Morro Santana",
+                "Três Figueiras",
+                "Vila Jardim"
+            ]
         },
-        "east": {
-            "enabled": false,
+        "lomba_do_pinheiro": {
+            "enabled": true,
             "strategy": "neighborhood_group",
-            "label": "Leste",
-            "neighborhoods": []
+            "label": "04 — Lomba do Pinheiro",
+            "op_region_number": 4,
+            "neighborhoods": [
+                "Agronomia",
+                "Lomba do Pinheiro"
+            ]
+        },
+        "norte": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "05 — Norte",
+            "op_region_number": 5,
+            "neighborhoods": [
+                "Sarandi",
+                "Santa Rosa de Lima"
+            ]
+        },
+        "nordeste": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "06 — Nordeste",
+            "op_region_number": 6,
+            "neighborhoods": [
+                "Mário Quintana"
+            ]
+        },
+        "partenon": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "07 — Partenon",
+            "op_region_number": 7,
+            "neighborhoods": [
+                "Coronel Aparício Borges",
+                "Partenon",
+                "Santo Antônio",
+                "Vila João Pessoa",
+                "Vila São José"
+            ]
+        },
+        "restinga": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "08 — Restinga",
+            "op_region_number": 8,
+            "neighborhoods": [
+                "Pitinga",
+                "Restinga"
+            ]
+        },
+        "gloria": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "09 — Glória",
+            "op_region_number": 9,
+            "neighborhoods": [
+                "Belém Velho",
+                "Cascata",
+                "Glória"
+            ]
+        },
+        "cruzeiro": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "10 — Cruzeiro",
+            "op_region_number": 10,
+            "neighborhoods": [
+                "Medianeira",
+                "Santa Tereza"
+            ]
+        },
+        "cristal": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "11 — Cristal",
+            "op_region_number": 11,
+            "neighborhoods": [
+                "Cristal"
+            ]
+        },
+        "centro_sul": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "12 — Centro-Sul",
+            "op_region_number": 12,
+            "neighborhoods": [
+                "Camaquã",
+                "Campo Novo",
+                "Cavalhada",
+                "Nonoai",
+                "Teresópolis",
+                "Vila Nova"
+            ]
+        },
+        "extremo_sul": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "13 — Extremo-Sul",
+            "op_region_number": 13,
+            "neighborhoods": [
+                "Belém Novo",
+                "Boa Vista do Sul",
+                "Chapéu do Sol",
+                "Extrema",
+                "Lageado",
+                "Lami",
+                "Ponta Grossa",
+                "São Caetano"
+            ]
+        },
+        "eixo_baltazar": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "14 — Eixo Baltazar",
+            "op_region_number": 14,
+            "neighborhoods": [
+                "Costa e Silva",
+                "Jardim Itu",
+                "Jardim Leopoldina",
+                "Parque Santa Fé",
+                "Passo das Pedras",
+                "Rubem Berta"
+            ]
+        },
+        "sul": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "15 — Sul",
+            "op_region_number": 15,
+            "neighborhoods": [
+                "Aberta dos Morros",
+                "Espírito Santo",
+                "Guarujá",
+                "Hípica",
+                "Ipanema",
+                "Jardim Isabel",
+                "Pedra Redonda",
+                "Serraria",
+                "Sétimo Céu",
+                "Tristeza",
+                "Vila Assunção",
+                "Vila Conceição"
+            ]
+        },
+        "centro": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "16 — Centro",
+            "op_region_number": 16,
+            "neighborhoods": [
+                "Auxiliadora",
+                "Azenha",
+                "Bela Vista",
+                "Bom Fim",
+                "Centro Histórico",
+                "Cidade Baixa",
+                "Farroupilha",
+                "Floresta",
+                "Independência",
+                "Jardim Botânico",
+                "Menino Deus",
+                "Moinhos de Vento",
+                "Montserrat",
+                "Petrópolis",
+                "Praia de Belas",
+                "Rio Branco",
+                "Santa Cecília",
+                "Santana"
+            ]
+        },
+        "ilhas": {
+            "enabled": true,
+            "strategy": "neighborhood_group",
+            "label": "17 — Ilhas",
+            "op_region_number": 17,
+            "neighborhoods": [
+                "Arquipélago"
+            ]
         }
     }
 }
