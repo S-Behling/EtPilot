@@ -44,6 +44,14 @@ AVAILABLE_PLOTS = (
     PLOT_SELECTED_STREET_USAGE,
 )
 
+# O mapa de rua exige uma escolha explícita, por isso não é habilitado por
+# padrão em execuções programáticas/CLI.
+DEFAULT_PLOTS = tuple(
+    plot_name
+    for plot_name in AVAILABLE_PLOTS
+    if plot_name != PLOT_SELECTED_STREET_USAGE
+)
+
 
 @dataclass(frozen=True, slots=True)
 class SimulationPeriod:
@@ -92,7 +100,7 @@ class PilotRunConfig:
     clear_outputs: bool = False
     force_network_download: bool = False
     selected_plots: tuple[str, ...] = field(
-        default_factory=lambda: AVAILABLE_PLOTS
+        default_factory=lambda: DEFAULT_PLOTS
     )
     selected_street: str | None = None
 
