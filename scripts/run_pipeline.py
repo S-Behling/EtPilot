@@ -48,6 +48,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--region-mode",
+        choices=("analysis", "plot_only"),
+        default="analysis",
+        help=(
+            "analysis filtra agentes/O-D/redes pela região; "
+            "plot_only mantém a simulação municipal e usa a região só na visualização."
+        ),
+    )
+    parser.add_argument(
         "--income",
         nargs="+",
         default=["low", "middle", "high"],
@@ -129,6 +138,7 @@ def build_run_config(
 
     return PilotRunConfig(
         region=region,
+        region_mode=args.region_mode,
         income_groups=income_groups,
         period=SimulationPeriod(
             value=args.period_value,
@@ -153,6 +163,7 @@ def print_configuration(
     print("ETPILOT — CONFIGURAÇÃO DA EXECUÇÃO")
     print("=" * 70)
     print(f"Região: {run_config.region}")
+    print(f"Modo regional: {run_config.region_mode}")
     print(
         "Classes sociais:",
         ", ".join(run_config.income_group_names),
@@ -199,9 +210,22 @@ def run_pipeline(
         print("\n[2] Preparação das redes ignorada.")
 
     if run_config.prepare_region:
-        print("\n[3] Preparando recorte regional...")
+        data_region = (
+            run_config.region
+            if run_config.region_mode == "analysis"
+            else "city"
+        )
+
+        if run_config.region_mode == "analysis":
+            print("\n[3] Preparando recorte regional para análise...")
+        else:
+            print(
+                "\n[3] Preparando dados municipais; "
+                "a região será usada apenas como janela de visualização..."
+            )
+
         prepare_region(
-            region_name=run_config.region,
+            region_name=data_region,
         )
     else:
         print("\n[3] Preparação regional ignorada; usando cache existente.")
