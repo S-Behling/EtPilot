@@ -8,8 +8,7 @@ região escolhida; a análise continua independente da interface.
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterable, Mapping
-from pathlib import Path
+from collections.abc import Mapping
 
 import geopandas as gpd
 import networkx as nx
@@ -170,9 +169,50 @@ def load_region_street_names(
                 graph_path
             )
 
+    study_area = load_study_area(
+        region_name,
+        config=dict(config),
+    )
+
     if cached_graphs:
-        return list_street_names_from_graphs(
-            cached_graphs
+        # O cache regional pode conter um pequeno buffer de roteamento além do
+        # limite oficial. Filtramos novamente pela StudyArea para que a lista
+        # exibida na GUI contenha apenas ruas que efetivamente tocam a região.
+        names: set[str] = set()
+
+        for graph in cached_graphs.values():
+            _, edges = ox.graph_to_gdfs(
+                graph,
+                nodes=True,
+                edges=True,
+            )
+
+            if edges.crs != study_area.crs:
+                edges = edges.to_crs(
+                    study_area.crs
+                )
+
+            regional_edges = edges.loc[
+                edges.geometry.intersects(
+                    study_area.geometry
+                )
+            ]
+
+            if "name" not in regional_edges.columns:
+                continue
+
+            for value in regional_edges[
+                "name"
+            ]:
+                names.update(
+                    normalize_street_names(
+                        value
+                    )
+                )
+
+        return sorted(
+            names,
+            key=str.casefold,
         )
 
     # Fallback: usa a rede municipal de carro, que é suficiente para montar o
@@ -191,11 +231,6 @@ def load_region_street_names(
     graph = ox.load_graphml(
         city_graph_path
     )
-    study_area = load_study_area(
-        region_name,
-        config=dict(config),
-    )
-
     _, edges = ox.graph_to_gdfs(
         graph,
         nodes=True,
