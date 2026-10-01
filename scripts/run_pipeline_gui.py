@@ -33,11 +33,13 @@ from src.pipeline.config import (
     PLOT_CENSUS_INCOME,
     PLOT_MODE_ALL_INCOMES,
     PLOT_MODE_FREQUENCY_BY_INCOME,
+    PLOT_SELECTED_STREET_USAGE,
     PLOT_TRANSIT_BY_INCOME,
     PLOT_WALK_BY_INCOME,
     PilotRunConfig,
     SimulationPeriod,
 )
+from src.spatial.streets import load_region_street_names
 
 
 WIN95 = {
@@ -111,6 +113,9 @@ PLOT_LABELS = {
     ),
     PLOT_MODE_FREQUENCY_BY_INCOME: (
         "10. Gráfico de barras: frequência modal por classe"
+    ),
+    PLOT_SELECTED_STREET_USAGE: (
+        "11. Rua selecionada: classes, modos e número de agentes"
     ),
 }
 
@@ -236,6 +241,10 @@ class PipelineApp(tk.Tk):
         self.region_mode_var = tk.StringVar(
             value="Recorte da análise"
         )
+        self.selected_street_var = tk.StringVar(
+            value=""
+        )
+        self.street_options: tuple[str, ...] = ()
         self.period_value_var = tk.StringVar(
             value="24"
         )
@@ -701,6 +710,53 @@ class PipelineApp(tk.Tk):
 
         tk.Label(
             parent,
+            text="Rua:",
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            font=FONT,
+        ).grid(
+            row=2,
+            column=0,
+            sticky="w",
+            padx=(0, 12),
+            pady=5,
+        )
+
+        self.street_combo = ttk.Combobox(
+            parent,
+            textvariable=self.selected_street_var,
+            values=self.street_options,
+            state="readonly",
+            style="Win95.TCombobox",
+        )
+        self.street_combo.grid(
+            row=2,
+            column=1,
+            sticky="ew",
+            pady=5,
+        )
+
+        tk.Button(
+            parent,
+            text="Carregar ruas da região",
+            command=self._refresh_street_options,
+            bg=WIN95["face"],
+            fg=WIN95["text"],
+            activebackground=WIN95["light"],
+            font=FONT_SMALL,
+            relief="raised",
+            bd=2,
+            padx=8,
+            pady=2,
+        ).grid(
+            row=3,
+            column=1,
+            sticky="w",
+            pady=(2, 5),
+        )
+
+        tk.Label(
+            parent,
             text=(
                 "analysis: restringe O/D, agentes, redes e GTFS.\n"
                 "plot_only: cidade inteira, recorte apenas no mapa."
@@ -712,11 +768,46 @@ class PipelineApp(tk.Tk):
             anchor="w",
             wraplength=330,
         ).grid(
-            row=2,
+            row=4,
             column=0,
             columnspan=2,
             sticky="w",
-            pady=(10, 0),
+            pady=(8, 0),
+        )
+
+    def _refresh_street_options(
+        self,
+    ) -> None:
+        """Carrega os nomes de ruas disponíveis na região selecionada."""
+
+        try:
+            region_name = self.enabled_region_values[
+                self.region_var.get()
+            ]
+            project_config = load_project_config()
+            streets = load_region_street_names(
+                project_config,
+                region_name,
+            )
+        except Exception as exc:
+            messagebox.showerror(
+                "EtPilot - ruas",
+                str(exc),
+            )
+            return
+
+        self.street_options = tuple(
+            streets
+        )
+        self.street_combo.configure(
+            values=self.street_options
+        )
+        self.selected_street_var.set(
+            ""
+        )
+
+        self.status_var.set(
+            f"{len(streets)} rua(s) carregada(s) para a região."
         )
 
     def _build_population_group(
@@ -1051,6 +1142,10 @@ class PipelineApp(tk.Tk):
                 for plot_name, variable
                 in self.plot_vars.items()
                 if variable.get()
+            ),
+            selected_street=(
+                self.selected_street_var.get().strip()
+                or None
             ),
         )
 
