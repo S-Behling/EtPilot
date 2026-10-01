@@ -99,20 +99,38 @@ Para limpar outputs antes da rodada:
 python scripts/run_pipeline.py --clear-outputs
 ```
 
-As opções territoriais previstas são:
+As opções territoriais agora seguem as **17 regiões oficiais do Orçamento
+Participativo de Porto Alegre**, além de `city` para representar o município
+inteiro. A configuração está centralizada em `config/regions.json` e inclui
+número da região, rótulo, bairros e referência da fonte oficial.
+
+Chaves disponíveis:
 
 ```text
 city
-center
-north
-south
-east
+humaita_navegantes
+noroeste
+leste
+lomba_do_pinheiro
+norte
+nordeste
+partenon
+restinga
+gloria
+cruzeiro
+cristal
+centro_sul
+extremo_sul
+eixo_baltazar
+sul
+centro
+ilhas
 ```
 
-No estado atual, `center`, `north`, `south` e `east` só podem ser
-executadas depois que os respectivos bairros forem definidos e habilitados em
-`config/regions.json`. O pipeline falha explicitamente caso uma região ainda
-não esteja configurada, evitando inventar uma divisão territorial.
+A regionalização utilizada é a do Orçamento Participativo/ObservaPOA da
+Prefeitura de Porto Alegre, cuja espacialização foi alinhada aos bairros
+oficiais. A fonte territorial e a observação metodológica ficam registradas
+no próprio `regions.json`.
 
 A janela temporal é representada por `SimulationPeriod`. Cada agente recebe
 um horário de partida dentro do período configurado; assim, o mesmo modelo
@@ -141,6 +159,27 @@ podem ser selecionados região, modo de uso da região, classes sociais,
 período, número de agentes, seed, cenário e opções de preparação. A interface
 não substitui o terminal; as duas formas continuam disponíveis e executam a
 mesma lógica do pipeline.
+
+
+### Interface gráfica
+
+A GUI foi redesenhada em um layout mais compacto, organizado em quatro cards
+em duas colunas, para reduzir a altura total da janela. A paleta usa tons de
+vermelho, terracota, brandy rose e bege:
+
+```text
+#F6F5EC  fundo claro
+#EFE7DA  superfícies
+#B29079  brandy rose
+#A6533D  terracota
+#7F3D30  vermelho escuro
+#C87568  vermelho suave
+```
+
+O estilo visual é deliberadamente mais limpo e editorial, inspirado em
+interfaces móveis com cards e hierarquia visual forte, sem alterar a lógica
+do pipeline.
+
 
 ---
 
@@ -227,14 +266,14 @@ O cache é salvo em:
 cache/regions/<region>/
 ```
 
-Quando `config/regions.json` estiver preenchido e as regiões estiverem
-habilitadas, a mesma etapa poderá ser executada com:
+A mesma etapa pode ser executada diretamente para qualquer região do
+Orçamento Participativo, por exemplo:
 
 ```powershell
-python scripts/prepare_region.py --region center
-python scripts/prepare_region.py --region north
-python scripts/prepare_region.py --region south
-python scripts/prepare_region.py --region east
+python scripts/prepare_region.py --region centro
+python scripts/prepare_region.py --region noroeste
+python scripts/prepare_region.py --region sul
+python scripts/prepare_region.py --region extremo_sul
 ```
 
 ## 6. Executar o piloto multimodal
@@ -309,13 +348,10 @@ número de conexões programadas.
 
 ### Regiões exibidas na interface gráfica
 
-A interface gráfica lê diretamente `config/regions.json` e mostra apenas as
-regiões que estão com `"enabled": true`. Assim, opções ainda sem uma
-definição territorial válida não aparecem como executáveis e não geram erro
-apenas por terem sido selecionadas.
-
-Quando uma nova região for configurada e habilitada no JSON, ela passa a
-aparecer automaticamente no seletor da interface.
+A interface gráfica lê diretamente `config/regions.json`. Atualmente ela
+exibe a cidade inteira e as 17 regiões do Orçamento Participativo, na ordem
+oficial. O nome mostrado ao usuário vem do próprio catálogo territorial, de
+modo que a interface e o terminal usam exatamente as mesmas definições.
 
 ## Dois modos de uso da região
 
@@ -326,7 +362,7 @@ interpretação científica da execução e fica registrada em
 ### 1. `analysis` — região como universo da análise
 
 ```powershell
-python scripts/run_pipeline.py --region south --region-mode analysis
+python scripts/run_pipeline.py --region sul --region-mode analysis
 ```
 
 Nesse caso, a região realmente restringe o piloto:
@@ -341,14 +377,14 @@ rotas                  → calculadas usando o recorte regional
 mapas                  → mostram esse mesmo universo regional
 ```
 
-Portanto, selecionar `south` em `analysis` não significa apenas ampliar ou
+Portanto, selecionar `sul` em `analysis` não significa apenas ampliar ou
 recortar a figura. O conjunto de agentes, O/D e infraestrutura disponível na
 simulação muda.
 
 ### 2. `plot_only` — região apenas como janela espacial
 
 ```powershell
-python scripts/run_pipeline.py --region south --region-mode plot_only
+python scripts/run_pipeline.py --region sul --region-mode plot_only
 ```
 
 Nesse caso, a simulação continua municipal:
@@ -424,10 +460,10 @@ Os outputs dos dois modos regionais são separados:
 outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/
 ```
 
-As regiões `center`, `north`, `south` e `east` ainda dependem da
-definição explícita de seus bairros em `config/regions.json`. Isso vale para
-`analysis` e `plot_only`, porque até uma simples janela de visualização
-precisa de uma geometria territorial conhecida.
+Tanto `analysis` quanto `plot_only` usam exatamente a mesma geometria
+territorial do Orçamento Participativo. A diferença está somente em como esse
+recorte entra no experimento: como universo da simulação ou apenas como janela
+de visualização.
 
 ---
 
