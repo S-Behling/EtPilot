@@ -25,6 +25,7 @@ PLOT_CENSUS_ALL_MODES = "census_all_modes"
 PLOT_ALL_NETWORKS = "all_networks"
 PLOT_AGENT_UNIQUE = "agent_unique"
 PLOT_MODE_FREQUENCY_BY_INCOME = "mode_frequency_by_income"
+PLOT_SELECTED_STREET_USAGE = "selected_street_usage"
 
 # Somente estes produtos aparecem na GUI e podem ser gerados pelo piloto.
 # Alguns itens produzem mais de um arquivo (por exemplo, um por modo ou por
@@ -40,6 +41,7 @@ AVAILABLE_PLOTS = (
     PLOT_ALL_NETWORKS,
     PLOT_AGENT_UNIQUE,
     PLOT_MODE_FREQUENCY_BY_INCOME,
+    PLOT_SELECTED_STREET_USAGE,
 )
 
 
@@ -92,6 +94,7 @@ class PilotRunConfig:
     selected_plots: tuple[str, ...] = field(
         default_factory=lambda: AVAILABLE_PLOTS
     )
+    selected_street: str | None = None
 
     def __post_init__(self) -> None:
         if not self.region.strip():
@@ -131,6 +134,18 @@ class PilotRunConfig:
                 + ", ".join(
                     sorted(invalid_plots)
                 )
+            )
+
+        if (
+            PLOT_SELECTED_STREET_USAGE
+            in self.selected_plots
+            and not (
+                self.selected_street
+                and self.selected_street.strip()
+            )
+        ):
+            raise ValueError(
+                "Selecione uma rua para gerar o mapa de uso por rua."
             )
 
     @property
