@@ -14,6 +14,7 @@ from src.domain.enums import IncomeGroup
 VALID_PERIOD_UNITS = {"hours", "days"}
 VALID_SCENARIOS = {"baseline", "differentiated"}
 VALID_REGIONS = {"city", "center", "north", "south", "east"}
+VALID_REGION_MODES = {"analysis", "plot_only"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +49,7 @@ class PilotRunConfig:
     """Parâmetros controláveis de uma rodada do piloto."""
 
     region: str = "city"
+    region_mode: str = "analysis"
     income_groups: tuple[IncomeGroup, ...] = field(
         default_factory=lambda: tuple(IncomeGroup)
     )
@@ -67,6 +69,12 @@ class PilotRunConfig:
             raise ValueError(
                 f"Região inválida: {self.region!r}. "
                 f"Use uma de {sorted(VALID_REGIONS)}."
+            )
+
+        if self.region_mode not in VALID_REGION_MODES:
+            raise ValueError(
+                f"Modo regional inválido: {self.region_mode!r}. "
+                f"Use um de {sorted(VALID_REGION_MODES)}."
             )
 
         if not self.income_groups:
