@@ -26,6 +26,7 @@ from src.pipeline.config import (
 from src.plot import (
     plot_agent_routes,
     plot_edge_usage,
+    plot_edge_usage_by_category,
     plot_transit_agent_routes,
     save_plot,
 )
@@ -49,6 +50,7 @@ from src.transit.router import TransitRouter
 from src.trajectory.edge_usage import (
     aggregate_edge_usage,
     build_edge_usage,
+    edge_composition_summary,
 )
 
 
@@ -364,6 +366,9 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     edge_usage_summary = aggregate_edge_usage(
         edge_usage
     )
+    edge_composition = edge_composition_summary(
+        edge_usage
+    )
 
     transit_by_agent = {
         agent.agent_id: agent
@@ -464,6 +469,10 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         output_dir / "edge_usage_summary.csv",
         index=False,
     )
+    edge_composition.to_csv(
+        output_dir / "edge_composition.csv",
+        index=False,
+    )
 
     fig, _ = plot_agent_routes(
         agents=agents,
@@ -518,6 +527,42 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         save_plot(
             fig,
             output_dir / "edge_usage.png",
+        )
+
+        fig, _ = plot_edge_usage_by_category(
+            edge_usage=edge_usage,
+            graphs=graphs,
+            transit_physical_edges=(
+                regional_transit.physical_edges
+            ),
+            category="trip_mode",
+            study_area=view_area,
+            title=(
+                f"Trechos por modo de viagem — {region_name} — "
+                f"{run_config.region_mode}"
+            ),
+        )
+        save_plot(
+            fig,
+            output_dir / "edge_usage_by_mode.png",
+        )
+
+        fig, _ = plot_edge_usage_by_category(
+            edge_usage=edge_usage,
+            graphs=graphs,
+            transit_physical_edges=(
+                regional_transit.physical_edges
+            ),
+            category="income_group",
+            study_area=view_area,
+            title=(
+                f"Trechos por classe social — {region_name} — "
+                f"{run_config.region_mode}"
+            ),
+        )
+        save_plot(
+            fig,
+            output_dir / "edge_usage_by_income.png",
         )
 
     print("10/10 - Resumo final...")
