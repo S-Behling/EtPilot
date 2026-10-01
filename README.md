@@ -163,22 +163,66 @@ mesma lógica do pipeline.
 
 ### Interface gráfica
 
-A GUI foi redesenhada em um layout mais compacto, organizado em quatro cards
-em duas colunas, para reduzir a altura total da janela. A paleta usa tons de
-vermelho, terracota, brandy rose e bege:
+A GUI usa uma estética inspirada no Windows 95: elementos quadrados, fundo
+cinza, barra de título azul-marinho, campos com efeito rebaixado (`sunken`),
+botões com relevo e tipografia clássica. A interface possui duas abas:
+`Configuração` e `Mapas`, ambas alimentando o mesmo `PilotRunConfig`.
+
+
+
+### Aba "Mapas" da interface gráfica
+
+A interface gráfica possui agora uma segunda aba chamada **Mapas**. Nela o
+usuário pode selecionar quais produtos cartográficos deseja gerar em cada
+execução, sem alterar a simulação em si.
+
+Opções disponíveis:
 
 ```text
-#F6F5EC  fundo claro
-#EFE7DA  superfícies
-#B29079  brandy rose
-#A6533D  terracota
-#7F3D30  vermelho escuro
-#C87568  vermelho suave
+Rotas OSM dos agentes
+Rotas de transporte coletivo
+Uso geral das redes
+Trechos por modo de viagem
+Trechos por classe social
+Trechos por modo + classe social
 ```
 
-O estilo visual é deliberadamente mais limpo e editorial, inspirado em
-interfaces móveis com cards e hierarquia visual forte, sem alterar a lógica
-do pipeline.
+Os botões **Selecionar todos** e **Limpar seleção** facilitam a escolha. A
+seleção fica registrada em `run_config.json` através do campo
+`selected_plots`.
+
+Quando o pipeline é iniciado pelo terminal, todos os mapas continuam
+selecionados por padrão.
+
+### Convenção visual dos mapas
+
+Os mapas de uso da rede seguem uma convenção única para permitir leitura
+simultânea de classe social e modo de deslocamento.
+
+**Cor = classe social**
+
+```text
+Baixa renda   → Lavender Gray  #CABAD7
+Média renda   → Eggplant       #4F364B
+Alta renda    → Cinnabar       #DB3E1D
+Fundo         → Albescant White #F7E9DE
+```
+
+**Tipo de linha = modo efetivamente utilizado no trecho**
+
+```text
+Walk          → linha pontilhada
+Bike          → linha tracejada
+Carro         → linha contínua
+Ônibus        → linha contínua com seta de direção
+```
+
+Para viagens de transporte coletivo, os trechos de acesso e egresso a pé são
+representados como `walk` e portanto aparecem pontilhados; somente o trecho
+em veículo coletivo é representado com linha contínua e seta.
+
+A espessura da linha continua representando a intensidade de uso do trecho
+(número relativo de travessias dentro do mapa/painel).
 
 
 ---
