@@ -84,7 +84,7 @@ python scripts/run_pipeline.py --period-value 8 --period-unit hours
 Configuração completa:
 
 ```powershell
-python scripts/run_pipeline.py --region city --income low middle high --period-value 24 --period-unit hours --n-agents 100 --seed 42 --scenario differentiated
+python scripts/run_pipeline.py --region city --region-mode analysis --income low middle high --period-value 24 --period-unit hours --n-agents 100 --seed 42 --scenario differentiated
 ```
 
 Para reutilizar redes e cache regional já preparados:
@@ -283,6 +283,71 @@ destino
 A data de serviço utilizada pelo piloto é selecionada automaticamente entre
 as datas disponíveis no cache GTFS regional, priorizando a data com maior
 número de conexões programadas.
+
+---
+
+
+## Dois modos de uso da região
+
+A região pode atuar de duas formas diferentes no pipeline.
+
+### 1. Região como recorte da análise
+
+Use:
+
+```powershell
+python scripts/run_pipeline.py --region south --region-mode analysis
+```
+
+Nesse modo, a região altera os próprios dados da simulação:
+
+```text
+origens dentro da região
+destinos dentro da região
+agentes sorteados a partir dessas origens
+redes car/walk/bike recortadas
+GTFS filtrado
+rotas calculadas no recorte regional
+plots da mesma região
+```
+
+Portanto, a região não é apenas uma moldura do mapa: ela define o universo
+espacial da execução.
+
+### 2. Região apenas como janela de visualização
+
+Use:
+
+```powershell
+python scripts/run_pipeline.py --region south --region-mode plot_only
+```
+
+Nesse modo, a simulação continua usando os dados de toda Porto Alegre:
+
+```text
+origens da cidade inteira
+destinos da cidade inteira
+agentes da cidade inteira
+redes municipais completas
+GTFS municipal
+rotas municipais
+        ↓
+mapa enquadrado na região Sul
+```
+
+Assim é possível observar, por exemplo, somente o que acontece na região Sul
+sem impedir que uma viagem tenha origem, destino ou trecho fora dela.
+
+Os outputs dos dois modos são separados:
+
+```text
+outputs/pilot/<region>/<region_mode>/<scenario>/seed_<seed>/
+```
+
+As regiões `center`, `north`, `south` e `east` ainda dependem da
+definição explícita de seus bairros em `config/regions.json`. Isso vale tanto
+para `analysis` quanto para `plot_only`, pois a geometria da região precisa
+ser conhecida mesmo quando ela serve apenas para enquadrar o mapa.
 
 ---
 
