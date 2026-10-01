@@ -44,6 +44,27 @@ def main() -> None:
         ),
     }
 
+    census_config = config.get(
+        "census",
+        {},
+    )
+
+    if census_config:
+        required_files[
+            "censo:setores"
+        ] = project_path(
+            census_config[
+                "sector_geometry"
+            ]
+        )
+        required_files[
+            "censo:renda_dir"
+        ] = project_path(
+            census_config[
+                "income_directory"
+            ]
+        )
+
     transit_dir = project_path(
         config["transit"]["data_dir"]
     )
