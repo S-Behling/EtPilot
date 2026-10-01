@@ -1,4 +1,4 @@
-"""Interface gráfica opcional para configurar e executar o EtPilot.
+"""Interface gráfica retro/pixel para configurar e executar o EtPilot.
 
 A interface monta o mesmo PilotRunConfig usado pelo terminal. Assim, existem
 dois pontos de entrada independentes para o mesmo pipeline:
@@ -49,6 +49,27 @@ SCENARIO_LABELS = {
 }
 
 
+PALETTE = {
+    "grid": "#C7D9F6",
+    "grid_line": "#F6F2EE",
+    "ink": "#3A2424",
+    "peach": "#F7D9BF",
+    "cream": "#FFF3DF",
+    "teal": "#62C5BF",
+    "orange": "#F4A45F",
+    "yellow": "#F4CD62",
+    "pink": "#ED7594",
+    "blue": "#7EA6E8",
+    "white": "#FFFFFF",
+    "muted": "#8A6B62",
+}
+
+FONT = ("Courier New", 10)
+FONT_BOLD = ("Courier New", 10, "bold")
+FONT_TITLE = ("Courier New", 19, "bold")
+FONT_SMALL = ("Courier New", 9)
+
+
 class PipelineApp(tk.Tk):
     """Janela de configuração do pipeline."""
 
@@ -56,7 +77,13 @@ class PipelineApp(tk.Tk):
         super().__init__()
 
         self.title("EtPilot — Configuração do piloto")
-        self.minsize(650, 650)
+        self.geometry("820x900")
+        self.minsize(760, 820)
+        self.configure(
+            bg=PALETTE["grid"]
+        )
+
+        self._configure_ttk_style()
 
         project_config = load_project_config()
         regions_config = load_regions_config(
@@ -168,39 +195,101 @@ class PipelineApp(tk.Tk):
         )
 
         self._build_ui()
+        self.bind(
+            "<Configure>",
+            self._redraw_grid,
+        )
+
+    def _configure_ttk_style(self) -> None:
+        style = ttk.Style(self)
+
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        style.configure(
+            "Retro.TCombobox",
+            font=FONT,
+            foreground=PALETTE["ink"],
+            fieldbackground=PALETTE["cream"],
+            background=PALETTE["cream"],
+            bordercolor=PALETTE["ink"],
+            lightcolor=PALETTE["ink"],
+            darkcolor=PALETTE["ink"],
+            arrowsize=14,
+            padding=4,
+        )
+        style.map(
+            "Retro.TCombobox",
+            fieldbackground=[
+                ("readonly", PALETTE["cream"])
+            ],
+            foreground=[
+                ("readonly", PALETTE["ink"])
+            ],
+        )
 
     def _build_ui(self) -> None:
-        container = ttk.Frame(
+        self.background = tk.Canvas(
             self,
-            padding=18,
+            highlightthickness=0,
+            bd=0,
+            bg=PALETTE["grid"],
         )
-        container.pack(
+        self.background.pack(
             fill="both",
             expand=True,
         )
 
-        title = ttk.Label(
-            container,
-            text="EtPilot — configurar execução",
-            font=(
-                "TkDefaultFont",
-                15,
-                "bold",
-            ),
-        )
-        title.pack(
-            anchor="w",
-            pady=(0, 14),
+        self.container = tk.Frame(
+            self.background,
+            bg=PALETTE["grid"],
         )
 
-        spatial = ttk.LabelFrame(
-            container,
-            text="Recorte espacial",
-            padding=12,
+        self.window_id = self.background.create_window(
+            0,
+            0,
+            anchor="nw",
+            window=self.container,
         )
-        spatial.pack(
+
+        header = tk.Frame(
+            self.container,
+            bg=PALETTE["grid"],
+        )
+        header.pack(
             fill="x",
-            pady=6,
+            padx=24,
+            pady=(18, 12),
+        )
+
+        tk.Label(
+            header,
+            text="ETPILOT",
+            bg=PALETTE["grid"],
+            fg=PALETTE["ink"],
+            font=FONT_TITLE,
+        ).pack(
+            side="left",
+        )
+
+        tk.Label(
+            header,
+            text="  CONFIGURAR EXECUÇÃO",
+            bg=PALETTE["ink"],
+            fg=PALETTE["cream"],
+            font=FONT_BOLD,
+            padx=10,
+            pady=5,
+        ).pack(
+            side="left",
+            padx=(12, 0),
+        )
+
+        spatial = self._panel(
+            "RECORTE ESPACIAL",
+            accent="teal",
         )
 
         self._labeled_combobox(
@@ -223,60 +312,70 @@ class PipelineApp(tk.Tk):
 
         explanation = (
             "Recorte da análise: O/D, agentes, redes e GTFS ficam na região.\n"
-            "Somente janela do mapa: a simulação usa a cidade inteira e "
-            "o mapa é enquadrado na região."
+            "Somente janela do mapa: simulação municipal, mapa enquadrado na região."
         )
 
         if self.disabled_region_labels:
             explanation += (
-                "\n\nAinda não configuradas: "
+                "\nAinda não configuradas: "
                 + ", ".join(
                     self.disabled_region_labels
                 )
-                + ". Essas opções aparecerão automaticamente quando forem "
-                "habilitadas em config/regions.json."
+                + "."
             )
 
-        ttk.Label(
+        tk.Label(
             spatial,
             text=explanation,
-            wraplength=560,
+            justify="left",
+            anchor="w",
+            wraplength=680,
+            bg=PALETTE["peach"],
+            fg=PALETTE["muted"],
+            font=FONT_SMALL,
         ).grid(
             row=2,
             column=0,
             columnspan=2,
-            sticky="w",
-            pady=(8, 0),
+            sticky="ew",
+            pady=(10, 2),
         )
 
-        population = ttk.LabelFrame(
-            container,
-            text="População sintética",
-            padding=12,
-        )
-        population.pack(
-            fill="x",
-            pady=6,
+        population = self._panel(
+            "POPULAÇÃO SINTÉTICA",
+            accent="orange",
         )
 
-        ttk.Label(
+        tk.Label(
             population,
             text="Classes sociais",
+            bg=PALETTE["peach"],
+            fg=PALETTE["ink"],
+            font=FONT_BOLD,
         ).grid(
             row=0,
             column=0,
-            sticky="nw",
-            padx=(0, 14),
+            sticky="w",
+            padx=(0, 16),
+            pady=6,
         )
 
-        classes = ttk.Frame(
-            population
+        classes = tk.Frame(
+            population,
+            bg=PALETTE["peach"],
         )
         classes.grid(
             row=0,
             column=1,
             sticky="w",
+            pady=6,
         )
+
+        class_accents = {
+            IncomeGroup.LOW: PALETTE["teal"],
+            IncomeGroup.MIDDLE: PALETTE["yellow"],
+            IncomeGroup.HIGH: PALETTE["pink"],
+        }
 
         for index, (
             group,
@@ -284,14 +383,22 @@ class PipelineApp(tk.Tk):
         ) in enumerate(
             self.income_vars.items()
         ):
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 classes,
                 text=group.value,
                 variable=variable,
+                bg=PALETTE["peach"],
+                activebackground=PALETTE["peach"],
+                fg=PALETTE["ink"],
+                activeforeground=PALETTE["ink"],
+                selectcolor=class_accents[group],
+                font=FONT,
+                highlightthickness=0,
+                bd=0,
             ).grid(
                 row=0,
                 column=index,
-                padx=(0, 12),
+                padx=(0, 14),
                 sticky="w",
             )
 
@@ -302,14 +409,9 @@ class PipelineApp(tk.Tk):
             row=1,
         )
 
-        temporal = ttk.LabelFrame(
-            container,
-            text="Tempo e comportamento",
-            padding=12,
-        )
-        temporal.pack(
-            fill="x",
-            pady=6,
+        temporal = self._panel(
+            "TEMPO E COMPORTAMENTO",
+            accent="teal",
         )
 
         self._labeled_entry(
@@ -342,80 +444,248 @@ class PipelineApp(tk.Tk):
             row=3,
         )
 
-        preparation = ttk.LabelFrame(
-            container,
-            text="Preparação",
-            padding=12,
-        )
-        preparation.pack(
-            fill="x",
-            pady=6,
+        preparation = self._panel(
+            "PREPARAÇÃO",
+            accent="orange",
         )
 
-        ttk.Checkbutton(
-            preparation,
-            text="Preparar/reutilizar redes OSM",
-            variable=self.prepare_networks_var,
-        ).pack(
-            anchor="w",
-        )
-        ttk.Checkbutton(
-            preparation,
-            text="Preparar cache espacial",
-            variable=self.prepare_region_var,
-        ).pack(
-            anchor="w",
-        )
-        ttk.Checkbutton(
-            preparation,
-            text="Limpar outputs antes de executar",
-            variable=self.clear_outputs_var,
-        ).pack(
-            anchor="w",
-        )
-        ttk.Checkbutton(
-            preparation,
-            text="Forçar novo download das redes",
-            variable=self.force_network_var,
-        ).pack(
-            anchor="w",
+        options = (
+            (
+                "Preparar/reutilizar redes OSM",
+                self.prepare_networks_var,
+            ),
+            (
+                "Preparar cache espacial",
+                self.prepare_region_var,
+            ),
+            (
+                "Limpar outputs antes de executar",
+                self.clear_outputs_var,
+            ),
+            (
+                "Forçar novo download das redes",
+                self.force_network_var,
+            ),
         )
 
-        actions = ttk.Frame(
-            container
+        for row, (
+            text,
+            variable,
+        ) in enumerate(
+            options
+        ):
+            tk.Checkbutton(
+                preparation,
+                text=text,
+                variable=variable,
+                bg=PALETTE["peach"],
+                activebackground=PALETTE["peach"],
+                fg=PALETTE["ink"],
+                activeforeground=PALETTE["ink"],
+                selectcolor=PALETTE["yellow"],
+                font=FONT,
+                anchor="w",
+                highlightthickness=0,
+                bd=0,
+            ).grid(
+                row=row,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+        actions = tk.Frame(
+            self.container,
+            bg=PALETTE["grid"],
         )
         actions.pack(
             fill="x",
-            pady=(16, 4),
+            padx=24,
+            pady=(14, 6),
         )
 
-        self.run_button = ttk.Button(
+        self.run_button = tk.Button(
             actions,
-            text="Executar pipeline",
+            text="▶ EXECUTAR PIPELINE",
             command=self._start_pipeline,
+            font=FONT_BOLD,
+            bg=PALETTE["teal"],
+            fg=PALETTE["ink"],
+            activebackground=PALETTE["yellow"],
+            activeforeground=PALETTE["ink"],
+            relief="raised",
+            bd=3,
+            padx=14,
+            pady=8,
+            cursor="hand2",
         )
         self.run_button.pack(
             side="left",
         )
 
-        ttk.Label(
+        tk.Label(
             actions,
             textvariable=self.status_var,
+            bg=PALETTE["cream"],
+            fg=PALETTE["ink"],
+            font=FONT,
+            relief="solid",
+            bd=1,
+            padx=12,
+            pady=8,
         ).pack(
             side="left",
-            padx=14,
+            fill="x",
+            expand=True,
+            padx=(12, 0),
         )
 
-        ttk.Label(
-            container,
-            text=(
-                "Os mapas por modo e por classe social são gerados "
-                "automaticamente nos outputs da execução."
-            ),
-            wraplength=590,
+        footer = tk.Frame(
+            self.container,
+            bg=PALETTE["grid"],
+        )
+        footer.pack(
+            fill="x",
+            padx=24,
+            pady=(6, 20),
+        )
+
+        tk.Label(
+            footer,
+            text="♥ mapas por modo + classe social são gerados automaticamente",
+            bg=PALETTE["grid"],
+            fg=PALETTE["ink"],
+            font=FONT_SMALL,
         ).pack(
             anchor="w",
-            pady=(8, 0),
+        )
+
+        self._redraw_grid()
+
+    def _panel(
+        self,
+        title: str,
+        *,
+        accent: str,
+    ) -> tk.Frame:
+        outer = tk.Frame(
+            self.container,
+            bg=PALETTE["ink"],
+            bd=0,
+        )
+        outer.pack(
+            fill="x",
+            padx=24,
+            pady=8,
+        )
+
+        header = tk.Label(
+            outer,
+            text=f" {title} ",
+            bg=PALETTE[accent],
+            fg=PALETTE["ink"],
+            font=FONT_BOLD,
+            anchor="w",
+            padx=8,
+            pady=5,
+        )
+        header.pack(
+            fill="x",
+            padx=2,
+            pady=(2, 0),
+        )
+
+        body = tk.Frame(
+            outer,
+            bg=PALETTE["peach"],
+            padx=14,
+            pady=12,
+        )
+        body.pack(
+            fill="x",
+            padx=2,
+            pady=(0, 2),
+        )
+
+        body.grid_columnconfigure(
+            1,
+            weight=1,
+        )
+
+        return body
+
+    def _redraw_grid(
+        self,
+        _event=None,
+    ) -> None:
+        if not hasattr(
+            self,
+            "background",
+        ):
+            return
+
+        width = max(
+            self.winfo_width(),
+            820,
+        )
+        height = max(
+            self.container.winfo_reqheight(),
+            self.winfo_height(),
+            900,
+        )
+
+        self.background.delete(
+            "gridline"
+        )
+
+        spacing = 28
+
+        for x in range(
+            0,
+            width + spacing,
+            spacing,
+        ):
+            self.background.create_line(
+                x,
+                0,
+                x,
+                height,
+                fill=PALETTE["grid_line"],
+                width=1,
+                tags="gridline",
+            )
+
+        for y in range(
+            0,
+            height + spacing,
+            spacing,
+        ):
+            self.background.create_line(
+                0,
+                y,
+                width,
+                y,
+                fill=PALETTE["grid_line"],
+                width=1,
+                tags="gridline",
+            )
+
+        self.background.tag_lower(
+            "gridline"
+        )
+
+        self.background.itemconfigure(
+            self.window_id,
+            width=width,
+        )
+        self.background.configure(
+            scrollregion=(
+                0,
+                0,
+                width,
+                height,
+            )
         )
 
     @staticmethod
@@ -426,26 +696,35 @@ class PipelineApp(tk.Tk):
         *,
         row: int,
     ) -> None:
-        ttk.Label(
+        tk.Label(
             parent,
             text=label,
+            bg=PALETTE["peach"],
+            fg=PALETTE["ink"],
+            font=FONT_BOLD,
         ).grid(
             row=row,
             column=0,
             sticky="w",
-            padx=(0, 14),
-            pady=4,
+            padx=(0, 16),
+            pady=6,
         )
 
-        ttk.Entry(
+        tk.Entry(
             parent,
             textvariable=variable,
-            width=22,
+            width=24,
+            font=FONT,
+            bg=PALETTE["cream"],
+            fg=PALETTE["ink"],
+            insertbackground=PALETTE["ink"],
+            relief="solid",
+            bd=1,
         ).grid(
             row=row,
             column=1,
-            sticky="w",
-            pady=4,
+            sticky="ew",
+            pady=6,
         )
 
     @staticmethod
@@ -457,15 +736,18 @@ class PipelineApp(tk.Tk):
         *,
         row: int,
     ) -> None:
-        ttk.Label(
+        tk.Label(
             parent,
             text=label,
+            bg=PALETTE["peach"],
+            fg=PALETTE["ink"],
+            font=FONT_BOLD,
         ).grid(
             row=row,
             column=0,
             sticky="w",
-            padx=(0, 14),
-            pady=4,
+            padx=(0, 16),
+            pady=6,
         )
 
         ttk.Combobox(
@@ -473,12 +755,13 @@ class PipelineApp(tk.Tk):
             textvariable=variable,
             values=values,
             state="readonly",
-            width=28,
+            style="Retro.TCombobox",
+            width=30,
         ).grid(
             row=row,
             column=1,
-            sticky="w",
-            pady=4,
+            sticky="ew",
+            pady=6,
         )
 
     def _build_config(
@@ -541,7 +824,9 @@ class PipelineApp(tk.Tk):
             return
 
         self.run_button.configure(
-            state="disabled"
+            state="disabled",
+            text="⏳ EXECUTANDO...",
+            bg=PALETTE["orange"],
         )
         self.status_var.set(
             "Executando... acompanhe também o terminal."
@@ -580,10 +865,12 @@ class PipelineApp(tk.Tk):
         self,
     ) -> None:
         self.run_button.configure(
-            state="normal"
+            state="normal",
+            text="▶ EXECUTAR PIPELINE",
+            bg=PALETTE["teal"],
         )
         self.status_var.set(
-            "Pipeline concluído."
+            "✓ Pipeline concluído."
         )
         messagebox.showinfo(
             "EtPilot",
@@ -595,10 +882,12 @@ class PipelineApp(tk.Tk):
         message: str,
     ) -> None:
         self.run_button.configure(
-            state="normal"
+            state="normal",
+            text="▶ EXECUTAR PIPELINE",
+            bg=PALETTE["pink"],
         )
         self.status_var.set(
-            "A execução terminou com erro."
+            "✕ A execução terminou com erro."
         )
         messagebox.showerror(
             "Erro na execução",
