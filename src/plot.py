@@ -655,7 +655,7 @@ def _plot_styled_edge_usage(
         usage_geometry.groupby(
             [
                 "income_group",
-                "trip_mode",
+                "network_mode",
                 "edge_id",
             ],
             dropna=False,
@@ -684,11 +684,11 @@ def _plot_styled_edge_usage(
 
     for (
         income_group,
-        trip_mode,
+        network_mode,
     ), subset in grouped.groupby(
         [
             "income_group",
-            "trip_mode",
+            "network_mode",
         ],
         dropna=False,
     ):
@@ -696,7 +696,7 @@ def _plot_styled_edge_usage(
             income_group
         )
         mode_key = str(
-            trip_mode
+            network_mode
         )
 
         color = INCOME_COLORS.get(
@@ -769,7 +769,7 @@ def _add_usage_legends(
         )
         if mode in set(
             usage_geometry[
-                "trip_mode"
+                "network_mode"
             ].astype(str)
         )
     ]
