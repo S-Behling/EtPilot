@@ -411,7 +411,7 @@ class PipelineApp(tk.Tk):
         tk.Label(
             selector,
             text=(
-                "Os 8 grupos de mapas obrigatórios são sempre gerados. "
+                "Os 9 grupos de mapas obrigatórios são definidos pelo pipeline. "
                 "Selecione abaixo apenas produtos adicionais."
             ),
             bg=WIN95["face"],
@@ -536,7 +536,7 @@ class PipelineApp(tk.Tk):
                 "6. Setores censitários em gradiente de renda\n"
                 "7. Censo + todos os modos contínuos por classe\n"
                 "8. Todas as redes em cinza forte\n"
-                "9. Uma cor por agente quando n < 40"
+                "9. Uma cor por agente quando n < 40 (condicional)"
             ),
             bg=WIN95["face"],
             fg=WIN95["text"],
