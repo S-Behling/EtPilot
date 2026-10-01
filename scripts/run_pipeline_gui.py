@@ -61,6 +61,17 @@ SCENARIO_LABELS = {
     "Baseline": "baseline",
 }
 
+PERIOD_UNIT_LABELS = {
+    "Horas": "hours",
+    "Dias": "days",
+}
+
+INCOME_LABELS = {
+    IncomeGroup.LOW: "Baixa",
+    IncomeGroup.MIDDLE: "Média",
+    IncomeGroup.HIGH: "Alta",
+}
+
 
 class PipelineApp(tk.Tk):
     """Janela principal da configuração do piloto."""
@@ -69,8 +80,8 @@ class PipelineApp(tk.Tk):
         super().__init__()
 
         self.title("EtPilot — Configuração do piloto")
-        self.geometry("930x690")
-        self.minsize(860, 640)
+        self.geometry("930x650")
+        self.minsize(860, 610)
         self.configure(
             bg=PALETTE["background"]
         )
@@ -190,7 +201,7 @@ class PipelineApp(tk.Tk):
             value="24"
         )
         self.period_unit_var = tk.StringVar(
-            value="hours"
+            value="Horas"
         )
         self.n_agents_var = tk.StringVar(
             value="100"
@@ -591,7 +602,7 @@ class PipelineApp(tk.Tk):
         ):
             tk.Checkbutton(
                 classes,
-                text=group.value,
+                text=INCOME_LABELS[group],
                 variable=variable,
                 bg=PALETTE["surface"],
                 activebackground=PALETTE["surface"],
@@ -629,7 +640,9 @@ class PipelineApp(tk.Tk):
             parent,
             "Unidade",
             self.period_unit_var,
-            ("hours", "days"),
+            tuple(
+                PERIOD_UNIT_LABELS
+            ),
             row=1,
         )
         self._labeled_combobox(
@@ -844,7 +857,9 @@ class PipelineApp(tk.Tk):
                 value=int(
                     self.period_value_var.get()
                 ),
-                unit=self.period_unit_var.get(),
+                unit=PERIOD_UNIT_LABELS[
+                    self.period_unit_var.get()
+                ],
             ),
             n_agents=int(
                 self.n_agents_var.get()
