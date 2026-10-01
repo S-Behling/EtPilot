@@ -39,6 +39,7 @@ from src.simulation.mode_choice import choose_mode
 from src.simulation.origin_assignment import assign_origins
 from src.simulation.population import generate_population
 from src.simulation.purpose_choice import assign_purpose
+from src.spatial.area_loader import load_study_area
 from src.spatial.regional_cache import load_regional_cache
 from src.transit.regional import (
     load_regional_transit_cache,
@@ -64,6 +65,15 @@ def parse_args() -> argparse.Namespace:
         "--region",
         default=None,
         help="Região já preparada em cache/regions.",
+    )
+    parser.add_argument(
+        "--region-mode",
+        choices=("analysis", "plot_only"),
+        default="analysis",
+        help=(
+            "analysis restringe O/D/agentes/redes à região; "
+            "plot_only usa dados municipais e limita apenas os mapas."
+        ),
     )
     parser.add_argument(
         "--n-agents",
@@ -170,12 +180,21 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     config_agents = load_agent_config()
 
     region_name = run_config.region
+    data_region_name = (
+        region_name
+        if run_config.region_mode == "analysis"
+        else "city"
+    )
+    view_area = load_study_area(
+        region_name,
+        config=config,
+    )
 
-    print("1/10 - Carregando cache regional...")
+    print("1/10 - Carregando cache espacial...")
 
     regional = load_regional_cache(
         config,
-        region_name,
+        data_region_name,
     )
 
     origins = regional.origins
@@ -183,7 +202,9 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     graphs = regional.graphs
 
     print(
-        f"Região: {region_name} | "
+        f"Região selecionada: {region_name} | "
+        f"modo={run_config.region_mode} | "
+        f"dados={data_region_name} | "
         f"origens={len(origins):,} | "
         f"destinos={len(destinations):,}"
     )
@@ -192,7 +213,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
 
     regional_transit = load_regional_transit_cache(
         config,
-        region_name,
+        data_region_name,
     )
 
     representative_date = (
@@ -382,6 +403,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         project_path(config["paths"]["outputs"])
         / "pilot"
         / region_name
+        / run_config.region_mode
         / run_config.scenario
         / f"seed_{run_config.seed}"
     )
@@ -397,6 +419,8 @@ def run_pilot(run_config: PilotRunConfig) -> None:
 
     metadata = {
         "region": run_config.region,
+        "region_mode": run_config.region_mode,
+        "data_region": data_region_name,
         "income_groups": list(
             run_config.income_group_names
         ),
@@ -447,8 +471,10 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         sample_size=min(100, len(agents)),
         title=(
             f"Rotas OSM — {region_name} — "
+            f"{run_config.region_mode} — "
             f"{run_config.scenario}"
         ),
+        study_area=view_area,
     )
     save_plot(
         fig,
@@ -465,8 +491,10 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         sample_size=min(50, len(agents)),
         title=(
             f"Rotas transit — {region_name} — "
+            f"{run_config.region_mode} — "
             f"{run_config.scenario}"
         ),
+        study_area=view_area,
     )
     save_plot(
         fig,
@@ -482,8 +510,10 @@ def run_pilot(run_config: PilotRunConfig) -> None:
             ),
             title=(
                 f"Uso das redes — {region_name} — "
+                f"{run_config.region_mode} — "
                 f"{run_config.scenario}"
             ),
+            study_area=view_area,
         )
         save_plot(
             fig,
@@ -550,6 +580,7 @@ def main() -> None:
             args.region
             or load_project_config()["study_area"]["default_region"]
         ),
+        region_mode=args.region_mode,
         income_groups=tuple(
             IncomeGroup(value)
             for value in args.income
@@ -559,7 +590,7 @@ def main() -> None:
             unit=args.period_unit,
         ),
         n_agents=args.n_agents,
-        seed=run_config.seed,
+        seed=args.seed,
         scenario=args.scenario,
         prepare_networks=False,
         prepare_region=False,
