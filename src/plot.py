@@ -14,7 +14,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
-from matplotlib.patches import FancyArrowPatch
+from matplotlib.patches import FancyArrowPatch, Patch
 import networkx as nx
 import osmnx as ox
 import pandas as pd
@@ -1901,6 +1901,32 @@ def plot_census_income_gradient(
     apply_study_area_view(
         ax,
         study_area,
+    )
+
+    # A barra contínua mostra a variação de renda dentro das classes. A legenda
+    # abaixo mantém explícita a associação das três cores-base às classes
+    # socioeconômicas usadas em todo o restante do projeto.
+    ax.legend(
+        handles=[
+            Patch(
+                facecolor=INCOME_COLORS["low"],
+                edgecolor="none",
+                label=INCOME_LABELS["low"],
+            ),
+            Patch(
+                facecolor=INCOME_COLORS["middle"],
+                edgecolor="none",
+                label=INCOME_LABELS["middle"],
+            ),
+            Patch(
+                facecolor=INCOME_COLORS["high"],
+                edgecolor="none",
+                label=INCOME_LABELS["high"],
+            ),
+        ],
+        title="Classes de renda",
+        loc="upper right",
+        frameon=True,
     )
 
     ax.set_title(
