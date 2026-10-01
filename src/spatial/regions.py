@@ -8,6 +8,8 @@ somente com a geometria resultante.
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
+import unicodedata
 
 import geopandas as gpd
 
@@ -75,6 +77,10 @@ def build_study_area(
             neighborhoods=neighborhoods,
             names=selected_names,
             name_field=name_field,
+            aliases=definition.get(
+                "aliases",
+                {},
+            ),
         )
 
         geometry, crs = _union_geometry(
@@ -102,6 +108,7 @@ def select_neighborhoods(
     neighborhoods: gpd.GeoDataFrame,
     names: tuple[str, ...],
     name_field: str,
+    aliases: Mapping[str, list[str]] | None = None,
 ) -> gpd.GeoDataFrame:
     """Seleciona bairros por nome usando comparação sem diferença de caixa."""
 
@@ -120,20 +127,44 @@ def select_neighborhoods(
         for name in names
     }
 
+    alias_to_requested: dict[str, str] = {}
+
+    for canonical_name, alias_values in (
+        aliases or {}
+    ).items():
+        canonical = _normalize_name(
+            canonical_name
+        )
+
+        if canonical not in requested:
+            continue
+
+        for alias in alias_values:
+            alias_to_requested[
+                _normalize_name(alias)
+            ] = canonical
+
     normalized = (
         neighborhoods[name_field]
         .astype("string")
         .map(_normalize_name)
     )
 
+    matched = normalized.map(
+        lambda value: (
+            value
+            if value in requested
+            else alias_to_requested.get(value)
+        )
+    )
+
     selected = neighborhoods.loc[
-        normalized.isin(requested)
+        matched.notna()
     ].copy()
 
-    found = {
-        _normalize_name(name)
-        for name in selected[name_field].dropna()
-    }
+    found = set(
+        matched.dropna()
+    )
     missing = sorted(requested - found)
 
     if missing:
@@ -191,4 +222,23 @@ def _validate_geodataframe(
 
 
 def _normalize_name(value: object) -> str:
-    return str(value).strip().casefold()
+    text = unicodedata.normalize(
+        "NFKD",
+        str(value),
+    )
+    text = "".join(
+        character
+        for character in text
+        if not unicodedata.combining(
+            character
+        )
+    )
+    text = text.casefold()
+    text = re.sub(
+        r"[^a-z0-9]+",
+        " ",
+        text,
+    )
+    return " ".join(
+        text.split()
+    )
