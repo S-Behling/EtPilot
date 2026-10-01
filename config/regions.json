@@ -48,7 +48,14 @@
                 "São João",
                 "São Sebastião",
                 "Vila Ipiranga"
-            ]
+            ],
+            "aliases": {
+                "Passo da Areia": [
+                    "Passo D'Areia",
+                    "Passo D’Areia",
+                    "Passo D´Areia"
+                ]
+            }
         },
         "leste": {
             "enabled": true,
@@ -84,7 +91,12 @@
             "neighborhoods": [
                 "Sarandi",
                 "Santa Rosa de Lima"
-            ]
+            ],
+            "aliases": {
+                "Santa Rosa de Lima": [
+                    "Santa Rosa Lima"
+                ]
+            }
         },
         "nordeste": {
             "enabled": true,
@@ -106,7 +118,12 @@
                 "Santo Antônio",
                 "Vila João Pessoa",
                 "Vila São José"
-            ]
+            ],
+            "aliases": {
+                "Vila São José": [
+                    "São José"
+                ]
+            }
         },
         "restinga": {
             "enabled": true,
@@ -236,7 +253,14 @@
                 "Rio Branco",
                 "Santa Cecília",
                 "Santana"
-            ]
+            ],
+            "aliases": {
+                "Montserrat": [
+                    "Mont'Serrat",
+                    "Mont’Serrat",
+                    "Mont Serrat"
+                ]
+            }
         },
         "ilhas": {
             "enabled": true,
