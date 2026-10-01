@@ -268,6 +268,13 @@ class PipelineApp(tk.Tk):
 
         self._build_title_bar(outer)
 
+        # A barra de ação fica presa ao rodapé. Ela é criada antes do notebook
+        # para que o Tk reserve sua altura e o botão "Executar análise" nunca
+        # seja ocultado quando o conteúdo das abas cresce.
+        self._build_footer(
+            outer
+        )
+
         notebook = ttk.Notebook(outer)
         notebook.pack(
             fill="both",
@@ -299,10 +306,6 @@ class PipelineApp(tk.Tk):
         )
         self._build_maps_tab(
             maps_tab
-        )
-
-        self._build_footer(
-            outer
         )
 
     def _build_config_tab(
@@ -856,7 +859,7 @@ class PipelineApp(tk.Tk):
 
         self.run_button = tk.Button(
             footer,
-            text="Executar",
+            text="Executar análise",
             command=self._start_pipeline,
             bg=WIN95["face"],
             fg=WIN95["text"],
@@ -865,8 +868,8 @@ class PipelineApp(tk.Tk):
             font=FONT_BOLD,
             relief="raised",
             bd=2,
-            padx=20,
-            pady=5,
+            padx=24,
+            pady=6,
             cursor="hand2",
         )
         self.run_button.pack(
@@ -1083,7 +1086,7 @@ class PipelineApp(tk.Tk):
     ) -> None:
         self.run_button.configure(
             state="normal",
-            text="Executar novamente",
+            text="Executar análise novamente",
         )
         self.status_var.set(
             "Concluído. Consulte a pasta outputs."
