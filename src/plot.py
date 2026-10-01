@@ -20,6 +20,46 @@ from src.spatial.study_area import StudyArea
 from src.spatial.transit_filter import RegionalTransitData
 
 
+
+def apply_study_area_view(
+    ax,
+    study_area: StudyArea | None,
+    *,
+    margin_ratio: float = 0.03,
+):
+    """Aplica limite e contorno da região sem alterar os dados plotados."""
+
+    if study_area is None:
+        return ax
+
+    boundary = gpd.GeoSeries(
+        [study_area.geometry],
+        crs=study_area.crs,
+    ).boundary
+
+    boundary.plot(
+        ax=ax,
+        linewidth=1.0,
+    )
+
+    minx, miny, maxx, maxy = study_area.geometry.bounds
+    width = max(maxx - minx, 1.0)
+    height = max(maxy - miny, 1.0)
+
+    margin_x = width * margin_ratio
+    margin_y = height * margin_ratio
+
+    ax.set_xlim(
+        minx - margin_x,
+        maxx + margin_x,
+    )
+    ax.set_ylim(
+        miny - margin_y,
+        maxy + margin_y,
+    )
+
+    return ax
+
 def plot_study_area(
     study_area: StudyArea,
     *,
@@ -290,6 +330,7 @@ def plot_agent_routes(
     graphs: Mapping[str, nx.MultiDiGraph],
     sample_size: int = 100,
     title: str = "Rotas dos agentes",
+    study_area: StudyArea | None = None,
 ):
     """Plota as rotas OSM já calculadas para uma amostra de agentes."""
 
@@ -359,6 +400,10 @@ def plot_agent_routes(
 
         plotted += 1
 
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
     ax.set_title(f"{title} — n={plotted}")
     ax.set_axis_off()
 
@@ -373,6 +418,7 @@ def plot_transit_agent_routes(
     connection_to_physical_edge,
     sample_size: int = 50,
     title: str = "Rotas de transporte coletivo",
+    study_area: StudyArea | None = None,
 ):
     """Plota acesso/egresso a pé e trechos físicos GTFS dos agentes transit."""
 
@@ -481,6 +527,10 @@ def plot_transit_agent_routes(
 
         plotted += 1
 
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
     ax.set_title(f"{title} — n={plotted}")
     ax.set_axis_off()
 
@@ -493,6 +543,7 @@ def plot_edge_usage(
     graphs: Mapping[str, nx.MultiDiGraph],
     transit_physical_edges: gpd.GeoDataFrame,
     title: str = "Uso das redes",
+    study_area: StudyArea | None = None,
 ):
     """Plota intensidade de uso das arestas por número de travessias."""
 
@@ -607,6 +658,10 @@ def plot_edge_usage(
                 label="transit",
             )
 
+    apply_study_area_view(
+        ax,
+        study_area,
+    )
     ax.set_title(title)
     ax.set_axis_off()
     ax.legend()
