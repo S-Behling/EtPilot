@@ -30,6 +30,7 @@ from src.pipeline.config import (
     SimulationPeriod,
 )
 from src.plot import (
+    generate_mandatory_maps,
     plot_agent_routes,
     plot_edge_usage,
     plot_edge_usage_by_category,
@@ -47,6 +48,7 @@ from src.simulation.origin_assignment import assign_origins
 from src.simulation.population import generate_population
 from src.simulation.purpose_choice import assign_purpose
 from src.spatial.area_loader import load_study_area
+from src.spatial.census import load_census_income_sectors
 from src.spatial.regional_cache import load_regional_cache
 from src.transit.regional import (
     load_regional_transit_cache,
@@ -222,6 +224,15 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     regional_transit = load_regional_transit_cache(
         config,
         data_region_name,
+    )
+
+    # Os mapas obrigatórios 6 e 7 usam os setores censitários. A camada é
+    # carregada já recortada à região exibida, tanto em analysis quanto em
+    # plot_only. Se os insumos censitários estiverem ausentes, o pipeline falha
+    # cedo com uma mensagem explícita, pois esses mapas são obrigatórios.
+    census_sectors = load_census_income_sectors(
+        config,
+        study_area=view_area,
     )
 
     representative_date = (
@@ -446,6 +457,7 @@ def run_pilot(run_config: PilotRunConfig) -> None:
         "selected_plots": list(
             run_config.selected_plots
         ),
+        "mandatory_maps": True,
         "gtfs_start_date": (
             representative_date.date().isoformat()
         ),
@@ -481,6 +493,32 @@ def run_pilot(run_config: PilotRunConfig) -> None:
     edge_composition.to_csv(
         output_dir / "edge_composition.csv",
         index=False,
+    )
+
+    # ------------------------------------------------------------------
+    # MAPAS OBRIGATÓRIOS
+    # ------------------------------------------------------------------
+    # Estes mapas independem da seleção feita na aba "Mapas" da GUI. A aba
+    # controla apenas produtos adicionais; o conjunto mínimo abaixo é sempre
+    # criado para manter comparabilidade entre rodadas do experimento.
+    mandatory_maps = generate_mandatory_maps(
+        output_dir=output_dir,
+        agents=agents,
+        graphs=graphs,
+        edge_usage=edge_usage,
+        transit_physical_edges=(
+            regional_transit.physical_edges
+        ),
+        connection_to_physical_edge=(
+            regional_transit.connection_to_physical_edge
+        ),
+        census_sectors=census_sectors,
+        study_area=view_area,
+    )
+
+    print(
+        "[mapas obrigatórios]",
+        f"{len(mandatory_maps)} arquivo(s) gerado(s)",
     )
 
     selected_plots = set(
