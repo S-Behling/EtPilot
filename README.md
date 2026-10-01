@@ -306,6 +306,17 @@ número de conexões programadas.
 ---
 
 
+
+### Regiões exibidas na interface gráfica
+
+A interface gráfica lê diretamente `config/regions.json` e mostra apenas as
+regiões que estão com `"enabled": true`. Assim, opções ainda sem uma
+definição territorial válida não aparecem como executáveis e não geram erro
+apenas por terem sido selecionadas.
+
+Quando uma nova região for configurada e habilitada no JSON, ela passa a
+aparecer automaticamente no seletor da interface.
+
 ## Dois modos de uso da região
 
 A região pode atuar de duas formas diferentes. Essa escolha altera a
