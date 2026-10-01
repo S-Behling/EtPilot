@@ -1,7 +1,6 @@
-"""Interface gráfica retro/pixel para configurar e executar o EtPilot.
+"""Interface gráfica compacta para configurar e executar o EtPilot.
 
-A interface monta o mesmo PilotRunConfig usado pelo terminal. Assim, existem
-dois pontos de entrada independentes para o mesmo pipeline:
+Dois pontos de entrada independentes usam o mesmo PilotRunConfig:
 
     python scripts/run_pipeline.py
     python scripts/run_pipeline_gui.py
@@ -30,13 +29,27 @@ from src.pipeline.config import (
 )
 
 
-REGION_LABELS = {
-    "city": "Cidade inteira",
-    "center": "Centro",
-    "north": "Norte",
-    "south": "Sul",
-    "east": "Leste",
+PALETTE = {
+    "background": "#F6F5EC",
+    "surface": "#EFE7DA",
+    "surface_alt": "#E6DACB",
+    "brandy_rose": "#B29079",
+    "terracotta": "#A6533D",
+    "terracotta_dark": "#7F3D30",
+    "red_soft": "#C87568",
+    "red_pale": "#E7B8AE",
+    "ink": "#2F2724",
+    "muted": "#75655E",
+    "white": "#FFFFFF",
+    "border": "#D6C8BB",
 }
+
+FONT = ("Segoe UI", 10)
+FONT_BOLD = ("Segoe UI", 10, "bold")
+FONT_TITLE = ("Segoe UI", 22, "bold")
+FONT_SUBTITLE = ("Segoe UI", 10)
+FONT_SMALL = ("Segoe UI", 9)
+
 
 REGION_MODE_LABELS = {
     "Recorte da análise": "analysis",
@@ -49,92 +62,115 @@ SCENARIO_LABELS = {
 }
 
 
-PALETTE = {
-    "grid": "#C7D9F6",
-    "grid_line": "#F6F2EE",
-    "ink": "#3A2424",
-    "peach": "#F7D9BF",
-    "cream": "#FFF3DF",
-    "teal": "#62C5BF",
-    "orange": "#F4A45F",
-    "yellow": "#F4CD62",
-    "pink": "#ED7594",
-    "blue": "#7EA6E8",
-    "white": "#FFFFFF",
-    "muted": "#8A6B62",
-}
-
-FONT = ("Courier New", 10)
-FONT_BOLD = ("Courier New", 10, "bold")
-FONT_TITLE = ("Courier New", 19, "bold")
-FONT_SMALL = ("Courier New", 9)
-
-
 class PipelineApp(tk.Tk):
-    """Janela de configuração do pipeline."""
+    """Janela principal da configuração do piloto."""
 
     def __init__(self) -> None:
         super().__init__()
 
         self.title("EtPilot — Configuração do piloto")
-        self.geometry("820x900")
-        self.minsize(760, 820)
+        self.geometry("930x690")
+        self.minsize(860, 640)
         self.configure(
-            bg=PALETTE["grid"]
+            bg=PALETTE["background"]
         )
 
-        self._configure_ttk_style()
+        self._configure_styles()
+        self._load_regions()
+        self._build_variables()
+        self._build_ui()
 
+    def _configure_styles(self) -> None:
+        style = ttk.Style(self)
+
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        style.configure(
+            "Modern.TCombobox",
+            font=FONT,
+            foreground=PALETTE["ink"],
+            fieldbackground=PALETTE["white"],
+            background=PALETTE["white"],
+            bordercolor=PALETTE["border"],
+            lightcolor=PALETTE["border"],
+            darkcolor=PALETTE["border"],
+            arrowsize=15,
+            padding=5,
+        )
+        style.map(
+            "Modern.TCombobox",
+            fieldbackground=[
+                ("readonly", PALETTE["white"])
+            ],
+            foreground=[
+                ("readonly", PALETTE["ink"])
+            ],
+        )
+
+    def _load_regions(self) -> None:
         project_config = load_project_config()
         regions_config = load_regions_config(
             project_config
         )
-        default_region = project_config[
-            "study_area"
-        ][
-            "default_region"
-        ]
 
-        self.enabled_region_values = {}
-        self.disabled_region_labels = []
+        definitions = regions_config.get(
+            "regions",
+            {},
+        )
 
-        for region_name, definition in (
-            regions_config.get(
-                "regions",
-                {},
-            ).items()
-        ):
-            label = REGION_LABELS.get(
-                region_name,
+        enabled = [
+            (
+                definition.get(
+                    "op_region_number",
+                ),
                 definition.get(
                     "label",
-                    region_name,
+                    name,
                 ),
+                name,
             )
-
+            for name, definition
+            in definitions.items()
             if definition.get(
                 "enabled",
                 False,
-            ):
-                self.enabled_region_values[
-                    label
-                ] = region_name
-            else:
-                self.disabled_region_labels.append(
-                    label
-                )
+            )
+        ]
+
+        enabled.sort(
+            key=lambda item: (
+                item[0] is not None,
+                item[0]
+                if item[0] is not None
+                else -1,
+            )
+        )
+
+        self.enabled_region_values = {
+            label: name
+            for _, label, name in enabled
+        }
 
         if not self.enabled_region_values:
             raise ValueError(
                 "Nenhuma região está habilitada em config/regions.json."
             )
 
-        default_label = next(
+        default_region = project_config[
+            "study_area"
+        ][
+            "default_region"
+        ]
+
+        self.default_region_label = next(
             (
                 label
-                for label, value
+                for label, name
                 in self.enabled_region_values.items()
-                if value == default_region
+                if name == default_region
             ),
             next(
                 iter(
@@ -143,8 +179,9 @@ class PipelineApp(tk.Tk):
             ),
         )
 
+    def _build_variables(self) -> None:
         self.region_var = tk.StringVar(
-            value=default_label
+            value=self.default_region_label
         )
         self.region_mode_var = tk.StringVar(
             value="Recorte da análise"
@@ -194,106 +231,288 @@ class PipelineApp(tk.Tk):
             value="Pronto para executar."
         )
 
-        self._build_ui()
-        self.bind(
-            "<Configure>",
-            self._redraw_grid,
-        )
-
-    def _configure_ttk_style(self) -> None:
-        style = ttk.Style(self)
-
-        try:
-            style.theme_use("clam")
-        except tk.TclError:
-            pass
-
-        style.configure(
-            "Retro.TCombobox",
-            font=FONT,
-            foreground=PALETTE["ink"],
-            fieldbackground=PALETTE["cream"],
-            background=PALETTE["cream"],
-            bordercolor=PALETTE["ink"],
-            lightcolor=PALETTE["ink"],
-            darkcolor=PALETTE["ink"],
-            arrowsize=14,
-            padding=4,
-        )
-        style.map(
-            "Retro.TCombobox",
-            fieldbackground=[
-                ("readonly", PALETTE["cream"])
-            ],
-            foreground=[
-                ("readonly", PALETTE["ink"])
-            ],
-        )
-
     def _build_ui(self) -> None:
-        self.background = tk.Canvas(
+        shell = tk.Frame(
             self,
-            highlightthickness=0,
-            bd=0,
-            bg=PALETTE["grid"],
+            bg=PALETTE["background"],
+            padx=24,
+            pady=18,
         )
-        self.background.pack(
+        shell.pack(
             fill="both",
             expand=True,
         )
 
-        self.container = tk.Frame(
-            self.background,
-            bg=PALETTE["grid"],
+        self._build_header(
+            shell
         )
 
-        self.window_id = self.background.create_window(
-            0,
-            0,
-            anchor="nw",
-            window=self.container,
+        content = tk.Frame(
+            shell,
+            bg=PALETTE["background"],
+        )
+        content.pack(
+            fill="both",
+            expand=True,
+            pady=(12, 10),
         )
 
+        content.grid_columnconfigure(
+            0,
+            weight=1,
+            uniform="column",
+        )
+        content.grid_columnconfigure(
+            1,
+            weight=1,
+            uniform="column",
+        )
+        content.grid_rowconfigure(
+            0,
+            weight=1,
+        )
+        content.grid_rowconfigure(
+            1,
+            weight=1,
+        )
+
+        spatial = self._card(
+            content,
+            title="Recorte espacial",
+            subtitle=(
+                "Escolha a região oficial do Orçamento Participativo "
+                "e como ela participa da análise."
+            ),
+            row=0,
+            column=0,
+            accent="terracotta",
+        )
+        self._build_spatial_card(
+            spatial
+        )
+
+        population = self._card(
+            content,
+            title="População sintética",
+            subtitle=(
+                "Defina classes sociais e tamanho da população simulada."
+            ),
+            row=0,
+            column=1,
+            accent="brandy_rose",
+        )
+        self._build_population_card(
+            population
+        )
+
+        temporal = self._card(
+            content,
+            title="Tempo e comportamento",
+            subtitle=(
+                "Configure duração, unidade temporal, cenário e seed."
+            ),
+            row=1,
+            column=0,
+            accent="red_soft",
+        )
+        self._build_temporal_card(
+            temporal
+        )
+
+        preparation = self._card(
+            content,
+            title="Preparação",
+            subtitle=(
+                "Controle o que será preparado ou reutilizado nesta rodada."
+            ),
+            row=1,
+            column=1,
+            accent="terracotta_dark",
+        )
+        self._build_preparation_card(
+            preparation
+        )
+
+        self._build_footer(
+            shell
+        )
+
+    def _build_header(
+        self,
+        parent: tk.Widget,
+    ) -> None:
         header = tk.Frame(
-            self.container,
-            bg=PALETTE["grid"],
+            parent,
+            bg=PALETTE["background"],
         )
         header.pack(
             fill="x",
-            padx=24,
-            pady=(18, 12),
+        )
+
+        title_block = tk.Frame(
+            header,
+            bg=PALETTE["background"],
+        )
+        title_block.pack(
+            side="left",
+            anchor="w",
         )
 
         tk.Label(
-            header,
-            text="ETPILOT",
-            bg=PALETTE["grid"],
+            title_block,
+            text="EtPilot",
+            bg=PALETTE["background"],
             fg=PALETTE["ink"],
             font=FONT_TITLE,
         ).pack(
-            side="left",
+            anchor="w",
         )
 
         tk.Label(
-            header,
-            text="  CONFIGURAR EXECUÇÃO",
-            bg=PALETTE["ink"],
-            fg=PALETTE["cream"],
-            font=FONT_BOLD,
-            padx=10,
-            pady=5,
+            title_block,
+            text=(
+                "Configuração da simulação de mobilidade e segregação"
+            ),
+            bg=PALETTE["background"],
+            fg=PALETTE["muted"],
+            font=FONT_SUBTITLE,
         ).pack(
+            anchor="w",
+            pady=(2, 0),
+        )
+
+        badge = tk.Label(
+            header,
+            text="PILOTO CONFIGURÁVEL",
+            bg=PALETTE["red_pale"],
+            fg=PALETTE["terracotta_dark"],
+            font=FONT_BOLD,
+            padx=12,
+            pady=7,
+        )
+        badge.pack(
+            side="right",
+            anchor="n",
+        )
+
+    def _card(
+        self,
+        parent: tk.Widget,
+        *,
+        title: str,
+        subtitle: str,
+        row: int,
+        column: int,
+        accent: str,
+    ) -> tk.Frame:
+        outer = tk.Frame(
+            parent,
+            bg=PALETTE["border"],
+        )
+        outer.grid(
+            row=row,
+            column=column,
+            sticky="nsew",
+            padx=(
+                0 if column == 0 else 8,
+                8 if column == 0 else 0,
+            ),
+            pady=(
+                0 if row == 0 else 8,
+                8 if row == 0 else 0,
+            ),
+        )
+
+        card = tk.Frame(
+            outer,
+            bg=PALETTE["surface"],
+            padx=16,
+            pady=13,
+        )
+        card.pack(
+            fill="both",
+            expand=True,
+            padx=1,
+            pady=1,
+        )
+
+        top = tk.Frame(
+            card,
+            bg=PALETTE["surface"],
+        )
+        top.pack(
+            fill="x",
+            pady=(0, 10),
+        )
+
+        marker = tk.Frame(
+            top,
+            bg=PALETTE[accent],
+            width=8,
+            height=38,
+        )
+        marker.pack(
             side="left",
-            padx=(12, 0),
+            padx=(0, 10),
+        )
+        marker.pack_propagate(
+            False
         )
 
-        spatial = self._panel(
-            "RECORTE ESPACIAL",
-            accent="teal",
+        heading = tk.Frame(
+            top,
+            bg=PALETTE["surface"],
+        )
+        heading.pack(
+            side="left",
+            fill="x",
+            expand=True,
         )
 
+        tk.Label(
+            heading,
+            text=title,
+            bg=PALETTE["surface"],
+            fg=PALETTE["ink"],
+            font=FONT_BOLD,
+        ).pack(
+            anchor="w",
+        )
+
+        tk.Label(
+            heading,
+            text=subtitle,
+            bg=PALETTE["surface"],
+            fg=PALETTE["muted"],
+            font=FONT_SMALL,
+            justify="left",
+            wraplength=340,
+        ).pack(
+            anchor="w",
+            pady=(2, 0),
+        )
+
+        body = tk.Frame(
+            card,
+            bg=PALETTE["surface"],
+        )
+        body.pack(
+            fill="both",
+            expand=True,
+        )
+        body.grid_columnconfigure(
+            1,
+            weight=1,
+        )
+
+        return body
+
+    def _build_spatial_card(
+        self,
+        parent: tk.Frame,
+    ) -> None:
         self._labeled_combobox(
-            spatial,
+            parent,
             "Região",
             self.region_var,
             tuple(
@@ -301,80 +520,67 @@ class PipelineApp(tk.Tk):
             ),
             row=0,
         )
-
         self._labeled_combobox(
-            spatial,
+            parent,
             "Uso da região",
             self.region_mode_var,
-            tuple(REGION_MODE_LABELS),
+            tuple(
+                REGION_MODE_LABELS
+            ),
             row=1,
         )
 
-        explanation = (
-            "Recorte da análise: O/D, agentes, redes e GTFS ficam na região.\n"
-            "Somente janela do mapa: simulação municipal, mapa enquadrado na região."
-        )
-
-        if self.disabled_region_labels:
-            explanation += (
-                "\nAinda não configuradas: "
-                + ", ".join(
-                    self.disabled_region_labels
-                )
-                + "."
-            )
-
         tk.Label(
-            spatial,
-            text=explanation,
-            justify="left",
-            anchor="w",
-            wraplength=680,
-            bg=PALETTE["peach"],
+            parent,
+            text=(
+                "analysis: restringe O/D, agentes, redes e GTFS.\n"
+                "plot_only: mantém a cidade inteira e recorta apenas o mapa."
+            ),
+            bg=PALETTE["surface"],
             fg=PALETTE["muted"],
             font=FONT_SMALL,
+            justify="left",
+            wraplength=350,
         ).grid(
             row=2,
             column=0,
             columnspan=2,
-            sticky="ew",
-            pady=(10, 2),
+            sticky="w",
+            pady=(8, 0),
         )
 
-        population = self._panel(
-            "POPULAÇÃO SINTÉTICA",
-            accent="orange",
-        )
-
+    def _build_population_card(
+        self,
+        parent: tk.Frame,
+    ) -> None:
         tk.Label(
-            population,
+            parent,
             text="Classes sociais",
-            bg=PALETTE["peach"],
+            bg=PALETTE["surface"],
             fg=PALETTE["ink"],
             font=FONT_BOLD,
         ).grid(
             row=0,
             column=0,
             sticky="w",
-            padx=(0, 16),
-            pady=6,
+            pady=5,
         )
 
         classes = tk.Frame(
-            population,
-            bg=PALETTE["peach"],
+            parent,
+            bg=PALETTE["surface"],
         )
         classes.grid(
             row=0,
             column=1,
             sticky="w",
-            pady=6,
+            pady=5,
         )
 
-        class_accents = {
-            IncomeGroup.LOW: PALETTE["teal"],
-            IncomeGroup.MIDDLE: PALETTE["yellow"],
-            IncomeGroup.HIGH: PALETTE["pink"],
+        class_colors = {
+            IncomeGroup.LOW: PALETTE["red_pale"],
+            IncomeGroup.MIDDLE: PALETTE["brandy_rose"],
+            IncomeGroup.HIGH: PALETTE["terracotta"],
         }
 
         for index, (
@@ -387,68 +593,65 @@ class PipelineApp(tk.Tk):
                 classes,
                 text=group.value,
                 variable=variable,
-                bg=PALETTE["peach"],
-                activebackground=PALETTE["peach"],
+                bg=PALETTE["surface"],
+                activebackground=PALETTE["surface"],
                 fg=PALETTE["ink"],
                 activeforeground=PALETTE["ink"],
-                selectcolor=class_accents[group],
+                selectcolor=class_colors[group],
                 font=FONT,
-                highlightthickness=0,
                 bd=0,
+                highlightthickness=0,
             ).grid(
                 row=0,
                 column=index,
-                padx=(0, 14),
                 sticky="w",
+                padx=(0, 10),
             )
 
         self._labeled_entry(
-            population,
+            parent,
             "Número de agentes",
             self.n_agents_var,
             row=1,
         )
 
-        temporal = self._panel(
-            "TEMPO E COMPORTAMENTO",
-            accent="teal",
-        )
-
+    def _build_temporal_card(
+        self,
+        parent: tk.Frame,
+    ) -> None:
         self._labeled_entry(
-            temporal,
+            parent,
             "Período",
             self.period_value_var,
             row=0,
         )
-
         self._labeled_combobox(
-            temporal,
+            parent,
             "Unidade",
             self.period_unit_var,
             ("hours", "days"),
             row=1,
         )
-
         self._labeled_combobox(
-            temporal,
+            parent,
             "Cenário",
             self.scenario_var,
-            tuple(SCENARIO_LABELS),
+            tuple(
+                SCENARIO_LABELS
+            ),
             row=2,
         )
-
         self._labeled_entry(
-            temporal,
+            parent,
             "Seed",
             self.seed_var,
             row=3,
         )
 
-        preparation = self._panel(
-            "PREPARAÇÃO",
-            accent="orange",
-        )
-
+    def _build_preparation_card(
+        self,
+        parent: tk.Frame,
+    ) -> None:
         options = (
             (
                 "Preparar/reutilizar redes OSM",
@@ -469,228 +672,84 @@ class PipelineApp(tk.Tk):
         )
 
         for row, (
-            text,
+            label,
             variable,
         ) in enumerate(
             options
         ):
             tk.Checkbutton(
-                preparation,
-                text=text,
+                parent,
+                text=label,
                 variable=variable,
-                bg=PALETTE["peach"],
-                activebackground=PALETTE["peach"],
+                bg=PALETTE["surface"],
+                activebackground=PALETTE["surface"],
                 fg=PALETTE["ink"],
                 activeforeground=PALETTE["ink"],
-                selectcolor=PALETTE["yellow"],
+                selectcolor=PALETTE["red_pale"],
                 font=FONT,
-                anchor="w",
-                highlightthickness=0,
                 bd=0,
+                highlightthickness=0,
+                anchor="w",
             ).grid(
                 row=row,
                 column=0,
                 columnspan=2,
                 sticky="w",
-                pady=3,
+                pady=4,
             )
 
-        actions = tk.Frame(
-            self.container,
-            bg=PALETTE["grid"],
+    def _build_footer(
+        self,
+        parent: tk.Widget,
+    ) -> None:
+        footer = tk.Frame(
+            parent,
+            bg=PALETTE["background"],
         )
-        actions.pack(
+        footer.pack(
             fill="x",
-            padx=24,
-            pady=(14, 6),
+            pady=(4, 0),
         )
 
         self.run_button = tk.Button(
-            actions,
-            text="▶ EXECUTAR PIPELINE",
+            footer,
+            text="Executar pipeline  →",
             command=self._start_pipeline,
+            bg=PALETTE["terracotta"],
+            fg=PALETTE["white"],
+            activebackground=PALETTE["terracotta_dark"],
+            activeforeground=PALETTE["white"],
             font=FONT_BOLD,
-            bg=PALETTE["teal"],
-            fg=PALETTE["ink"],
-            activebackground=PALETTE["yellow"],
-            activeforeground=PALETTE["ink"],
-            relief="raised",
-            bd=3,
-            padx=14,
-            pady=8,
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=10,
             cursor="hand2",
         )
         self.run_button.pack(
             side="left",
         )
 
-        tk.Label(
-            actions,
+        status = tk.Label(
+            footer,
             textvariable=self.status_var,
-            bg=PALETTE["cream"],
-            fg=PALETTE["ink"],
-            font=FONT,
-            relief="solid",
-            bd=1,
+            bg=PALETTE["surface"],
+            fg=PALETTE["muted"],
+            font=FONT_SMALL,
             padx=12,
-            pady=8,
-        ).pack(
+            pady=10,
+            anchor="w",
+        )
+        status.pack(
             side="left",
             fill="x",
             expand=True,
             padx=(12, 0),
         )
 
-        footer = tk.Frame(
-            self.container,
-            bg=PALETTE["grid"],
-        )
-        footer.pack(
-            fill="x",
-            padx=24,
-            pady=(6, 20),
-        )
-
-        tk.Label(
-            footer,
-            text="♥ mapas por modo + classe social são gerados automaticamente",
-            bg=PALETTE["grid"],
-            fg=PALETTE["ink"],
-            font=FONT_SMALL,
-        ).pack(
-            anchor="w",
-        )
-
-        self._redraw_grid()
-
-    def _panel(
-        self,
-        title: str,
-        *,
-        accent: str,
-    ) -> tk.Frame:
-        outer = tk.Frame(
-            self.container,
-            bg=PALETTE["ink"],
-            bd=0,
-        )
-        outer.pack(
-            fill="x",
-            padx=24,
-            pady=8,
-        )
-
-        header = tk.Label(
-            outer,
-            text=f" {title} ",
-            bg=PALETTE[accent],
-            fg=PALETTE["ink"],
-            font=FONT_BOLD,
-            anchor="w",
-            padx=8,
-            pady=5,
-        )
-        header.pack(
-            fill="x",
-            padx=2,
-            pady=(2, 0),
-        )
-
-        body = tk.Frame(
-            outer,
-            bg=PALETTE["peach"],
-            padx=14,
-            pady=12,
-        )
-        body.pack(
-            fill="x",
-            padx=2,
-            pady=(0, 2),
-        )
-
-        body.grid_columnconfigure(
-            1,
-            weight=1,
-        )
-
-        return body
-
-    def _redraw_grid(
-        self,
-        _event=None,
-    ) -> None:
-        if not hasattr(
-            self,
-            "background",
-        ):
-            return
-
-        width = max(
-            self.winfo_width(),
-            820,
-        )
-        height = max(
-            self.container.winfo_reqheight(),
-            self.winfo_height(),
-            900,
-        )
-
-        self.background.delete(
-            "gridline"
-        )
-
-        spacing = 28
-
-        for x in range(
-            0,
-            width + spacing,
-            spacing,
-        ):
-            self.background.create_line(
-                x,
-                0,
-                x,
-                height,
-                fill=PALETTE["grid_line"],
-                width=1,
-                tags="gridline",
-            )
-
-        for y in range(
-            0,
-            height + spacing,
-            spacing,
-        ):
-            self.background.create_line(
-                0,
-                y,
-                width,
-                y,
-                fill=PALETTE["grid_line"],
-                width=1,
-                tags="gridline",
-            )
-
-        self.background.tag_lower(
-            "gridline"
-        )
-
-        self.background.itemconfigure(
-            self.window_id,
-            width=width,
-        )
-        self.background.configure(
-            scrollregion=(
-                0,
-                0,
-                width,
-                height,
-            )
-        )
-
     @staticmethod
     def _labeled_entry(
-        parent,
+        parent: tk.Widget,
         label: str,
         variable: tk.StringVar,
         *,
@@ -699,37 +758,37 @@ class PipelineApp(tk.Tk):
         tk.Label(
             parent,
             text=label,
-            bg=PALETTE["peach"],
+            bg=PALETTE["surface"],
             fg=PALETTE["ink"],
             font=FONT_BOLD,
         ).grid(
             row=row,
             column=0,
             sticky="w",
-            padx=(0, 16),
-            pady=6,
+            padx=(0, 12),
+            pady=5,
         )
 
         tk.Entry(
             parent,
             textvariable=variable,
-            width=24,
-            font=FONT,
-            bg=PALETTE["cream"],
+            bg=PALETTE["white"],
             fg=PALETTE["ink"],
             insertbackground=PALETTE["ink"],
+            font=FONT,
             relief="solid",
             bd=1,
         ).grid(
             row=row,
             column=1,
             sticky="ew",
-            pady=6,
+            pady=5,
+            ipady=4,
         )
 
     @staticmethod
     def _labeled_combobox(
-        parent,
+        parent: tk.Widget,
         label: str,
         variable: tk.StringVar,
         values,
@@ -739,15 +798,15 @@ class PipelineApp(tk.Tk):
         tk.Label(
             parent,
             text=label,
-            bg=PALETTE["peach"],
+            bg=PALETTE["surface"],
             fg=PALETTE["ink"],
             font=FONT_BOLD,
         ).grid(
             row=row,
             column=0,
             sticky="w",
-            padx=(0, 16),
-            pady=6,
+            padx=(0, 12),
+            pady=5,
         )
 
         ttk.Combobox(
@@ -755,13 +814,12 @@ class PipelineApp(tk.Tk):
             textvariable=variable,
             values=values,
             state="readonly",
-            style="Retro.TCombobox",
-            width=30,
+            style="Modern.TCombobox",
         ).grid(
             row=row,
             column=1,
             sticky="ew",
-            pady=6,
+            pady=5,
         )
 
     def _build_config(
@@ -825,11 +883,11 @@ class PipelineApp(tk.Tk):
 
         self.run_button.configure(
             state="disabled",
-            text="⏳ EXECUTANDO...",
-            bg=PALETTE["orange"],
+            text="Executando...",
+            bg=PALETTE["brandy_rose"],
         )
         self.status_var.set(
-            "Executando... acompanhe também o terminal."
+            "Executando. O progresso detalhado continua disponível no terminal."
         )
 
         worker = threading.Thread(
@@ -866,15 +924,15 @@ class PipelineApp(tk.Tk):
     ) -> None:
         self.run_button.configure(
             state="normal",
-            text="▶ EXECUTAR PIPELINE",
-            bg=PALETTE["teal"],
+            text="Executar novamente  →",
+            bg=PALETTE["terracotta"],
         )
         self.status_var.set(
-            "✓ Pipeline concluído."
+            "Pipeline concluído. Consulte a pasta outputs."
         )
         messagebox.showinfo(
             "EtPilot",
-            "Execução concluída. Consulte a pasta outputs.",
+            "Execução concluída.",
         )
 
     def _execution_failed(
@@ -883,11 +941,11 @@ class PipelineApp(tk.Tk):
     ) -> None:
         self.run_button.configure(
             state="normal",
-            text="▶ EXECUTAR PIPELINE",
-            bg=PALETTE["pink"],
+            text="Tentar novamente  →",
+            bg=PALETTE["terracotta"],
         )
         self.status_var.set(
-            "✕ A execução terminou com erro."
+            "A execução terminou com erro."
         )
         messagebox.showerror(
             "Erro na execução",
